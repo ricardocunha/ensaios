@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+data/
+runs/
+logs/
+# Private Real Samples never leave this machine (ADR-0002)
+private/

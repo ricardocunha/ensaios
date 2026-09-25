@@ -1,0 +1,68 @@
+import random
+from datetime import date
+
+from faker import Faker
+
+from cnh_ocr import transcription as tx
+from cnh_ocr.extractor.noise import add_noise
+from cnh_ocr.extractor.tools import (
+    check_dates,
+    normalize_categoria,
+    normalize_date,
+    submit_cnh_record,
+    suggest_ocr_fixes,
+    validate_cpf,
+)
+from cnh_ocr.synth.records import random_record
+
+
+def _record(seed=0):
+    fake = Faker("pt_BR")
+    fake.seed_instance(seed)
+    return random_record(random.Random(seed), fake, date(2026, 9, 25))
+
+
+def test_letter_lookalike_in_cpf_is_recovered_uniquely():
+    cpf = _record().cpf
+    broken = cpf.replace("0", "O", 1) if "0" in cpf else cpf.replace("5", "S", 1)
+    out = suggest_ocr_fixes.invoke({"value": broken, "kind": "cpf"})
+    assert out["candidates"][0] == cpf
+
+
+def test_validate_cpf_accepts_any_formatting():
+    cpf = _record().cpf
+    assert validate_cpf.invoke({"cpf": cpf.replace(".", " ").replace("-", "")})["valid"]
+
+
+def test_normalize_date_handles_ocr_separators_and_letters():
+    assert normalize_date.invoke({"text": "O7.O3-1990"}) == {"ok": True, "date": "07/03/1990"}
+
+
+def test_categoria_ocr_slip():
+    assert normalize_categoria.invoke({"text": "A8"})["categoria"] == "AB"
+
+
+def test_generated_records_pass_date_checks():
+    for seed in range(200):
+        r = _record(seed)
+        out = check_dates.invoke({"data_nascimento": r.data_nascimento,
+                                  "primeira_habilitacao": r.primeira_habilitacao,
+                                  "data_emissao": r.data_emissao, "validade": r.validade})
+        assert out["ok"], (seed, out)
+
+
+def test_submit_accepts_clean_record():
+    assert submit_cnh_record.invoke(_record().model_dump()) == "ACCEPTED"
+
+
+def test_noise_keeps_structure_and_changes_something():
+    rng = random.Random(3)
+    clean = tx.from_record(_record())
+    noisy = [add_noise(clean, rng, rate=0.5) for _ in range(20)]
+    assert any(n != clean for n in noisy)
+    assert all("CPF:" in n for n in noisy)
+
+
+def test_many_records_generate_without_date_errors():
+    for seed in range(3000):
+        _record(seed)
