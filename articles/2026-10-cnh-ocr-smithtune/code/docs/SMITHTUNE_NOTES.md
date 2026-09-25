@@ -55,6 +55,22 @@ Also: the dataset build was interrupted by a session restart, and the generator 
 - 8 fields are scored: NOME, CPF, DATA NASCIMENTO, CAT. HAB., Nº REGISTRO, VALIDADE, 1ª HABILITAÇÃO, plus LOCAL and DATA EMISSÃO on the open cards. FILIAÇÃO and DOC. IDENTIDADE line splits are too inconsistent to score.
 - BID dates are random (born 2019, valid until 2007), so BID is for the Reader only.
 
+## 2026-09-25: PaddleOCR-VL-1.6 + LoRA (1 epoch, 2,293 images, M4 Pro)
+
+- Training took **1h51 on an M4 Pro**: 2,293 steps at about 0.37 steps/s, **5.7 GB peak**, rank 32, 12.1M trainable params (1.3%). The loss went 0.56 → 0.10 (step 100) → 0.0018 (step 1,000) → 0.0003 (step 2,000).
+
+| Synthetic test | Label acc | Value recall | CER | s/img | Non-CNH rejected |
+|---|---|---|---|---|---|
+| zero-shot (50) | 15.0% | 73.5% | 10.36 | 3.1 | 0/7 |
+| **LoRA (50)** | **99.9%** | **99.8%** | **0.000** | **2.8** | **7/7** |
+| zero-shot, hard set (100) | 15.7% | 77.3% | 19.92 | 3.3 | |
+| **LoRA, hard set (100)** | **99.8%** | **99.8%** | **0.000** | 2.8 | |
+
+- **Checked for leakage:** the test and hard sets share 0 CPFs and 0 names with train, and 0 identical transcriptions.
+- The only error in 50 test images is `CÂMARA` → `CAMARA`, a lost accent on a CNH Digital screenshot (the smallest text).
+- **Caveat: this is in-distribution.** The test images come from the same renderer, fonts and layout as training, so 99.9% mostly says "it learned our template". The honest test of generalization is **BID** (real CNH templates, scanned, rotated 90°/180°), which is queued after the Chandra re-run.
+- A 0.9B model at 2.8 s/img on a laptop beats zero-shot Qwen3.5-9B (68.0%, 21.3 s/img) on this distribution by a wide margin.
+
 ## Next entries
 
 - [ ] `smithtune doctor` output and install time
