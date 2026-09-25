@@ -16,7 +16,7 @@ from .metrics import score_transcription
 
 def reader_rows(data: Path, files: list[Path]) -> list[str]:
     truth = {r["file_name"]: r for r in map(json.loads, (data / "metadata.jsonl").open(encoding="utf-8"))}
-    rows = ["| Reader run | n | label accuracy | value recall | CER | p50 s/img | hard-set label acc |",
+    rows = ["| Reader run | n | label accuracy | value recall | CER | p50 s/img | label acc on hard-difficulty items |",
             "|---|---|---|---|---|---|---|"]
     for f in files:
         preds = [json.loads(line) for line in f.open(encoding="utf-8")]

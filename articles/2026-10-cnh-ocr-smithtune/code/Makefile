@@ -1,4 +1,4 @@
-.PHONY: install test data zero-shot train-reader eval-reader teacher report
+.PHONY: install test data zero-shot train-reader eval-reader teacher report bid
 PY := uv run python -m
 MODELS := paddleocr_vl chandra2 qwen35_9b
 N ?= 300
@@ -33,3 +33,8 @@ teacher:            ## Stage 2 Teacher trajectories -> LangSmith (PAID: Anthropi
 report:
 	$(PY) cnh_ocr.evaluation.report --data data/synth/test --reader runs/reader/*.jsonl \
 	  --extractor runs/extractor/*.jsonl
+
+bid:                ## BID sample (cited, not redistributed) -> data/bid/test, then zero-shot on it
+	mkdir -p data/bid-raw && uvx gdown 144EqqmMtCziua9iYo-3afUEvZrJVxUXU -O data/bid-raw/sample.zip
+	unzip -q -o data/bid-raw/sample.zip -d data/bid-raw
+	$(PY) cnh_ocr.evaluation.bid --bid "data/bid-raw/BID Sample Dataset" --out data/bid

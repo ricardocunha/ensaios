@@ -62,7 +62,10 @@ def score_transcription(pred: str, truth: str) -> dict:
         ok = float(tx.NOT_A_CNH in pred.upper())
         return {"label_accuracy": ok, "value_recall": ok, "cer": cer(pred, truth), "labels": {}}
     p, t = tx.parse(pred), tx.parse(truth)
-    labels = {label: _norm(p.get(label)) == _norm(t.get(label)) for label in tx.LABELS}
+    # Score only the labels the ground truth has. Synthetic truth has all 14; BID's
+    # CNH_Frente shows fewer. " / " splits (Filiação lines) don't count as errors.
+    same = lambda a, b: _norm(a).replace(" / ", " ") == _norm(b).replace(" / ", " ")
+    labels = {label: same(p.get(label), t[label]) for label in t}
     # Format-agnostic: is each printed value somewhere in the output? Separates
     # "can't read it" from "can't follow the LABEL: value contract".
     haystack = _norm(_TAGS.sub(" ", pred))  # Chandra emits HTML layout zero-shot

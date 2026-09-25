@@ -35,6 +35,26 @@ A 5-step adapter already produces the `LABEL: value` format (with some fields mi
 
 Also: the dataset build was interrupted by a session restart, and the generator isn't resumable mid-split. The train split is therefore **2,293 images** instead of 3,000. Validation and test use fixed per-split seeds, so they're unaffected.
 
+## 2026-09-25: Stage 1 zero-shot, 50 synthetic test images, same prompt for all models
+
+| Model | Label acc | Value recall | CER | p50 s/img |
+|---|---|---|---|---|
+| PaddleOCR-VL-1.6 (0.9B) | 15.0% | 73.5% | 10.36 | 3.1 |
+| Chandra 2 (~5B), 600-token budget, **46/50 outputs truncated** | 14.9% | 47.5% | 19.70 | 26.3 |
+| Qwen3.5-9B | **68.0%** | **91.8%** | 1.38 | 21.3 |
+
+- **The generalist wins zero-shot** because it follows the `LABEL: value` instruction. The specialists don't: PaddleOCR-VL writes free text and often loops (CER ≈ 10 means the output is about 10× the reference length). Chandra 2 always writes its own HTML layout format with a `data-bbox` on every element, whatever the prompt says.
+- **Qwen's errors are the dangerous kind.** It gives confident, well-formed but wrong dates (DATA NASCIMENTO `29/05/1990` vs truth `23/07/1990`). Checksums catch a bad CPF, but nothing catches a plausible date.
+- Chandra 2 is being re-run with a 3,000-token budget for a fair number.
+
+## 2026-09-25: BID Dataset loader
+
+- The sample is 70 CNH images (36 front, 34 open card) plus 72 RG/CPF fronts as Non-CNH.
+- These are **real CNH templates, scanned, often rotated 90°/180°**, with synthetic personal data and blurred faces. Our training rotations stay within about ±12°, so it's a genuine robustness test.
+- The `*_gt_ocr.txt` files come in two formats: boxes, and rotated quads with `[xs], [ys]`. File order is **not** label-then-value (a value sometimes precedes its label), so pairing is by format plus distance.
+- 8 fields are scored: NOME, CPF, DATA NASCIMENTO, CAT. HAB., Nº REGISTRO, VALIDADE, 1ª HABILITAÇÃO, plus LOCAL and DATA EMISSÃO on the open cards. FILIAÇÃO and DOC. IDENTIDADE line splits are too inconsistent to score.
+- BID dates are random (born 2019, valid until 2007), so BID is for the Reader only.
+
 ## Next entries
 
 - [ ] `smithtune doctor` output and install time
