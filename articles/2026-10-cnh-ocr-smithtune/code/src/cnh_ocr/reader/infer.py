@@ -21,34 +21,36 @@ from .models import MODELS
 
 
 class MlxReader:
-    def __init__(self, hf_id: str, adapter: str | None):
+    def __init__(self, hf_id: str, adapter: str | None, max_tokens: int):
         from mlx_vlm import load
         from mlx_vlm.utils import load_config
 
         self.model, self.processor = load(hf_id, adapter_path=adapter)
         self.config = load_config(hf_id)
+        self.max_tokens = max_tokens
 
     def __call__(self, image_path: str) -> str:
         from mlx_vlm import generate
         from mlx_vlm.prompt_utils import apply_chat_template
 
         prompt = apply_chat_template(self.processor, self.config, READER_PROMPT, num_images=1)
-        out = generate(self.model, self.processor, prompt, image=[image_path], max_tokens=600, temperature=0.0)
+        out = generate(self.model, self.processor, prompt, image=[image_path], max_tokens=self.max_tokens, temperature=0.0)
         return out.text.strip()
 
 
 class OpenAIReader:
-    def __init__(self, base_url: str, model: str):
+    def __init__(self, base_url: str, model: str, max_tokens: int):
         from openai import OpenAI
 
         self.client, self.model = OpenAI(base_url=base_url, api_key="unused"), model
+        self.max_tokens = max_tokens
 
     def __call__(self, image_path: str) -> str:
         b64 = base64.b64encode(Path(image_path).read_bytes()).decode()
         resp = self.client.chat.completions.create(
             model=self.model,
             temperature=0,
-            max_tokens=600,
+            max_tokens=self.max_tokens,
             messages=[{"role": "user", "content": [
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
                 {"type": "text", "text": READER_PROMPT},
@@ -66,10 +68,13 @@ def main() -> None:
     p.add_argument("--backend", choices=("mlx", "openai"), default="mlx")
     p.add_argument("--base-url", default="http://localhost:8000/v1")
     p.add_argument("--limit", type=int)
+    p.add_argument("--max-tokens", type=int, help="override the model's default output budget")
     args = p.parse_args()
 
-    hf_id = MODELS[args.model].hf_id
-    reader = MlxReader(hf_id, args.adapter) if args.backend == "mlx" else OpenAIReader(args.base_url, hf_id)
+    m = MODELS[args.model]
+    max_tokens = args.max_tokens or m.max_tokens
+    reader = (MlxReader(m.hf_id, args.adapter, max_tokens) if args.backend == "mlx"
+              else OpenAIReader(args.base_url, m.hf_id, max_tokens))
     rows = [json.loads(line) for line in (args.data / "metadata.jsonl").open(encoding="utf-8")][: args.limit]
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

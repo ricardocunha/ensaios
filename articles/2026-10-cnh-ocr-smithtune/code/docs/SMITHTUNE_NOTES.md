@@ -24,6 +24,17 @@ A running log kept while testing smithtune. It becomes the review section of the
   - once it looped, repeating the same blocks
 - n=4 is an anecdote, not a result. The full zero-shot run is `make zero-shot`.
 
+## 2026-09-25: first PaddleOCR-VL LoRA attempt on the Mac (mlx-vlm 0.7.3)
+
+Two upstream bugs, both worth reporting to `Blaizzy/mlx-vlm`:
+
+1. **"LoRA" trained the whole vision tower.** `trainer/utils.py::freeze_model` freezes encoders by attribute name (`vision_model`, `vision_tower`, `aligner`, …). PaddleOCR-VL names its encoder `visual`, so it was never frozen. The log said `trainable 451M / 905M (49.8%)`, and the run hit a Metal OOM (`kIOGPUCommandBufferCallbackErrorOutOfMemory`). Fix: `src/cnh_ocr/reader/mlx_lora.py` also freezes `model.visual`. After the fix: 12.1M trainable (1.3%), 5.6 GB peak, about 2.7 s per step, and the loss went 0.56 → 0.12 in 5 steps.
+2. **`--batch-size > 1` crashes PaddleOCR-VL.** `vision.py::_patch_embed` expects 5-D pixel values and gets 4-D (`not enough values to unpack (expected 5, got 4)`). Workaround: batch 1 with `--gradient-accumulation-steps 4`.
+
+A 5-step adapter already produces the `LABEL: value` format (with some fields misplaced), so the format problem looks cheap to fix. The full run is 1 epoch on 2,293 images.
+
+Also: the dataset build was interrupted by a session restart, and the generator isn't resumable mid-split. The train split is therefore **2,293 images** instead of 3,000. Validation and test use fixed per-split seeds, so they're unaffected.
+
 ## Next entries
 
 - [ ] `smithtune doctor` output and install time

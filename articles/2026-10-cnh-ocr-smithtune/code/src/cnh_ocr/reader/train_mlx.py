@@ -28,12 +28,13 @@ def command(args: argparse.Namespace, model_path: str) -> list[str]:
     m = MODELS[args.model]
     out = args.out or Path("runs/reader") / f"{m.key}-lora"
     return [
-        sys.executable, "-m", "mlx_vlm.lora",
+        sys.executable, "-m", "cnh_ocr.reader.mlx_lora",  # mlx_vlm.lora + vision-freeze fix
         "--model-path", model_path,
         "--dataset", str(args.data),
         "--split", "train",
         "--epochs", str(args.epochs),
-        "--batch-size", str(m.mlx_batch_size),
+        "--batch-size", "1",  # batch > 1 breaks PaddleOCR-VL's vision encoder in mlx-vlm 0.7.3
+        "--gradient-accumulation-steps", str(m.grad_accum),
         "--learning-rate", str(args.learning_rate),
         "--lora-rank", str(m.lora_rank),
         "--lora-alpha", str(m.lora_rank * 2),

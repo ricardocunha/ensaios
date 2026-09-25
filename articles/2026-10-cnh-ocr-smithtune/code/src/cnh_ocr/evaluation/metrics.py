@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from .. import transcription as tx
 from ..schema import FIELD_NAMES, CnhRecord, Rejection
+
+
+_TAGS = re.compile(r"<[^>]+>")
 
 
 def levenshtein(a: str, b: str) -> int:
@@ -61,7 +65,7 @@ def score_transcription(pred: str, truth: str) -> dict:
     labels = {label: _norm(p.get(label)) == _norm(t.get(label)) for label in tx.LABELS}
     # Format-agnostic: is each printed value somewhere in the output? Separates
     # "can't read it" from "can't follow the LABEL: value contract".
-    haystack = _norm(pred)
+    haystack = _norm(_TAGS.sub(" ", pred))  # Chandra emits HTML layout zero-shot
     printed = [v for label in tx.LABELS for v in _norm(t.get(label)).split(" / ") if v]
     recall = sum(v in haystack for v in printed) / max(1, len(printed))
     return {"label_accuracy": sum(labels.values()) / len(labels), "value_recall": recall,

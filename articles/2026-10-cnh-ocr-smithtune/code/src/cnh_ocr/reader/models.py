@@ -13,8 +13,10 @@ class BaseOcrModel:
     license: str
     role: str
     lora_rank: int = 16
-    # Batch 1 + grad checkpointing keeps the 9B under ~40 GB on a 48 GB M4 Pro.
-    mlx_batch_size: int = 1
+    # Effective batch size; mlx-vlm trains at batch 1 and accumulates gradients.
+    grad_accum: int = 4
+    # Output budget. Chandra ignores the prompt zero-shot and emits verbose HTML with bboxes.
+    max_tokens: int = 600
 
 
 MODELS: dict[str, BaseOcrModel] = {
@@ -26,6 +28,7 @@ MODELS: dict[str, BaseOcrModel] = {
             params="~5B (Qwen3.5-4B based)",
             license="AI Pubs Open RAIL-M (modified): no commercial use above US$2M revenue/funding; share-alike",
             role="OCR specialist, best Portuguese score",
+            max_tokens=3000,
         ),
         BaseOcrModel(
             key="paddleocr_vl",
@@ -34,7 +37,6 @@ MODELS: dict[str, BaseOcrModel] = {
             license="Apache-2.0",
             role="tiny specialist",
             lora_rank=32,
-            mlx_batch_size=4,
         ),
         BaseOcrModel(
             key="qwen35_9b",
