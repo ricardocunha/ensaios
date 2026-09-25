@@ -1,0 +1,5 @@
+# superdeck data directory
+.superdeck/
+.DS_Store
+.env
+private/
