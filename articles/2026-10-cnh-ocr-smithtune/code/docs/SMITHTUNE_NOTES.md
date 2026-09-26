@@ -45,7 +45,8 @@ Also: the dataset build was interrupted by a session restart, and the generator 
 
 - **The generalist wins zero-shot** because it follows the `LABEL: value` instruction. The specialists don't: PaddleOCR-VL writes free text and often loops (CER ≈ 10 means the output is about 10× the reference length). Chandra 2 always writes its own HTML layout format with a `data-bbox` on every element, whatever the prompt says.
 - **Qwen's errors are the dangerous kind.** It gives confident, well-formed but wrong dates (DATA NASCIMENTO `29/05/1990` vs truth `23/07/1990`). Checksums catch a bad CPF, but nothing catches a plausible date.
-- Chandra 2 is being re-run with a 3,000-token budget for a fair number.
+- **Chandra 2 re-run with a 3,000-token budget:** 0/50 outputs truncated. Value recall is **86.0%** (was 47.5% at 600 tokens), label accuracy still 14.9%, CER 30.9, **51.0 s/img**. The HTML layout output is the cost.
+- Metric note: about 14% label accuracy is the floor. Blank fields (PERMISSÃO, ACC) match even when the format is ignored, which is why both specialists sit near 15%.
 
 ## 2026-09-25: BID Dataset loader
 
