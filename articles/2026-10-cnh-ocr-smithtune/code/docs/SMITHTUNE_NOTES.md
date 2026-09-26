@@ -84,6 +84,15 @@ Also: the dataset build was interrupted by a session restart, and the generator 
 - **Reading transferred; gatekeeping overfit.** On synthetic data the model hits 99.9%. On real CNH templates it calls 48 of 70 genuine CNHs "NÃO É CNH". It learned "a CNH looks like *my* renderer's card". When it does accept a card, it reads it almost perfectly.
 - Most of the remaining misses are label text copied from the real card (`CAT.HA8`, `CAT.HAB.`), so CAT. HAB. only scores 3/22 even though the value is right.
 - The aggregate 64.8% "label accuracy" in `report.py` is misleading on BID, because the 72 correct rejections count as perfect. Report CNH-only numbers and the rejection matrix separately.
+- **All three on BID (CNH-only metrics; rejections reported separately):**
+
+  | Model | CNH label acc (70) | Value recall | Real CNHs wrongly rejected | Non-CNH rejected | p50 s/img |
+  |---|---|---|---|---|---|
+  | PaddleOCR-VL zero-shot | 0.0% | 80.8% | 0/70 | 0/72 | 1.2 |
+  | PaddleOCR-VL + LoRA | 28.6% | 34.0% | 48/70 | 72/72 | 0.6 |
+  | **Qwen3.5-9B zero-shot** | **41.8%** | **85.4%** | 5/70 | 59/72 | 7.1 |
+
+  **On real CNH templates, zero-shot Qwen beats our fine-tuned model.** That's the reverse of the synthetic result (99.9% vs 68.0%). Qwen rejects real RG/CPF well (59/72) but only 3/7 of our synthetic decoys, which says our decoys are unrealistic too.
 - Next: compare checkpoints (step 200 / 1,000 / final). Probable fixes:
   - domain randomization in the generator (colors, layout jitter, label spelling variants)
   - 90°/180°/270° rotations
