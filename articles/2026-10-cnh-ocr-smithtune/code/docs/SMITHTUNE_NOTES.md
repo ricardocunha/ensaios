@@ -93,7 +93,7 @@ Also: the dataset build was interrupted by a session restart, and the generator 
   | **Qwen3.5-9B zero-shot** | **41.8%** | **85.4%** | 5/70 | 59/72 | 7.1 |
 
   **On real CNH templates, zero-shot Qwen beats our fine-tuned model.** That's the reverse of the synthetic result (99.9% vs 68.0%). Qwen rejects real RG/CPF well (59/72) but only 3/7 of our synthetic decoys, which says our decoys are unrealistic too.
-- **Checkpoints on BID:** step 200 rejects 70/70 real CNHs (and 71/72 RG/CPF). Step 1,000 gives 29.6% CNH acc with 49/70 wrongly rejected. The final step gives 28.6% with 48/70. The "unlike my template → not a CNH" bias forms within 200 steps and plateaus by step 1,000. **Early stopping doesn't help; the training data has to change.** Probable fixes:
+- **Checkpoints:** step 200 is a degenerate "reject almost everything" phase. On synthetic data it gets 28.9% label accuracy and 14.2% value recall, and on BID it rejects 70/70 real CNHs. By step 1,000 synthetic is solved (99.9%), but BID still wrongly rejects 49/70 (29.6% CNH acc). The final step gives 48/70 (28.6%). The real-template rejection is flat from step 1,000 to the end. **Early stopping doesn't help; the training data has to change.** Probable fixes:
   - domain randomization in the generator (colors, layout jitter, label spelling variants)
   - 90°/180°/270° rotations
   - keeping the Non-CNH rate but making the decoys more CNH-like
