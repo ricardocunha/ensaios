@@ -72,6 +72,24 @@ Also: the dataset build was interrupted by a session restart, and the generator 
 - **Caveat: this is in-distribution.** The test images come from the same renderer, fonts and layout as training, so 99.9% mostly says "it learned our template". The honest test of generalization is **BID** (real CNH templates, scanned, rotated 90°/180°), which is queued after the Chandra re-run.
 - A 0.9B model at 2.8 s/img on a laptop beats zero-shot Qwen3.5-9B (68.0%, 21.3 s/img) on this distribution by a wide margin.
 
+## 2026-09-25: BID (real CNH templates): the synthetic-to-real gap
+
+142 images: 70 CNH (36 front, 34 open card) and 72 RG/CPF fronts (Non-CNH).
+
+| PaddleOCR-VL on BID | CNH label acc (all 70) | Real CNHs wrongly rejected | Non-CNH rejected | Label acc / value recall on accepted CNHs |
+|---|---|---|---|---|
+| zero-shot | 0.0% | 0/70 | 0/72 | 0.0% / low |
+| LoRA (final, step 2,293) | ~28% (front 14.6%, open 43.4%) | **48/70** | **72/72** | **82.8% / 96.3%** (n=22) |
+
+- **Reading transferred; gatekeeping overfit.** On synthetic data the model hits 99.9%. On real CNH templates it calls 48 of 70 genuine CNHs "NÃO É CNH". It learned "a CNH looks like *my* renderer's card". When it does accept a card, it reads it almost perfectly.
+- Most of the remaining misses are label text copied from the real card (`CAT.HA8`, `CAT.HAB.`), so CAT. HAB. only scores 3/22 even though the value is right.
+- The aggregate 64.8% "label accuracy" in `report.py` is misleading on BID, because the 72 correct rejections count as perfect. Report CNH-only numbers and the rejection matrix separately.
+- Next: compare checkpoints (step 200 / 1,000 / final). Probable fixes:
+  - domain randomization in the generator (colors, layout jitter, label spelling variants)
+  - 90°/180°/270° rotations
+  - keeping the Non-CNH rate but making the decoys more CNH-like
+  - accent- and punctuation-tolerant label parsing, which also helps the Extractor
+
 ## Next entries
 
 - [ ] `smithtune doctor` output and install time
