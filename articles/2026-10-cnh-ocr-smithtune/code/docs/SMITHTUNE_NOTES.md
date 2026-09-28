@@ -134,6 +134,7 @@ Training took 1h41 on the M4 Pro with a 5.7 GB peak.
 - **+20 points from variety alone** (same model, hyperparameters and image count). v2 edges past zero-shot Qwen at about 8× the speed.
 - **Not solved:** 30/70 real CNHs are still rejected. The 40 accepted score 78.8% label acc and 91.8% recall (v1: 92.9% on 22; the newly accepted cards are harder). By class: CNH_Frente 43.7%, CNH_Aberta 61.4%.
 - Weakest fields: DATA EMISSÃO 27%, CAT. HAB. 30%, LOCAL 35%.
+- **No regression at home:** on the v1 synthetic test, 99.8% (same as v1). On the v1 hard set, 99.7% (v1: 99.8%). On the v2 test (86 CNH / 14 decoys), 99.4% label acc, 0/86 wrongly rejected, 14/14 decoys rejected. So the synthetic sets can't tell v1 and v2 apart; only BID can.
 - Hypothesis for round 3 (untested): train the Reader to always transcribe, and move the "is this a CNH?" gate downstream (Extractor or a separate classifier). Zero-shot Qwen already rejects real RG/CPF well (59/72).
 
 ## Next entries
