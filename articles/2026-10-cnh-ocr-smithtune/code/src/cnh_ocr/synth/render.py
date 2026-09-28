@@ -11,6 +11,7 @@ from __future__ import annotations
 import math
 import random
 from dataclasses import dataclass
+from datetime import datetime
 
 from PIL import Image, ImageDraw
 
@@ -22,6 +23,13 @@ CARD_W, CARD_H = 1712, 1080  # ID-1 aspect ratio (85.6 x 54 mm)
 INK = (20, 45, 30)
 LABEL = (40, 110, 70)
 WATERMARK = (200, 30, 30, 70)
+# Faker's date() is bounded by "now", so the same seed gave different dates on
+# different build days. Pin the bound (same value as build.TODAY).
+_DATE_END = datetime(2026, 9, 25)
+
+
+def _fake_date(fake) -> str:
+    return fake.date(pattern="%d/%m/%Y", end_datetime=_DATE_END)
 
 # label -> (x, y, max_width) in card pixels
 _LAYOUT: dict[str, tuple[int, int, int]] = {
@@ -252,12 +260,16 @@ def render_digital(record: CnhRecord, rng: random.Random, style: Style | None = 
     return screen
 
 
-def render_non_cnh(rng: random.Random, fake, style: Style | None = None) -> Image.Image:
+def render_non_cnh(rng: random.Random, fake, style: Style | None = None,
+                   printed: list[str] | None = None) -> Image.Image:
     """Decoys the Extractor must reject: RG-like cards, CPF cards, invoices, random paperwork.
 
     In v2 the ID-card decoys share the CNH palettes and boxed style, so "looks like
-    a green ID card" stops being enough to mean "CNH".
+    a green ID card" stops being enough to mean "CNH". If `printed` is given, the
+    decoy's text is appended to it as a Transcription (round 3: the Reader always
+    transcribes). Collecting it draws no extra random numbers, so images are unchanged.
     """
+    printed = [] if printed is None else printed
     kinds = ("rg", "invoice", "letter") if style is None else ("rg", "rg", "cpf", "cpf", "invoice", "letter")
     kind = rng.choice(kinds)
     if kind in ("rg", "cpf"):
@@ -268,16 +280,17 @@ def render_non_cnh(rng: random.Random, fake, style: Style | None = None) -> Imag
         if kind == "rg":
             title = "REGISTRO GERAL — AMOSTRA"
             rows = [("NOME", fake.name().upper()), ("FILIAÇÃO", fake.name().upper()),
-                    ("NATURALIDADE", fake.city().upper()), ("DATA DE EXPEDIÇÃO", fake.date(pattern="%d/%m/%Y"))]
+                    ("NATURALIDADE", fake.city().upper()), ("DATA DE EXPEDIÇÃO", _fake_date(fake))]
         else:
             title = "CADASTRO DE PESSOAS FÍSICAS — AMOSTRA"
             rows = [("NÚMERO DE INSCRIÇÃO", fake.cpf()), ("NOME", fake.name().upper()),
-                    ("DATA DE NASCIMENTO", fake.date(pattern="%d/%m/%Y"))]
+                    ("DATA DE NASCIMENTO", _fake_date(fake))]
         if header:
             draw.rectangle((0, 0, CARD_W, 140), fill=header)
             draw.text((60, 40), title, font=font("bold", 50), fill="white")
         else:
             draw.text((60, 40), title, font=font("bold", 50), fill=INK)
+        printed += [f"{label}: {value}" for label, value in rows]
         for i, (label, value) in enumerate(rows):
             y = 190 + i * 150
             if style is not None and style.boxed:
@@ -291,8 +304,10 @@ def render_non_cnh(rng: random.Random, fake, style: Style | None = None) -> Imag
     draw = ImageDraw.Draw(img)
     title = "NOTA FISCAL — AMOSTRA" if kind == "invoice" else fake.company().upper()
     draw.text((80, 80), title, font=font("bold", 48), fill="black")
+    printed.append(title)
     for i in range(28):
         line = (f"{fake.word().upper():<18} {rng.randint(1, 9)} x R$ {rng.uniform(1, 500):8.2f}"
                 if kind == "invoice" else fake.sentence())
+        printed.append(" ".join(line.split()))
         draw.text((80, 200 + i * 52), line, font=font("mono" if kind == "invoice" else "regular", 30), fill="black")
     return _mark(img, style, rng)

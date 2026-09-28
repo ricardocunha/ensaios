@@ -16,34 +16,34 @@ import json
 import time
 from pathlib import Path
 
-from ..transcription import READER_PROMPT
+from ..transcription import PROMPTS
 from .models import MODELS
 
 
 class MlxReader:
-    def __init__(self, hf_id: str, adapter: str | None, max_tokens: int):
+    def __init__(self, hf_id: str, adapter: str | None, max_tokens: int, prompt: str):
         from mlx_vlm import load
         from mlx_vlm.utils import load_config
 
         self.model, self.processor = load(hf_id, adapter_path=adapter)
         self.config = load_config(hf_id)
-        self.max_tokens = max_tokens
+        self.max_tokens, self.prompt = max_tokens, prompt
 
     def __call__(self, image_path: str) -> str:
         from mlx_vlm import generate
         from mlx_vlm.prompt_utils import apply_chat_template
 
-        prompt = apply_chat_template(self.processor, self.config, READER_PROMPT, num_images=1)
+        prompt = apply_chat_template(self.processor, self.config, self.prompt, num_images=1)
         out = generate(self.model, self.processor, prompt, image=[image_path], max_tokens=self.max_tokens, temperature=0.0)
         return out.text.strip()
 
 
 class OpenAIReader:
-    def __init__(self, base_url: str, model: str, max_tokens: int):
+    def __init__(self, base_url: str, model: str, max_tokens: int, prompt: str):
         from openai import OpenAI
 
         self.client, self.model = OpenAI(base_url=base_url, api_key="unused"), model
-        self.max_tokens = max_tokens
+        self.max_tokens, self.prompt = max_tokens, prompt
 
     def __call__(self, image_path: str) -> str:
         b64 = base64.b64encode(Path(image_path).read_bytes()).decode()
@@ -53,7 +53,7 @@ class OpenAIReader:
             max_tokens=self.max_tokens,
             messages=[{"role": "user", "content": [
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
-                {"type": "text", "text": READER_PROMPT},
+                {"type": "text", "text": self.prompt},
             ]}],
         )
         return (resp.choices[0].message.content or "").strip()
@@ -69,12 +69,15 @@ def main() -> None:
     p.add_argument("--base-url", default="http://localhost:8000/v1")
     p.add_argument("--limit", type=int)
     p.add_argument("--max-tokens", type=int, help="override the model's default output budget")
+    p.add_argument("--prompt", choices=tuple(PROMPTS), default="v1",
+                   help="v1 = transcribe or refuse ('NÃO É CNH'); v3 = always transcribe (round 3)")
     args = p.parse_args()
 
     m = MODELS[args.model]
     max_tokens = args.max_tokens or m.max_tokens
-    reader = (MlxReader(m.hf_id, args.adapter, max_tokens) if args.backend == "mlx"
-              else OpenAIReader(args.base_url, m.hf_id, max_tokens))
+    prompt = PROMPTS[args.prompt]
+    reader = (MlxReader(m.hf_id, args.adapter, max_tokens, prompt) if args.backend == "mlx"
+              else OpenAIReader(args.base_url, m.hf_id, max_tokens, prompt))
     rows = [json.loads(line) for line in (args.data / "metadata.jsonl").open(encoding="utf-8")][: args.limit]
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

@@ -38,6 +38,15 @@ READER_PROMPT = (
 
 NOT_A_CNH = "NÃO É CNH"
 
+# Round 3 (ADR-0003): the Reader always transcribes; deciding "is this a CNH?" is the
+# Extractor's job (see CONTEXT.md: Rejection). No refusal instruction in the prompt.
+READER_PROMPT_V3 = (
+    "Transcreva este documento. Para cada campo impresso, escreva uma linha no formato "
+    "`RÓTULO: valor`, exatamente como aparece, sem corrigir nada. Texto sem rótulo vai "
+    "em linhas próprias, na ordem de leitura."
+)
+PROMPTS = {"v1": READER_PROMPT, "v3": READER_PROMPT_V3}
+
 
 def printed_values(record: CnhRecord) -> dict[str, str]:
     """What is physically printed next to each label for a given record."""

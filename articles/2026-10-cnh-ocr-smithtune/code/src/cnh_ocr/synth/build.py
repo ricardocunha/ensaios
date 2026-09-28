@@ -66,13 +66,17 @@ def build_split(out: Path, split: str, n: int, seed: int, forced: Difficulty | N
     print(f"{split}: {n} images -> {out / split}")
 
 
-def _v2_item(rng: random.Random, fake: Faker, difficulty: Difficulty) -> tuple:
+def _v2_item(rng: random.Random, fake: Faker, difficulty: Difficulty, always_transcribe: bool = False) -> tuple:
+    """v2 images. With `always_transcribe` (v3), decoys are transcribed instead of refused;
+    the random draws are identical, so v2 and v3 images are pixel-identical."""
     style = random_style(rng)
     capture = "scan" if rng.random() < V2_SCAN_RATE else "phone"
     shoot = scan if capture == "scan" else phone_photo
     if rng.random() < V2_NON_CNH_RATE:
-        img, fields = shoot(render_non_cnh(rng, fake, style), rng, difficulty), {
-            "answer": transcription.NOT_A_CNH, "kind": "non_cnh", "formato": "", "record": ""}
+        printed: list[str] = []
+        img = shoot(render_non_cnh(rng, fake, style, printed), rng, difficulty)
+        answer = "\n".join(printed) if always_transcribe else transcription.NOT_A_CNH
+        fields = {"answer": answer, "kind": "non_cnh", "formato": "", "record": ""}
     else:
         record = random_record(rng, fake, TODAY)
         if record.formato == "digital":
@@ -87,7 +91,8 @@ def _v2_item(rng: random.Random, fake: Faker, difficulty: Difficulty) -> tuple:
     return img, fields | {"capture": capture, "rotation": rotation}
 
 
-def build_shard(out: Path, split: str, n: int, seed: int, forced: Difficulty | None, shard: int) -> Path:
+def build_shard(out: Path, split: str, n: int, seed: int, forced: Difficulty | None, shard: int,
+                style: str = "v2") -> Path:
     """One v2 shard: its own seed and file prefix, so shards run in parallel and resume independently."""
     rng = random.Random(seed * 100 + shard)
     fake = Faker("pt_BR")
@@ -97,23 +102,26 @@ def build_shard(out: Path, split: str, n: int, seed: int, forced: Difficulty | N
     with part.open("w", encoding="utf-8") as meta:
         for i in range(n):
             difficulty = _difficulty(rng, forced)
-            img, fields = _v2_item(rng, fake, difficulty)
+            img, fields = _v2_item(rng, fake, difficulty, always_transcribe=style == "v3")
             name = f"images/{split}-s{shard:02d}-{i:05d}.jpg"
             img.save(out / split / name, quality=90)
-            meta.write(json.dumps({"file_name": name, "question": transcription.READER_PROMPT,
+            prompt = transcription.PROMPTS["v3" if style == "v3" else "v1"]
+            meta.write(json.dumps({"file_name": name, "question": prompt,
                                    "difficulty": difficulty} | fields, ensure_ascii=False) + "\n")
     return part
 
 
-def build_split_v2(out: Path, split: str, n: int, seed: int, forced: Difficulty | None, shards: int) -> None:
+def build_split_v2(out: Path, split: str, n: int, seed: int, forced: Difficulty | None, shards: int,
+                   style: str = "v2") -> None:
     sizes = [n // shards + (k < n % shards) for k in range(shards)]
     with ProcessPoolExecutor(shards) as pool:
-        parts = list(pool.map(build_shard, *zip(*[(out, split, sz, seed, forced, k) for k, sz in enumerate(sizes)])))
+        parts = list(pool.map(build_shard, *zip(*[(out, split, sz, seed, forced, k, style)
+                                                  for k, sz in enumerate(sizes)])))
     with (out / split / "metadata.jsonl").open("w", encoding="utf-8") as meta:
         for part in parts:
             meta.write(part.read_text(encoding="utf-8"))
             part.unlink()
-    print(f"{split}: {n} images ({shards} shards, v2) -> {out / split}")
+    print(f"{split}: {n} images ({shards} shards, {style}) -> {out / split}")
 
 
 def main() -> None:
@@ -124,8 +132,9 @@ def main() -> None:
     p.add_argument("--test", type=int, default=0)
     p.add_argument("--difficulty", choices=("clean", "normal", "hard"))
     p.add_argument("--seed", type=int, default=2026)
-    p.add_argument("--style", choices=("v1", "v2"), default="v1",
-                   help="v1 = round-1 look; v2 = domain-randomized (palettes, layouts, scans, rotations)")
+    p.add_argument("--style", choices=("v1", "v2", "v3"), default="v1",
+                   help="v1 = round-1 look; v2 = domain-randomized (palettes, layouts, scans, rotations); "
+                        "v3 = v2 images, but the Reader always transcribes (decoys too)")
     p.add_argument("--shards", type=int, default=8, help="parallel workers (v2 only)")
     args = p.parse_args()
     for offset, split in enumerate(("train", "validation", "test")):
@@ -133,7 +142,7 @@ def main() -> None:
         if n and args.style == "v1":
             build_split(args.out, split, n, args.seed * 10 + offset, args.difficulty)
         elif n:
-            build_split_v2(args.out, split, n, args.seed * 10 + offset + 500, args.difficulty, args.shards)
+            build_split_v2(args.out, split, n, args.seed * 10 + offset + 500, args.difficulty, args.shards, args.style)
 
 
 if __name__ == "__main__":

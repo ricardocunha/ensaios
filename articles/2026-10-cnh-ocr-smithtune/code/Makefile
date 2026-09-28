@@ -16,8 +16,9 @@ test:
 
 # ---- data -------------------------------------------------------------------
 
-data:               ## Round-2 training set (domain-randomized) + test; ~1 min on 10 cores
+data:               ## Round-2 (v2) and round-3 (v3) sets: same images, v3 always transcribes; ~1 min each
 	$(PY) cnh_ocr.synth.build --style v2 --shards 10 --out data/synth-v2 --train 2293 --test 300
+	$(PY) cnh_ocr.synth.build --style v3 --shards 10 --out data/synth-v3 --train 2293 --test 300
 
 data-v1:            ## Round-1 set (one design) + hard set; single-process, ~45 min
 	$(PY) cnh_ocr.synth.build --out data/synth --train 2293 --validation 300 --test 300
@@ -40,12 +41,14 @@ train-reader:       ## make train-reader [MODEL=paddleocr_vl] [TAG=v2]  (QLORA=-
 	$(PY) cnh_ocr.reader.train_mlx --model $(MODEL) --data $(if $(filter v1,$(TAG)),data/synth,data/synth-$(TAG)) \
 	  --out $(R)/$(MODEL)-lora-$(TAG) $(QLORA)
 
+# v3 adapters were trained on the always-transcribe prompt (ADR-0003); earlier ones on v1.
+PROMPT = $(if $(filter v3,$(TAG)),v3,v1)
 eval-reader:        ## make eval-reader [MODEL=paddleocr_vl] [TAG=v2]: synthetic test, hard set, BID
-	$(PY) cnh_ocr.reader.infer --model $(MODEL) --adapter $(R)/$(MODEL)-lora-$(TAG) \
+	$(PY) cnh_ocr.reader.infer --model $(MODEL) --adapter $(R)/$(MODEL)-lora-$(TAG) --prompt $(PROMPT) \
 	  --data data/synth/test --limit $(N) --out $(R)/$(MODEL)-lora-$(TAG).jsonl
-	$(PY) cnh_ocr.reader.infer --model $(MODEL) --adapter $(R)/$(MODEL)-lora-$(TAG) \
+	$(PY) cnh_ocr.reader.infer --model $(MODEL) --adapter $(R)/$(MODEL)-lora-$(TAG) --prompt $(PROMPT) \
 	  --data data/synth-hard/test --out $(R)/hard-$(MODEL)-lora-$(TAG).jsonl
-	$(PY) cnh_ocr.reader.infer --model $(MODEL) --adapter $(R)/$(MODEL)-lora-$(TAG) \
+	$(PY) cnh_ocr.reader.infer --model $(MODEL) --adapter $(R)/$(MODEL)-lora-$(TAG) --prompt $(PROMPT) \
 	  --data data/bid/test --out $(R)/bid-$(MODEL)-lora-$(TAG).jsonl
 
 # Each set is scored against its own ground truth. File prefixes keep them apart,

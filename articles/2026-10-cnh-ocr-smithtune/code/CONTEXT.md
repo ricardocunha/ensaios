@@ -32,7 +32,7 @@ Producing the validated CNH Record from a CNH image. It is the system's only job
 _Avoid_: identification, parsing, recognition
 
 **Stage 1 (Reader)**:
-The vision OCR model that turns a CNH image into a Transcription.
+The vision OCR model that turns a document image into a Transcription. It reads; it never decides whether the document is a CNH (ADR-0003).
 _Avoid_: OCR step, vision model
 
 **Stage 2 (Extractor)**:
@@ -40,15 +40,19 @@ The text-only, tool-using agent that turns a Transcription into a CNH Record. It
 _Avoid_: post-processor, parser, LLM step
 
 **Transcription**:
-What the Reader outputs: one `LABEL: value` line per printed field, exactly as it appears on the CNH, with OCR errors left in. It is never validated or normalized.
+What the Reader outputs: one `LABEL: value` line per printed field, values exactly as they appear on the document, with OCR errors left in. Unlabeled text goes on its own lines. It is never validated or normalized.
 _Avoid_: OCR output, raw text
+
+**CNH Gate**:
+The text-side check that a Transcription is a CNH: it must carry at least two CNH-only labels (CAT. HAB., Nº REGISTRO, 1ª HABILITAÇÃO, VALIDADE, PERMISSÃO, ACC). It is a cheap pre-filter before the Extractor, not a replacement for the Extractor's judgment.
+_Avoid_: classifier, filter
 
 **CNH Record**:
 The final structured, validated output for one CNH.
 _Avoid_: result, JSON, extraction output
 
 **Rejection**:
-The Extractor's outcome for a Non-CNH.
+The outcome for a Non-CNH, decided from the Transcription (CNH Gate, then the Extractor), never by the Reader.
 
 ### Training
 
@@ -69,4 +73,4 @@ A Trajectory whose final CNH Record matches the ground truth and that passed tri
 _Avoid_: good trace, clean example
 
 **Base OCR Model**:
-One of the three vision models fine-tuned for the Reader role.
+One of the three vision models evaluated for the Reader role (Chandra 2, PaddleOCR-VL-1.6, Qwen3.5-9B).
