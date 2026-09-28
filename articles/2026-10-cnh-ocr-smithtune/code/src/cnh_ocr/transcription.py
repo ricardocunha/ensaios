@@ -48,6 +48,25 @@ READER_PROMPT_V3 = (
 PROMPTS = {"v1": READER_PROMPT, "v3": READER_PROMPT_V3}
 
 
+# Which CNH Record fields each printed line carries (a dropped line empties all of them).
+LABEL_FIELDS: dict[str, tuple[str, ...]] = {
+    "NOME": ("nome",),
+    "DOC. IDENTIDADE / ÓRG. EMISSOR / UF": ("doc_identidade", "orgao_emissor", "uf_emissor"),
+    "CPF": ("cpf",),
+    "DATA NASCIMENTO": ("data_nascimento",),
+    "FILIAÇÃO": ("filiacao",),
+    "PERMISSÃO": ("permissao",),
+    "ACC": ("acc",),
+    "CAT. HAB.": ("categoria",),
+    "Nº REGISTRO": ("numero_registro",),
+    "VALIDADE": ("validade",),
+    "1ª HABILITAÇÃO": ("primeira_habilitacao",),
+    "OBSERVAÇÕES": ("observacoes",),
+    "LOCAL": ("local",),
+    "DATA EMISSÃO": ("data_emissao",),
+}
+
+
 def printed_values(record: CnhRecord) -> dict[str, str]:
     """What is physically printed next to each label for a given record."""
     return {

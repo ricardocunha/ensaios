@@ -66,3 +66,32 @@ def test_noise_keeps_structure_and_changes_something():
 def test_many_records_generate_without_date_errors():
     for seed in range(3000):
         _record(seed)
+
+
+def test_incomplete_record_is_accepted_with_nulls():
+    rec = _record().model_copy(update={"doc_identidade": None, "orgao_emissor": None, "uf_emissor": None,
+                                       "cpf": None})
+    assert submit_cnh_record.invoke(rec.model_dump()) == "ACCEPTED"
+
+
+def test_formato_is_not_scored():
+    from cnh_ocr.evaluation.metrics import score_record
+    rec = _record()
+    other = rec.model_copy(update={"formato": "digital" if rec.formato == "fisica" else "fisica"})
+    assert score_record(other, rec).exact
+
+
+def test_dropped_lines_become_expected_nulls():
+    from pathlib import Path
+    from cnh_ocr.extractor.run import load_inputs
+    from cnh_ocr.transcription import LABEL_FIELDS, parse
+    items = [i for i in load_inputs(Path("data/synth-v3/train"), None, 400, 0) if i["source"] == "noise"]
+    checked = 0
+    for item in items:
+        present = set(parse(item["transcription"]))
+        missing = [label for label in LABEL_FIELDS if label not in present]
+        for label in missing:
+            for field in LABEL_FIELDS[label]:
+                assert getattr(item["truth"], field) in (None, [], ""), (label, field)
+                checked += 1
+    assert checked > 0

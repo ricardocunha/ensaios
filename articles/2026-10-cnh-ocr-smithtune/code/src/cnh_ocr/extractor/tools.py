@@ -117,9 +117,9 @@ def submit_cnh_record(**record) -> str:
     """Submit the final CNH Record. Call exactly once, after validating CPF, CNH number and dates."""
     rec = CnhRecord(**record)
     warnings = []
-    if not is_valid_cpf(rec.cpf):
+    if rec.cpf is not None and not is_valid_cpf(rec.cpf):
         warnings.append("cpf check digits invalid")
-    if not is_valid_cnh_registro(rec.numero_registro):
+    if rec.numero_registro is not None and not is_valid_cnh_registro(rec.numero_registro):
         warnings.append("numero_registro check digits invalid")
     return "ACCEPTED" + (f" with warnings: {'; '.join(warnings)}" if warnings else "")
 

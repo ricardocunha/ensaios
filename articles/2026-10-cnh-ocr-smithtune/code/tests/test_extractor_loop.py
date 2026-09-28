@@ -34,7 +34,7 @@ def test_submit_flow_produces_exact_record():
     ])
     result = build_extractor(model).invoke({"messages": [user_message(tx.from_record(rec))]})
     outcome = final_outcome(result["messages"])
-    assert outcome == rec
+    assert outcome.model_dump() == rec.model_dump()  # formato is excluded: not the Extractor's job
     assert score_record(outcome, rec).exact
     assert "ACCEPTED" in result["messages"][-2].content
 

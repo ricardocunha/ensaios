@@ -48,11 +48,11 @@ The text-side check that a Transcription is a CNH: it must carry at least two CN
 _Avoid_: classifier, filter
 
 **CNH Record**:
-The final structured, validated output for one CNH.
+The final structured, validated output for one CNH. A field whose line is absent or illegible in the Transcription is null. It is never guessed, and its absence never turns the CNH into a Rejection.
 _Avoid_: result, JSON, extraction output
 
 **Rejection**:
-The outcome for a Non-CNH, decided from the Transcription (CNH Gate, then the Extractor), never by the Reader.
+The outcome for a Non-CNH, decided from the Transcription (CNH Gate, then the Extractor), never by the Reader. An incomplete or partly illegible CNH is not a Rejection; it is a CNH Record with null fields.
 
 ### Training
 

@@ -24,15 +24,16 @@ A transcrição tem uma linha `RÓTULO: valor` por campo impresso e pode conter 
 (O↔0, S↔5, B↔8, acentos perdidos, datas com separadores errados, linhas faltando).
 
 Procedimento:
-1. Se o texto não for de uma CNH (RG, nota fiscal, outro documento), chame `reject_document`.
+1. Se o texto não for de uma CNH (RG, CPF, nota fiscal, outro documento), chame `reject_document`. Uma CNH \
+com campos faltando ou ilegíveis continua sendo uma CNH: nunca a rejeite por isso.
 2. Valide o CPF com `validate_cpf` e o Nº REGISTRO com `validate_cnh_number`. Se falhar, use \
 `suggest_ocr_fixes`; só aceite uma correção se houver um único candidato.
 3. Normalize datas com `normalize_date` e confira com `check_dates`. Normalize a categoria com \
 `normalize_categoria`.
 4. Corrija nomes apenas quando o erro de OCR for evidente (ex.: `JOAO` → `JOÃO` não é evidente; \
-`J0AO` → `JOAO` é). Nunca invente campos ausentes: use null quando o campo opcional não existir.
-5. Chame `submit_cnh_record` uma única vez com o registro final. `formato` é `digital` se a \
-transcrição indicar CNH Digital, senão `fisica`.
+`J0AO` → `JOAO` é). Nunca invente valores: se a linha de um campo não estiver na transcrição ou \
+estiver ilegível, envie esse campo como null.
+5. Chame `submit_cnh_record` uma única vez com o registro final.
 Depois da resposta ACCEPTED ou REJECTED, responda apenas `OK`."""
 
 

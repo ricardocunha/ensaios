@@ -31,6 +31,18 @@ from .agent import build_extractor, final_outcome, outcome_json, student_model, 
 from .noise import add_noise
 
 
+def usage(messages) -> dict:
+    """Token usage summed over the run's model calls (for measured cost, not estimates)."""
+    totals = {"input_tokens": 0, "output_tokens": 0, "model_calls": 0}
+    for m in messages:
+        meta = getattr(m, "usage_metadata", None)
+        if meta:
+            totals["input_tokens"] += meta.get("input_tokens", 0)
+            totals["output_tokens"] += meta.get("output_tokens", 0)
+            totals["model_calls"] += 1
+    return totals
+
+
 def load_inputs(data: Path, transcriptions: Path | None, limit: int | None, seed: int) -> list[dict]:
     rows = [json.loads(line) for line in (data / "metadata.jsonl").open(encoding="utf-8")]
     reader_out = {}
@@ -47,8 +59,12 @@ def load_inputs(data: Path, transcriptions: Path | None, limit: int | None, seed
             # CPF card or invoice actually prints and must reject it. v1/v2 data only has a refusal.
             text, source = (row["answer"], "decoy") if row["answer"] != tx.NOT_A_CNH else (row["answer"], "refusal")
         else:
-            text, source = add_noise(row["answer"], rng), "noise"
+            dropped: list[str] = []
+            text, source = add_noise(row["answer"], rng, dropped=dropped), "noise"
         truth = CnhRecord.model_validate_json(row["record"]) if row["record"] else None
+        if truth is not None and source == "noise" and dropped:
+            # The Extractor can't know a value whose line never reached it: expect null there.
+            truth = truth.model_copy(update={f: None for label in dropped for f in tx.LABEL_FIELDS[label]})
         items.append({"file_name": row["file_name"], "transcription": text, "source": source, "truth": truth})
     return items
 
@@ -91,7 +107,8 @@ def main() -> None:
             client.create_feedback(run_id, key="exact", score=int(score.exact))
         return {**meta, "run_id": str(run_id), "field_accuracy": score.field_accuracy, "exact": score.exact,
                 "fields": score.fields, "outcome": json.loads(outcome_json(outcome)),
-                "tool_calls": sum(len(getattr(m, "tool_calls", []) or []) for m in result["messages"])}
+                "tool_calls": sum(len(getattr(m, "tool_calls", []) or []) for m in result["messages"]),
+                **usage(result["messages"])}
 
     out = args.out or Path("runs/extractor") / f"{args.project}.jsonl"
     out.parent.mkdir(parents=True, exist_ok=True)

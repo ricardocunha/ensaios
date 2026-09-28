@@ -43,12 +43,15 @@ def _mangle(label: str, value: str, rng: random.Random) -> str:
     return rng.choice((value.translate(_ACCENTS), _swap_digit(value.replace("O", "0", 1), rng)))
 
 
-def add_noise(clean: str, rng: random.Random, rate: float = 0.25) -> str:
+def add_noise(clean: str, rng: random.Random, rate: float = 0.25, dropped: list[str] | None = None) -> str:
+    """`dropped`, if given, receives the labels whose line was removed entirely."""
     values = tx.parse(clean)
     lines = []
     for label in tx.LABELS:
         value = values.get(label, "")
         if rng.random() < 0.03 and label not in ("CPF", "NOME"):
+            if dropped is not None:
+                dropped.append(label)
             continue  # Reader skipped the line
         shown = _LABEL_TYPOS.get(label, label) if rng.random() < 0.1 else label
         if rng.random() < rate:
