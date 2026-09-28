@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+import re
+
+from pydantic import BaseModel, Field, field_validator
 
 UFS = (
     "AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO"
@@ -41,6 +43,15 @@ class CnhRecord(BaseModel):
     # Physical card vs CNH Digital is known from how the image was captured, not from the
     # text, so the Extractor doesn't fill it and it isn't scored.
     formato: Literal["fisica", "digital"] | None = Field(None, exclude=True)
+
+    @field_validator("filiacao", mode="before")
+    @classmethod
+    def _filiacao_from_text(cls, v):
+        # Some tool-calling models send the parents as one string; accept "A / B", "A; B", "A | B".
+        if isinstance(v, str):
+            parts = [p.strip() for p in re.split(r"\s*[/;|]\s*", v) if p.strip()]
+            return parts or None
+        return v
 
 
 class Rejection(BaseModel):

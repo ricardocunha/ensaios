@@ -49,15 +49,21 @@ def usage(messages) -> dict:
     return totals
 
 
-# Claude Sonnet 5 list prices, US$ per million tokens. Cache reads bill at 0.1x input and 5-minute
-# cache writes at 1.25x (Anthropic pricing docs). The real bill is in the Anthropic Console.
-PRICE = {"input": 2.00, "output": 10.00, "cache_read": 0.20, "cache_write": 2.50}
+# List prices, US$ per million tokens. Claude: Anthropic pricing (cache reads 0.1x, 5-minute writes
+# 1.25x). Baseten models: from GET https://inference.baseten.co/v1/models (2026-09-28). The real
+# bill is in each provider's console.
+PRICES = {
+    "claude-sonnet-5": {"input": 2.00, "output": 10.00, "cache_read": 0.20, "cache_write": 2.50},
+    "deepseek-ai/DeepSeek-V4-Pro-0813": {"input": 1.32, "output": 3.96, "cache_read": 0.132, "cache_write": 1.32},
+    "openai/gpt-oss-120b": {"input": 0.10, "output": 0.50, "cache_read": 0.10, "cache_write": 0.10},
+}
 
 
-def run_cost(u: dict) -> float:
+def run_cost(u: dict, model: str | None = None) -> float:
+    price = PRICES[model or u.get("model") or os.getenv("TEACHER_MODEL", "claude-sonnet-5")]
     uncached = u["input_tokens"] - u.get("cache_read", 0) - u.get("cache_creation", 0)
-    return (uncached * PRICE["input"] + u.get("cache_read", 0) * PRICE["cache_read"]
-            + u.get("cache_creation", 0) * PRICE["cache_write"] + u["output_tokens"] * PRICE["output"]) / 1e6
+    return (uncached * price["input"] + u.get("cache_read", 0) * price["cache_read"]
+            + u.get("cache_creation", 0) * price["cache_write"] + u["output_tokens"] * price["output"]) / 1e6
 
 
 def load_inputs(data: Path, transcriptions: Path | None, limit: int | None, seed: int) -> list[dict]:
@@ -115,8 +121,11 @@ def main() -> None:
     def run_one(item: dict) -> dict:
         meta = {"file_name": item["file_name"], "input_source": item["source"], "role": args.role}
         with collect_runs() as cb:
+            # recursion_limit: a model stuck retrying a failing tool call becomes a failed run
+            # (excluded) instead of looping for minutes.
             result = agent.invoke({"messages": [user_message(item["transcription"])]},
-                                  config={"metadata": meta, "tags": [args.role, item["source"]]})
+                                  config={"metadata": meta, "tags": [args.role, item["source"]],
+                                          "recursion_limit": 40})
         outcome = final_outcome(result["messages"])
         score = score_record(outcome, item["truth"])
         run_id = cb.traced_runs[0].id if cb.traced_runs else None
@@ -126,6 +135,7 @@ def main() -> None:
         return {**meta, "run_id": str(run_id), "field_accuracy": score.field_accuracy, "exact": score.exact,
                 "fields": score.fields, "outcome": json.loads(outcome_json(outcome)),
                 "tool_calls": sum(len(getattr(m, "tool_calls", []) or []) for m in result["messages"]),
+                "model": getattr(model, "model", None) or getattr(model, "model_name", None),
                 **usage(result["messages"])}
 
     out = args.out or Path("runs/extractor") / f"{args.project}.jsonl"

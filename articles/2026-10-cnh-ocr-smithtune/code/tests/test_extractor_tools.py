@@ -107,3 +107,9 @@ def test_names_compare_accent_insensitively_numbers_do_not():
     rec = _record().model_copy(update={"nome": "ANA VITÓRIA DA LUZ"})
     assert score_record(rec.model_copy(update={"nome": "ANA VITORIA DA LUZ"}), rec).exact
     assert not score_record(rec.model_copy(update={"numero_registro": "00000000000"}), rec).exact
+
+
+def test_filiacao_accepts_a_single_string():
+    from cnh_ocr.schema import CnhRecord
+    assert CnhRecord(filiacao="JOSÉ DA SILVA / MARIA DA SILVA").filiacao == ["JOSÉ DA SILVA", "MARIA DA SILVA"]
+    assert CnhRecord(filiacao=["A", "B"]).filiacao == ["A", "B"]

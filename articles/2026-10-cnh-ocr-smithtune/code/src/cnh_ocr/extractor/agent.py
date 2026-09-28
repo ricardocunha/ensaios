@@ -39,12 +39,24 @@ estiver ilegível, envie esse campo como null.
 Depois da resposta ACCEPTED ou REJECTED, responda apenas `OK`."""
 
 
-def teacher_model() -> BaseChatModel:
-    from langchain_anthropic import ChatAnthropic
+BASETEN_MODEL_API = "https://inference.baseten.co/v1"
 
-    # Sonnet 5: no temperature (rejected); thinking is adaptive; effort controls depth.
-    return ChatAnthropic(model=os.getenv("TEACHER_MODEL", "claude-sonnet-5"), max_tokens=16000,
-                         thinking={"type": "adaptive"}, output_config={"effort": "medium"})
+
+def teacher_model() -> BaseChatModel:
+    """TEACHER_MODEL from .env. Claude models use the Anthropic API; anything else is an
+    open-weight model on Baseten's OpenAI-compatible Model APIs (the Teacher must be a model
+    whose license allows training on its outputs; see docs/SMITHTUNE_NOTES.md)."""
+    name = os.getenv("TEACHER_MODEL", "deepseek-ai/DeepSeek-V4-Pro-0813")
+    if name.startswith("claude"):
+        from langchain_anthropic import ChatAnthropic
+
+        # Sonnet 5: no temperature (rejected); thinking is adaptive; effort controls depth.
+        return ChatAnthropic(model=name, max_tokens=16000, thinking={"type": "adaptive"},
+                             output_config={"effort": "medium"})
+    from langchain_openai import ChatOpenAI
+
+    return ChatOpenAI(model=name, base_url=BASETEN_MODEL_API, api_key=os.environ["BASETEN_API_KEY"],
+                      temperature=0, max_tokens=8000, stream_usage=True)
 
 
 def student_model(base_url: str, model: str, api_key: str | None = None) -> BaseChatModel:

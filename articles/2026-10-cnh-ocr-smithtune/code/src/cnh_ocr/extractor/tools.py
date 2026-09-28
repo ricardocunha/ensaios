@@ -8,6 +8,7 @@ from datetime import date, datetime
 from typing import Literal
 
 from langchain.tools import tool
+from pydantic import Field, create_model, field_validator
 
 from ..schema import CATEGORIAS, CnhRecord
 from ..validators import format_cpf, is_valid_cnh_registro, is_valid_cpf, only_digits
@@ -116,7 +117,20 @@ def normalize_categoria(text: str) -> dict:
             "allowed": list(CATEGORIAS)}
 
 
-@tool(args_schema=CnhRecord)
+# The tool takes filiação as ONE string ("PAI / MÃE"): through Baseten's OpenAI-compatible
+# endpoint, DeepSeek's list of names arrived concatenated without a separator. CnhRecord's
+# validator splits the string, so every Teacher gets the same interface.
+SubmitArgs = create_model(
+    "SubmitArgs",
+    **{name: (f.annotation, f) for name, f in CnhRecord.model_fields.items() if name not in ("filiacao", "formato")},
+    filiacao=(str | None, Field(None, description="Nomes dos pais, na ordem impressa, separados por ' / '")),
+    # Advertise a string, but still accept a list (tests, models that send arrays correctly).
+    __validators__={"_join_list": field_validator("filiacao", mode="before")(
+        lambda cls, v: " / ".join(v) if isinstance(v, list) else v)},
+)
+
+
+@tool(args_schema=SubmitArgs)
 def submit_cnh_record(**record) -> str:
     """Submit the final CNH Record. Call exactly once, after validating CPF, CNH number and dates."""
     rec = CnhRecord(**record)
