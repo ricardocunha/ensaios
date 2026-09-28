@@ -137,6 +137,22 @@ Training took 1h41 on the M4 Pro with a 5.7 GB peak.
 - **No regression at home:** on the v1 synthetic test, 99.8% (same as v1). On the v1 hard set, 99.7% (v1: 99.8%). On the v2 test (86 CNH / 14 decoys), 99.4% label acc, 0/86 wrongly rejected, 14/14 decoys rejected. So the synthetic sets can't tell v1 and v2 apart; only BID can.
 - Hypothesis for round 3 (untested): train the Reader to always transcribe, and move the "is this a CNH?" gate downstream (Extractor or a separate classifier). Zero-shot Qwen already rejects real RG/CPF well (59/72).
 
+## 2026-09-28: round 3 (the Reader always transcribes; the text decides, ADR-0003)
+
+Same images, model, hyperparameters and 2,293 images as round 2. Training took 1h43, peak 6.2 GB.
+
+| BID | CNH label acc | Value recall | Gate: real CNHs rejected | Gate: RG/CPF rejected | p50 s/img |
+|---|---|---|---|---|---|
+| LoRA v1 | 32.0% | 34.0% | 48/70 | 72/72 | 0.6 |
+| LoRA v2 | 52.3% | 60.6% | 31/70 | 72/72 | 0.9 |
+| **LoRA v3** | **81.0%** | **94.4%** | **0/70** | 64/72 | 2.3 |
+| Qwen3.5-9B zero-shot | 48.2% | 85.4% | 31/70 | 72/72 | 7.1 |
+
+- Synthetic: 100% on the test set, 99.6% on the hard set, all decoys gated correctly. There's no regression.
+- Per field on BID: CPF 97%, DATA NASCIMENTO 91%, VALIDADE 87%, NOME 84%, CAT. HAB. 83%, 1ª HAB 81%, Nº REGISTRO 69%, DATA EMISSÃO 52%, LOCAL 50%.
+- **8/72 RG leak through the gate**, all the same (Minas Gerais) RG design. The Reader repeats CNH labels with *empty* values (`Nº REGISTRO:`, `PERMISSÃO:`), and the rule only checks that labels exist. Candidate fix: count only CNH labels with a plausible value. **Not applied**, because it was designed after seeing BID failures, so its BID score wouldn't be independent. It needs a fresh real set (e.g. the full BID beyond the sample).
+- Slower (2.3 s vs 0.9 s): decoys are now transcribed in full instead of a one-line refusal.
+
 ## Next entries
 
 - [ ] `smithtune doctor` output and install time
