@@ -153,6 +153,24 @@ Same images, model, hyperparameters and 2,293 images as round 2. Training took 1
 - **8/72 RG leak through the gate**, all the same (Minas Gerais) RG design. The Reader repeats CNH labels with *empty* values (`Nº REGISTRO:`, `PERMISSÃO:`), and the rule only checks that labels exist. Candidate fix: count only CNH labels with a plausible value. **Not applied**, because it was designed after seeing BID failures, so its BID score wouldn't be independent. It needs a fresh real set (e.g. the full BID beyond the sample).
 - Slower (2.3 s vs 0.9 s): decoys are now transcribed in full instead of a one-line refusal.
 
+## 2026-09-28: Teacher trajectories (Claude Sonnet 5)
+
+Three 20-run checks before the real run. Each one found a bug in *my* setup, not in the model:
+
+| Check | Exact | Real CNHs rejected | RG accepted as CNH | Cost | Fix |
+|---|---|---|---|---|---|
+| 1 | 8/20 (13 re-scored) | 5 | 0 | $0.75 | Noise dropped required lines; "reject" was the only way out → CNH Record fields nullable, Rejection = Non-CNH only. `formato` isn't in the text → not scored |
+| 2 | 16/20 | 0 | 2 | $0.80 | Overcorrected → prompt states what makes a CNH; the submit tool refuses records with < 2 CNH-only fields |
+| 3 (+ prompt caching) | 19/20 re-scored | 0 | 0 | $0.36 | Names compared accent-insensitively (the agent is told not to guess accents) |
+
+**Prompt caching** (AnthropicPromptCachingMiddleware: system prompt, tools, conversation tail) served 80% of input tokens from cache: -55% cost.
+
+**Main run** (`make teacher MAX_COST=5`, final prompt, window start 2026-09-28T18:44:39Z for the golden pull):
+- 300 runs (budget cap reached at $5.14; in-flight runs finish), 0 failed.
+- **261 exact (87%)**: noise inputs 217/256, decoys 44/44 rejected, 0 real CNHs rejected.
+- Most-missed field: `doc_identidade` (22). The RG number has no checksum, so an O↔0 / S↔5 swap there can't be verified the way a CPF can.
+- About $0.017 per run with caching.
+
 ## Next entries
 
 - [ ] `smithtune doctor` output and install time
