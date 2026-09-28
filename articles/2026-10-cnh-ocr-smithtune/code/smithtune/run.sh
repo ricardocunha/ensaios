@@ -48,7 +48,11 @@ case "${1:-}" in
       smithtune dataset triage "$TRIAGE_DIR" --rubric smithtune/rubric.md --confirm
     echo "Now run: uv run python -m cnh_ocr.evaluation.council_agreement $TRIAGE_DIR" ;;
   prepare)
-    : "${GOLDEN_DATASET_ID:?set in .env after push-golden}"
+    # The dataset ID comes from push-golden's receipt; .env's GOLDEN_DATASET_ID only overrides it.
+    GOLDEN_DATASET_ID="${GOLDEN_DATASET_ID:-$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["dataset_id"])' \
+      "$GOLDEN_DIR/dataset-import.json" 2>/dev/null)}"
+    : "${GOLDEN_DATASET_ID:?run ./smithtune/run.sh push-golden first (no dataset-import.json receipt yet)}"
+    echo "Using golden dataset $GOLDEN_DATASET_ID"
     smithtune prepare --provider "$PROVIDER" --model "$MODEL" \
       --workspace-id "$LANGSMITH_WORKSPACE_ID" --dataset-id "$GOLDEN_DATASET_ID" --data-dir "$GOLDEN_DIR" ;;
   plan)
