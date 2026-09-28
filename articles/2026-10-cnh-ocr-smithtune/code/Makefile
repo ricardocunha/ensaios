@@ -2,8 +2,10 @@
 PY := uv run python -m
 MODELS := paddleocr_vl chandra2 qwen35_9b
 MODEL ?= paddleocr_vl
-TAG ?= v2            # adapter tag: v1 = round 1 (one design), v2 = round 2 (domain-randomized)
-N ?= 50              # synthetic test images per Reader run
+# Adapter tag: v1 = round 1 (one design), v2 = round 2 (domain-randomized).
+TAG ?= v2
+# Synthetic test images per Reader run.
+N ?= 50
 R := runs/reader
 
 install:            ## deps (incl. mlx + agent extras)
