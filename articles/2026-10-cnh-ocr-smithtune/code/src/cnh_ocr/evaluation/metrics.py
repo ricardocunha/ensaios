@@ -26,6 +26,16 @@ def cer(pred: str, truth: str) -> float:
     return levenshtein(pred, truth) / max(1, len(truth))
 
 
+# Free-text fields where accents can't be recovered from OCR text (the Extractor is told
+# not to guess them), so they are compared accent-insensitively. Numbers and dates stay exact.
+ACCENT_INSENSITIVE = frozenset({"nome", "filiacao", "orgao_emissor", "local", "observacoes"})
+
+
+def _fold(text: str) -> str:
+    import unicodedata
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+
+
 def _norm(v) -> str:
     if isinstance(v, list):
         return " / ".join(_norm(x) for x in v)
@@ -53,7 +63,11 @@ def score_record(pred: CnhRecord | Rejection | None, truth: CnhRecord | None) ->
     if not isinstance(pred, CnhRecord):
         return Score(correct_outcome=False, fields={f: False for f in FIELD_NAMES})
     p, t = pred.model_dump(), truth.model_dump()
-    return Score(correct_outcome=True, fields={f: _norm(p[f]) == _norm(t[f]) for f in FIELD_NAMES})
+    def same(f):
+        a, b = _norm(p.get(f)), _norm(t.get(f))
+        return _fold(a) == _fold(b) if f in ACCENT_INSENSITIVE else a == b
+
+    return Score(correct_outcome=True, fields={f: same(f) for f in FIELD_NAMES})
 
 
 def score_transcription(pred: str, truth: str) -> dict:

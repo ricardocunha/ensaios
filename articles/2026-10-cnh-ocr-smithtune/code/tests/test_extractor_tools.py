@@ -100,3 +100,10 @@ def test_dropped_lines_become_expected_nulls():
 def test_submit_refuses_an_rg_shaped_record():
     out = submit_cnh_record.invoke({"nome": "NATHAN RAMOS", "filiacao": ["HELOÍSA DA PAZ"]})
     assert out.startswith("NOT ACCEPTED")
+
+
+def test_names_compare_accent_insensitively_numbers_do_not():
+    from cnh_ocr.evaluation.metrics import score_record
+    rec = _record().model_copy(update={"nome": "ANA VITÓRIA DA LUZ"})
+    assert score_record(rec.model_copy(update={"nome": "ANA VITORIA DA LUZ"}), rec).exact
+    assert not score_record(rec.model_copy(update={"numero_registro": "00000000000"}), rec).exact

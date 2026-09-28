@@ -55,7 +55,14 @@ def student_model(base_url: str, model: str, api_key: str | None = None) -> Base
 
 
 def build_extractor(model: BaseChatModel):
-    return create_agent(model, TOOLS, system_prompt=SYSTEM_PROMPT, name="cnh-extractor")
+    middleware = []
+    if type(model).__name__ == "ChatAnthropic":
+        # Each run resends the system prompt, 8 tool definitions and a growing history 7-9 times.
+        # Cache the system prompt, tools and conversation tail (Sonnet 5's minimum is 1,024 tokens).
+        from langchain_anthropic.middleware import AnthropicPromptCachingMiddleware
+
+        middleware.append(AnthropicPromptCachingMiddleware(ttl="5m"))
+    return create_agent(model, TOOLS, system_prompt=SYSTEM_PROMPT, middleware=middleware, name="cnh-extractor")
 
 
 def final_outcome(messages) -> CnhRecord | Rejection | None:

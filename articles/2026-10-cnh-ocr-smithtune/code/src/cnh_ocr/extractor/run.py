@@ -33,14 +33,31 @@ from .noise import add_noise
 
 def usage(messages) -> dict:
     """Token usage summed over the run's model calls (for measured cost, not estimates)."""
-    totals = {"input_tokens": 0, "output_tokens": 0, "model_calls": 0}
+    totals = {"input_tokens": 0, "output_tokens": 0, "cache_read": 0, "cache_creation": 0, "model_calls": 0}
     for m in messages:
         meta = getattr(m, "usage_metadata", None)
         if meta:
-            totals["input_tokens"] += meta.get("input_tokens", 0)
+            details = meta.get("input_token_details") or {}
+            totals["input_tokens"] += meta.get("input_tokens", 0)  # includes cached tokens
             totals["output_tokens"] += meta.get("output_tokens", 0)
+            totals["cache_read"] += details.get("cache_read", 0) or 0
+            # langchain-anthropic reports writes per TTL (ephemeral_5m/1h) and then zeroes the
+            # generic key, so sum all three.
+            totals["cache_creation"] += sum(details.get(k, 0) or 0 for k in
+                                            ("cache_creation", "ephemeral_5m_input_tokens", "ephemeral_1h_input_tokens"))
             totals["model_calls"] += 1
     return totals
+
+
+# Claude Sonnet 5 list prices, US$ per million tokens. Cache reads bill at 0.1x input and 5-minute
+# cache writes at 1.25x (Anthropic pricing docs). The real bill is in the Anthropic Console.
+PRICE = {"input": 2.00, "output": 10.00, "cache_read": 0.20, "cache_write": 2.50}
+
+
+def run_cost(u: dict) -> float:
+    uncached = u["input_tokens"] - u.get("cache_read", 0) - u.get("cache_creation", 0)
+    return (uncached * PRICE["input"] + u.get("cache_read", 0) * PRICE["cache_read"]
+            + u.get("cache_creation", 0) * PRICE["cache_write"] + u["output_tokens"] * PRICE["output"]) / 1e6
 
 
 def load_inputs(data: Path, transcriptions: Path | None, limit: int | None, seed: int) -> list[dict]:
