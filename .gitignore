@@ -3,3 +3,6 @@
 .DS_Store
 .env
 private/
+# editors
+.idea/
+.vscode/
