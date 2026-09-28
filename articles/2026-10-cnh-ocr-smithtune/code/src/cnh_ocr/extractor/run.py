@@ -17,7 +17,7 @@ import argparse
 import json
 import os
 import random
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
@@ -96,6 +96,7 @@ def main() -> None:
     p.add_argument("--student-url")
     p.add_argument("--student-model")
     p.add_argument("--concurrency", type=int, default=8)
+    p.add_argument("--max-cost", type=float, help="stop starting new runs once measured spend reaches this (US$)")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--out", type=Path)
     load_dotenv(find_dotenv(usecwd=True))  # ANTHROPIC_API_KEY, LANGSMITH_* from code/.env
@@ -129,15 +130,47 @@ def main() -> None:
 
     out = args.out or Path("runs/extractor") / f"{args.project}.jsonl"
     out.parent.mkdir(parents=True, exist_ok=True)
-    done = 0
+    done, failed, spent, stop_reason = 0, 0, 0.0, None
+    queue = iter(items)
     with out.open("w", encoding="utf-8") as f, ThreadPoolExecutor(args.concurrency) as pool:
-        for row in pool.map(run_one, items):
-            f.write(json.dumps(row, ensure_ascii=False) + "\n")
-            done += 1
-            print(f"[{done}/{len(items)}] {row['file_name']} acc={row['field_accuracy']:.2f} "
-                  f"exact={row['exact']} calls={row['tool_calls']}")
+        running = set()
+
+        def refill():
+            # Start new runs only while under budget; in-flight runs are always allowed to finish.
+            while stop_reason is None and len(running) < args.concurrency:
+                if args.max_cost is not None and spent >= args.max_cost:
+                    return
+                item = next(queue, None)
+                if item is None:
+                    return
+                running.add(pool.submit(run_one, item))
+
+        refill()
+        while running:
+            finished, _ = wait(running, return_when=FIRST_COMPLETED)
+            for fut in finished:
+                running.remove(fut)
+                try:
+                    row = fut.result()
+                except Exception as e:  # one failed run must not lose the others
+                    failed += 1
+                    msg = f"{type(e).__name__}: {e}"
+                    print(f"[error] {msg[:200]}")
+                    if "credit balance" in msg.lower() or "billing" in msg.lower():
+                        stop_reason = "Anthropic credit/billing error"
+                    continue
+                spent += run_cost(row)
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
+                f.flush()
+                done += 1
+                print(f"[{done}/{len(items)}] {row['file_name']} acc={row['field_accuracy']:.2f} "
+                      f"exact={row['exact']} calls={row['tool_calls']} spent=${spent:.2f}")
+            refill()
+    if stop_reason is None and args.max_cost is not None and spent >= args.max_cost:
+        stop_reason = f"budget reached (${spent:.2f} >= ${args.max_cost:.2f})"
     client.flush()
-    print(f"wrote {out}")
+    print(f"wrote {out}: {done} runs, {failed} failed, measured spend ${spent:.2f}"
+          + (f"; stopped early: {stop_reason}" if stop_reason else ""))
 
 
 if __name__ == "__main__":
