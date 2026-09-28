@@ -99,6 +99,28 @@ Also: the dataset build was interrupted by a session restart, and the generator 
   - keeping the Non-CNH rate but making the decoys more CNH-like
   - accent- and punctuation-tolerant label parsing, which also helps the Extractor
 
+## 2026-09-28: round 2 setup (domain randomization)
+
+**Hypothesis.** The round-1 Reader learned "CNH = my renderer's look". Varying the look should keep the reading skill and fix the rejection of real CNHs.
+
+**Controls.** Same model (PaddleOCR-VL-1.6), same LoRA hyperparameters (rank 32, lr 1e-4, batch 1 × grad-accum 4, 1 epoch), same **2,293** training images. Only the data distribution changes.
+
+**Data changes (`--style v2`).** Six palettes, three value-font families, layout jitter, boxed fields in 50% of cards, labels below the box in 30%, printed label variants (`CAT.HAB.`, `N° REGISTRO`, `1º HABILITAÇÃO`…), ID number / órgão / UF in separate columns, 40% flatbed scans, 25% quarter turns (90/180/270), and CNH-like decoys (RG and CPF cards in the same palettes), with the Non-CNH rate at 15%. The watermark is lighter, or a corner stamp placed only where no field is printed. Build time: **59 s** with 10 shards, vs about 45 min single-process in round 1.
+
+**Leakage guard.** From BID I used only the coarse properties I'd observed while writing the loader (green-ish cards, boxed fields, scans, upside-down images, `CAT.HAB.` spelling). I did no tuning against BID scores, and BID is evaluated once per round.
+
+**Scoring change.** Label parsing is now tolerant (accents, punctuation, known variants, fuzzy OCR slips). Round-1 runs were re-scored with CNH-only metrics:
+
+| Round 1, re-scored | Set | CNH label acc | Value recall | CNHs wrongly rejected | Non-CNH rejected |
+|---|---|---|---|---|---|
+| PaddleOCR-VL zero-shot | synth (43 CNH) | 17.4% | 85.5% | 0/43 | 0/7 |
+| Chandra 2 zero-shot (3k) | synth | 17.3% | 100.0% | 0/43 | 0/7 |
+| Qwen3.5-9B zero-shot | synth | 72.4% | 99.8% | 0/43 | 3/7 |
+| PaddleOCR-VL LoRA v1 | synth | 99.8% | 99.8% | 0/43 | 7/7 |
+| PaddleOCR-VL zero-shot | BID (70 CNH) | 0.0% | 80.8% | 0/70 | 0/72 |
+| Qwen3.5-9B zero-shot | BID | 48.2% | 85.4% | 5/70 | 59/72 |
+| PaddleOCR-VL LoRA v1 | BID | 32.0% | 34.0% | 48/70 | 72/72 |
+
 ## Next entries
 
 - [ ] `smithtune doctor` output and install time
