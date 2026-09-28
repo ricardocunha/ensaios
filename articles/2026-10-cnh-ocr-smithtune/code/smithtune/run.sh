@@ -36,13 +36,15 @@ case "${1:-}" in
   pull-golden)  # Golden Trajectories selected by feedback, no council
     smithtune dataset pull "$GOLDEN_DIR" --workspace-id "$LANGSMITH_WORKSPACE_ID" \
       --project-id "$LANGSMITH_PROJECT_ID" --start-time "$START" --end-time "$END" \
-      --filter "$GOLDEN_FILTER" --target-count 1000 --no-triage --name cnh-extractor-golden ;;
-  push-golden)
-    smithtune dataset push "$GOLDEN_DIR" --confirm ;;
+      --filter "$GOLDEN_FILTER" --target-count "${GOLDEN_TARGET:-1000}" --no-triage ;;
+  push-golden)  # preview first, then upload as a new LangSmith dataset
+    smithtune dataset push "$GOLDEN_DIR" --name cnh-extractor-golden
+    confirm "Upload the golden trajectories to LangSmith as dataset cnh-extractor-golden." && \
+      smithtune dataset push "$GOLDEN_DIR" --name cnh-extractor-golden --confirm ;;
   triage-sample)  # Experiment: does the agent council agree with our ground truth?
     smithtune dataset pull "$TRIAGE_DIR" --workspace-id "$LANGSMITH_WORKSPACE_ID" \
       --project-id "$LANGSMITH_PROJECT_ID" --start-time "$START" --end-time "$END" \
-      --target-count 200 --name cnh-extractor-triage-sample
+      --target-count 200
     smithtune dataset triage "$TRIAGE_DIR" --rubric smithtune/rubric.md   # preview only
     confirm "Council triage on ~200 trajectories." && \
       smithtune dataset triage "$TRIAGE_DIR" --rubric smithtune/rubric.md --confirm

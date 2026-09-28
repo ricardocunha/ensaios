@@ -116,6 +116,7 @@ def main() -> None:
     model = teacher_model() if args.role == "teacher" else student_model(args.student_url, args.student_model)
     agent = build_extractor(model)
     client = Client()
+    project_id = os.environ.get("LANGSMITH_PROJECT_ID") or client.read_project(project_name=args.project).id
     items = load_inputs(args.data, args.transcriptions, args.limit, args.seed)
 
     def run_one(item: dict) -> dict:
@@ -128,10 +129,15 @@ def main() -> None:
                                           "recursion_limit": 40})
         outcome = final_outcome(result["messages"])
         score = score_record(outcome, item["truth"])
-        run_id = cb.traced_runs[0].id if cb.traced_runs else None
+        # Feedback goes on the trace ROOT (the agent run): trace filters, and smithtune's pull,
+        # only look at roots. traced_runs[0] can be a child (the first model call).
+        first = cb.traced_runs[0] if cb.traced_runs else None
+        run_id = (getattr(first, "trace_id", None) or first.id) if first else None
         if run_id:
-            client.create_feedback(run_id, key="field_accuracy", score=score.field_accuracy)
-            client.create_feedback(run_id, key="exact", score=int(score.exact))
+            # session_id (the project UUID) is now required; without it feedback isn't
+            # indexed for trace filters, and smithtune's feedback filter finds nothing.
+            client.create_feedback(run_id, key="field_accuracy", score=score.field_accuracy, session_id=project_id)
+            client.create_feedback(run_id, key="exact", score=int(score.exact), session_id=project_id)
         return {**meta, "run_id": str(run_id), "field_accuracy": score.field_accuracy, "exact": score.exact,
                 "fields": score.fields, "outcome": json.loads(outcome_json(outcome)),
                 "tool_calls": sum(len(getattr(m, "tool_calls", []) or []) for m in result["messages"]),

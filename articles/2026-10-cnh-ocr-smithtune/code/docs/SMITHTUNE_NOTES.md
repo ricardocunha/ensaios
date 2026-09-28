@@ -171,6 +171,20 @@ Three 20-run checks before the real run. Each one found a bug in *my* setup, not
 - Most-missed field: `doc_identidade` (22). The RG number has no checksum, so an O↔0 / S↔5 swap there can't be verified the way a CPF can.
 - About $0.017 per run with caching.
 
+## 2026-09-28: switching to an open-weight Teacher, and why the feedback filter found nothing
+
+**Why switch.** smithtune's data-rights terms forbid circumventing model-license limits on distillation, and Anthropic's terms restrict training models on Claude outputs. The Teacher became **DeepSeek-V4-Pro-0813 (MIT)** on Baseten Model APIs, traced into a separate LangSmith project (`cnh-teacher-deepseek`), so the Claude runs can never reach a smithtune dataset.
+
+**Baseten tool-calling quirk.** DeepSeek's list argument (`filiacao: ["A", "B"]`) arrived concatenated (`"AB"`). The failing tool call then looped until LangGraph's step cap (10,000), about 5 minutes for one run. Fixes: the tool takes `"PAI / MÃE"` as a string, and each run has `recursion_limit=40`.
+
+**Main run:** 300 runs, $4.84, 0 failed, **266 exact (89%)**: 222/256 CNH, 44/44 decoys rejected, 0 real CNHs rejected. About the same quality and cost as Claude Sonnet 5 with caching.
+
+**The pull found 0 traces.** Two bugs in how *we* wrote feedback, both silent:
+1. `create_feedback` without `session_id` (the project UUID). It's deprecated, and such feedback isn't indexed for trace filters.
+2. The feedback went on `collect_runs().traced_runs[0]`, which is the **first model call (a child run)**, not the agent's root. Trace filters, and so smithtune's `--filter`, only look at roots.
+
+Fix: feedback on `trace_id` with `session_id`. The 300 runs' scores were re-attached (no re-run needed), but the backfill hit LangSmith's rate limit (429) at 8 parallel requests; batched lookups plus serial writes worked. Tip: **test the filter with `langsmith trace list --filter` before `smithtune dataset pull`**, as smithtune's skill says.
+
 ## Next entries
 
 - [ ] `smithtune doctor` output and install time
