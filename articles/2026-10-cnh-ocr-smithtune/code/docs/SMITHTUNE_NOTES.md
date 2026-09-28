@@ -121,6 +121,21 @@ Also: the dataset build was interrupted by a session restart, and the generator 
 | Qwen3.5-9B zero-shot | BID | 48.2% | 85.4% | 5/70 | 59/72 |
 | PaddleOCR-VL LoRA v1 | BID | 32.0% | 34.0% | 48/70 | 72/72 |
 
+## 2026-09-28: round 2 results on BID
+
+Training took 1h41 on the M4 Pro with a 5.7 GB peak.
+
+| BID | CNH label acc | Value recall | Real CNHs wrongly rejected | Non-CNH rejected | p50 s/img |
+|---|---|---|---|---|---|
+| LoRA v1 (one design) | 32.0% | 34.0% | 48/70 | 72/72 | 0.6 |
+| **LoRA v2 (randomized)** | **52.3%** | 60.6% | **30/70** | 72/72 | 0.9 |
+| Qwen3.5-9B zero-shot | 48.2% | 85.4% | 5/70 | 59/72 | 7.1 |
+
+- **+20 points from variety alone** (same model, hyperparameters and image count). v2 edges past zero-shot Qwen at about 8× the speed.
+- **Not solved:** 30/70 real CNHs are still rejected. The 40 accepted score 78.8% label acc and 91.8% recall (v1: 92.9% on 22; the newly accepted cards are harder). By class: CNH_Frente 43.7%, CNH_Aberta 61.4%.
+- Weakest fields: DATA EMISSÃO 27%, CAT. HAB. 30%, LOCAL 35%.
+- Hypothesis for round 3 (untested): train the Reader to always transcribe, and move the "is this a CNH?" gate downstream (Extractor or a separate classifier). Zero-shot Qwen already rejects real RG/CPF well (59/72).
+
 ## Next entries
 
 - [ ] `smithtune doctor` output and install time
