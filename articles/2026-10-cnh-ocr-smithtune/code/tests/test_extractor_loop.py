@@ -48,3 +48,13 @@ def test_reject_flow_scores_correct_for_non_cnh():
     outcome = final_outcome(result["messages"])
     assert isinstance(outcome, Rejection)
     assert score_record(outcome, None).exact
+
+
+def test_refused_submit_then_reject_counts_as_rejection():
+    model = ScriptedModel(responses=[
+        AIMessage("", tool_calls=[{"name": "submit_cnh_record", "args": {"nome": "NATHAN RAMOS"}, "id": "1"}]),
+        AIMessage("", tool_calls=[{"name": "reject_document", "args": {"motivo": "é um RG"}, "id": "2"}]),
+        AIMessage("OK"),
+    ])
+    result = build_extractor(model).invoke({"messages": [user_message("NOME: NATHAN RAMOS\nNATURALIDADE: X")]})
+    assert isinstance(final_outcome(result["messages"]), Rejection)

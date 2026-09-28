@@ -104,6 +104,10 @@ def check_dates(data_nascimento: str, primeira_habilitacao: str, data_emissao: s
     return {"ok": not problems, "problems": problems}
 
 
+# Same idea as the CNH Gate (gate.py): a CNH prints fields no RG or CPF card has.
+MIN_CNH_ONLY_FIELDS = 2
+
+
 @tool
 def normalize_categoria(text: str) -> dict:
     """Map a transcribed CAT. HAB. (e.g. 'A8', 'A B', 'ab') to a valid category."""
@@ -116,6 +120,10 @@ def normalize_categoria(text: str) -> dict:
 def submit_cnh_record(**record) -> str:
     """Submit the final CNH Record. Call exactly once, after validating CPF, CNH number and dates."""
     rec = CnhRecord(**record)
+    cnh_only = [rec.categoria, rec.numero_registro, rec.primeira_habilitacao, rec.validade]
+    if sum(v is not None for v in cnh_only) < MIN_CNH_ONLY_FIELDS:
+        return ("NOT ACCEPTED: a CNH record needs at least two of categoria, numero_registro, "
+                "primeira_habilitacao, validade. If this document is not a CNH, call reject_document.")
     warnings = []
     if rec.cpf is not None and not is_valid_cpf(rec.cpf):
         warnings.append("cpf check digits invalid")

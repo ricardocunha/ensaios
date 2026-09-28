@@ -12,7 +12,7 @@ import os
 
 from langchain.agents import create_agent
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 
 from ..schema import CnhRecord, Rejection
 from .tools import TOOLS
@@ -24,8 +24,10 @@ A transcrição tem uma linha `RÓTULO: valor` por campo impresso e pode conter 
 (O↔0, S↔5, B↔8, acentos perdidos, datas com separadores errados, linhas faltando).
 
 Procedimento:
-1. Se o texto não for de uma CNH (RG, CPF, nota fiscal, outro documento), chame `reject_document`. Uma CNH \
-com campos faltando ou ilegíveis continua sendo uma CNH: nunca a rejeite por isso.
+1. Decida se o texto é de uma CNH. Uma CNH imprime rótulos que só ela tem: CAT. HAB., Nº REGISTRO, \
+1ª HABILITAÇÃO, VALIDADE (e PERMISSÃO/ACC). RG, CPF, notas fiscais e outros documentos não têm esses \
+rótulos: nesse caso chame `reject_document`. Uma CNH com alguns campos faltando ou ilegíveis continua \
+sendo uma CNH: nunca a rejeite por isso.
 2. Valide o CPF com `validate_cpf` e o Nº REGISTRO com `validate_cnh_number`. Se falhar, use \
 `suggest_ocr_fixes`; só aceite uma correção se houver um único candidato.
 3. Normalize datas com `normalize_date` e confira com `check_dates`. Normalize a categoria com \
@@ -57,11 +59,13 @@ def build_extractor(model: BaseChatModel):
 
 
 def final_outcome(messages) -> CnhRecord | Rejection | None:
-    """The last submit/reject call the agent made, parsed into the domain type."""
+    """The agent's last *effective* decision: an accepted submit, or a reject."""
+    accepted = {m.tool_call_id for m in messages
+                if isinstance(m, ToolMessage) and str(m.content).startswith("ACCEPTED")}
     for msg in reversed(messages):
         if isinstance(msg, AIMessage):
             for call in reversed(msg.tool_calls):
-                if call["name"] == "submit_cnh_record":
+                if call["name"] == "submit_cnh_record" and call["id"] in accepted:
                     try:
                         return CnhRecord(**call["args"])
                     except ValueError:

@@ -95,3 +95,8 @@ def test_dropped_lines_become_expected_nulls():
                 assert getattr(item["truth"], field) in (None, [], ""), (label, field)
                 checked += 1
     assert checked > 0
+
+
+def test_submit_refuses_an_rg_shaped_record():
+    out = submit_cnh_record.invoke({"nome": "NATHAN RAMOS", "filiacao": ["HELOÍSA DA PAZ"]})
+    assert out.startswith("NOT ACCEPTED")
