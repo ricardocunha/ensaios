@@ -73,3 +73,25 @@ def _jpeg(img: Image.Image, quality: int) -> Image.Image:
     img.save(buf, format="JPEG", quality=quality)
     buf.seek(0)
     return Image.open(buf).convert("RGB")
+
+
+def scan(card: Image.Image, rng: random.Random, difficulty: Difficulty) -> Image.Image:
+    """A flatbed scan: light paper background, small tilt, faded colors, mild blur."""
+    s = _STRENGTH[difficulty]
+    w, h = card.size
+    pad = int(rng.uniform(0.02, 0.12) * w)
+    shade = rng.randint(225, 250)
+    canvas = Image.new("RGB", (w + 2 * pad, h + 2 * pad), (shade, shade, shade - rng.randint(0, 6)))
+    canvas.paste(card, (pad + rng.randint(-pad // 2, pad // 2), pad + rng.randint(-pad // 2, pad // 2)))
+    img = canvas.rotate(rng.uniform(-3, 3), resample=Image.Resampling.BICUBIC, fillcolor=(shade,) * 3)
+    img = ImageEnhance.Color(img).enhance(rng.uniform(0.5, 1.0))  # faded print
+    img = ImageEnhance.Contrast(img).enhance(rng.uniform(0.8, 1.05))
+    img = img.filter(ImageFilter.GaussianBlur(rng.uniform(0, 0.6 + 0.4 * s)))
+    img.thumbnail((rng.choice((900, 1100, 1400)),) * 2)
+    return _jpeg(img, rng.randint(int(85 - 15 * s), 95))
+
+
+def quarter_turn(img: Image.Image, rng: random.Random) -> tuple[Image.Image, int]:
+    """Rotate by 90/180/270 degrees: scanned and photographed IDs are often sideways or upside down."""
+    angle = rng.choice((90, 180, 270))
+    return img.rotate(angle, expand=True), angle

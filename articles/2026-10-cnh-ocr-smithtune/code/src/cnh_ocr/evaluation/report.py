@@ -11,26 +11,33 @@ import json
 import statistics
 from pathlib import Path
 
+from .. import transcription as tx
 from .metrics import score_transcription
 
 
 def reader_rows(data: Path, files: list[Path]) -> list[str]:
+    """CNH-only metrics, with both rejection directions reported separately.
+
+    Folding correct Non-CNH rejections into one accuracy number hides failures
+    (a model that rejects everything looks decent), so they are split out.
+    """
     truth = {r["file_name"]: r for r in map(json.loads, (data / "metadata.jsonl").open(encoding="utf-8"))}
-    rows = ["| Reader run | n | label accuracy | value recall | CER | p50 s/img | label acc on hard-difficulty items |",
-            "|---|---|---|---|---|---|---|"]
+    rows = ["| Reader run | CNHs | label acc | value recall | CER | CNHs wrongly rejected | Non-CNH rejected | p50 s/img |",
+            "|---|---|---|---|---|---|---|---|"]
     for f in files:
-        preds = [json.loads(line) for line in f.open(encoding="utf-8")]
-        scored = [(p, score_transcription(p["transcription"], truth[p["file_name"]]["answer"]))
-                  for p in preds if p["file_name"] in truth]
-        if not scored:
+        preds = [p for p in map(json.loads, f.open(encoding="utf-8")) if p["file_name"] in truth]
+        cnh = [p for p in preds if truth[p["file_name"]]["kind"] == "cnh"]
+        neg = [p for p in preds if truth[p["file_name"]]["kind"] != "cnh"]
+        if not cnh:
             continue
-        acc = statistics.mean(s["label_accuracy"] for _, s in scored)
-        recall = statistics.mean(s["value_recall"] for _, s in scored)
-        c = statistics.mean(s["cer"] for _, s in scored)
-        hard = [s["label_accuracy"] for p, s in scored if truth[p["file_name"]].get("difficulty") == "hard"]
-        hard_acc = f"{statistics.mean(hard):.1%}" if hard else "n/a"
-        p50 = statistics.median(p["seconds"] for p, _ in scored)
-        rows.append(f"| {f.stem} | {len(scored)} | {acc:.1%} | {recall:.1%} | {c:.3f} | {p50:.1f} | {hard_acc} |")
+        rejected = lambda p: tx.NOT_A_CNH in p["transcription"].upper()
+        scores = [score_transcription(p["transcription"], truth[p["file_name"]]["answer"]) for p in cnh]
+        acc = statistics.mean(s["label_accuracy"] for s in scores)
+        recall = statistics.mean(s["value_recall"] for s in scores)
+        c = statistics.mean(s["cer"] for s in scores)
+        p50 = statistics.median(p["seconds"] for p in preds)
+        rows.append(f"| {f.stem} | {len(cnh)} | {acc:.1%} | {recall:.1%} | {c:.2f} | "
+                    f"{sum(map(rejected, cnh))}/{len(cnh)} | {sum(map(rejected, neg))}/{len(neg)} | {p50:.1f} |")
     return rows
 
 

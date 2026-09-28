@@ -51,3 +51,20 @@ def test_single_ocr_slip_breaks_cpf_checksum():
 @pytest.mark.parametrize("bad", ["00000000000", "12345678901", "1234"])
 def test_rejects_invalid_cnh_registro(bad):
     assert not is_valid_cnh_registro(bad)
+
+
+@pytest.mark.parametrize("printed,canonical", [
+    ("CAT.HAB.", "CAT. HAB."), ("CAT.HA8", "CAT. HAB."), ("N° REGISTRO", "Nº REGISTRO"),
+    ("1º HABILITAÇÃO", "1ª HABILITAÇÃO"), ("DATA DE NASCIMENTO", "DATA NASCIMENTO"),
+    ("DOC. IDENTIDADE / ÓRG. EMISSOR UF", "DOC. IDENTIDADE / ÓRG. EMISSOR / UF"),
+    ("OBSERVACOES", "OBSERVAÇÕES"), ("ACC", "ACC"),
+])
+def test_label_variants_map_to_canonical(printed, canonical):
+    from cnh_ocr.transcription import canonical_label
+    assert canonical_label(printed) == canonical
+
+
+@pytest.mark.parametrize("junk", ["ASSINATURA DO PORTADOR", "CARTEIRA NACIONAL DE HABILITAÇÃO", "AC", "SESE"])
+def test_non_labels_are_not_matched(junk):
+    from cnh_ocr.transcription import canonical_label
+    assert canonical_label(junk) is None

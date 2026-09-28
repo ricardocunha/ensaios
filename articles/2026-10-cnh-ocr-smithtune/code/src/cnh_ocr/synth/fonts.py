@@ -10,7 +10,8 @@ from PIL import ImageFont
 
 _CDN = "https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/"
 _CACHE = Path.home() / ".cache" / "cnh-ocr" / "fonts"
-FILES = {"regular": "DejaVuSans.ttf", "bold": "DejaVuSans-Bold.ttf", "mono": "DejaVuSansMono.ttf"}
+FILES = {"regular": "DejaVuSans.ttf", "bold": "DejaVuSans-Bold.ttf", "mono": "DejaVuSansMono.ttf",
+         "serif_bold": "DejaVuSerif-Bold.ttf", "mono_bold": "DejaVuSansMono-Bold.ttf"}
 
 
 def _path(style: str) -> Path:

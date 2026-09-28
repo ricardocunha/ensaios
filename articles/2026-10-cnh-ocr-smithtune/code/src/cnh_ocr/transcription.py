@@ -6,6 +6,10 @@ The Reader never validates or normalizes, and OCR errors stay in.
 
 from __future__ import annotations
 
+import difflib
+import re
+import unicodedata
+
 from .schema import CnhRecord
 
 # Label printed on the card -> how the record's value is laid out on that line.
@@ -66,11 +70,41 @@ def from_record(record: CnhRecord) -> str:
     return render(printed_values(record))
 
 
+def label_key(text: str) -> str:
+    """Accent-, case-, space- and punctuation-insensitive form of a printed label."""
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    return re.sub(r"[^A-Z0-9]", "", text.upper())
+
+
+# Printed variants seen on real cards / produced by Readers -> canonical label.
+_ALIASES = {
+    "NREGISTRO": "Nº REGISTRO", "NOREGISTRO": "Nº REGISTRO", "NDEREGISTRO": "Nº REGISTRO",
+    "1OHABILITACAO": "1ª HABILITAÇÃO", "1AHAB": "1ª HABILITAÇÃO", "PRIMEIRAHABILITACAO": "1ª HABILITAÇÃO",
+    "DATADENASCIMENTO": "DATA NASCIMENTO", "DATADEEMISSAO": "DATA EMISSÃO",
+    "CATEGORIA": "CAT. HAB.", "CATHABILITACAO": "CAT. HAB.",
+    "DOCIDENTIDADEORGEMISSORUF": "DOC. IDENTIDADE / ÓRG. EMISSOR / UF",
+}
+_KEYS = {label_key(label): label for label in LABELS} | _ALIASES
+
+
+def canonical_label(text: str) -> str | None:
+    """Map a printed/transcribed label to its canonical form, tolerating OCR slips ('CAT.HA8')."""
+    key = label_key(text)
+    if key in _KEYS:
+        return _KEYS[key]
+    if len(key) >= 5:
+        close = difflib.get_close_matches(key, [k for k in _KEYS if len(k) >= 5], n=1, cutoff=0.8)
+        if close:
+            return _KEYS[close[0]]
+    return None
+
+
 def parse(transcription: str) -> dict[str, str]:
-    """Split a Transcription back into label -> raw value (no cleaning)."""
+    """Split a Transcription back into canonical label -> raw value (values are not cleaned)."""
     values: dict[str, str] = {}
     for line in transcription.splitlines():
         label, sep, value = line.partition(":")
-        if sep and label.strip() in LABELS:
-            values[label.strip()] = value.strip()
+        canonical = canonical_label(label) if sep else None
+        if canonical:
+            values[canonical] = value.strip()
     return values
