@@ -1,8 +1,7 @@
 """Run the Extractor over Transcriptions, trace to LangSmith, score against ground truth.
 
     # Teacher trajectories for smithtune (costs Anthropic API credits):
-    uv run python -m cnh_ocr.extractor.run --role teacher --data data/synth/train --limit 1500 \
-        --project cnh-extractor-teacher
+    uv run python -m cnh_ocr.extractor.run --role teacher --data data/synth-v3/train --limit 1500
     # Same inputs through the deployed Student:
     uv run python -m cnh_ocr.extractor.run --role student --student-url $STUDENT_URL \
         --student-model $STUDENT_MODEL --data data/synth/test --project cnh-extractor-student
@@ -16,13 +15,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from dotenv import find_dotenv, load_dotenv
 from langchain_core.tracers.context import collect_runs
 from langsmith import Client
 
+from .. import transcription as tx
 from ..evaluation.metrics import score_record
 from ..schema import CnhRecord
 from .agent import build_extractor, final_outcome, outcome_json, student_model, teacher_model, user_message
@@ -41,10 +43,9 @@ def load_inputs(data: Path, transcriptions: Path | None, limit: int | None, seed
         if row["file_name"] in reader_out:
             text, source = reader_out[row["file_name"]], "reader"
         elif row["kind"] == "non_cnh":
-            text, source = row["answer"], "clean"
-            # A Reader sometimes transcribes a non-CNH instead of refusing; teach the Extractor to catch it.
-            if rng.random() < 0.5:
-                text, source = "NOME: FULANO DE TAL\nREGISTRO GERAL: 12.345.678-9\nNATURALIDADE: SALVADOR", "decoy"
+            # v3 data (ADR-0003): the Reader transcribes decoys, so the Extractor sees what an RG,
+            # CPF card or invoice actually prints and must reject it. v1/v2 data only has a refusal.
+            text, source = (row["answer"], "decoy") if row["answer"] != tx.NOT_A_CNH else (row["answer"], "refusal")
         else:
             text, source = add_noise(row["answer"], rng), "noise"
         truth = CnhRecord.model_validate_json(row["record"]) if row["record"] else None
@@ -58,15 +59,17 @@ def main() -> None:
     p.add_argument("--data", type=Path, required=True)
     p.add_argument("--transcriptions", type=Path)
     p.add_argument("--limit", type=int)
-    p.add_argument("--project", required=True, help="LangSmith project to trace into")
+    p.add_argument("--project", help="LangSmith project to trace into (default: LANGSMITH_PROJECT from .env)")
     p.add_argument("--student-url")
     p.add_argument("--student-model")
     p.add_argument("--concurrency", type=int, default=8)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--out", type=Path)
+    load_dotenv(find_dotenv(usecwd=True))  # ANTHROPIC_API_KEY, LANGSMITH_* from code/.env
     args = p.parse_args()
-
-    import os
+    args.project = args.project or os.environ.get("LANGSMITH_PROJECT")
+    if not args.project:
+        p.error("--project or LANGSMITH_PROJECT (in .env) is required")
     os.environ["LANGSMITH_TRACING"] = "true"
     os.environ["LANGSMITH_PROJECT"] = args.project
 

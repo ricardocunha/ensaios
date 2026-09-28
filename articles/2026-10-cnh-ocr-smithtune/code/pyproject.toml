@@ -20,6 +20,7 @@ agent = [
     "langchain-anthropic>=1.7.4",
     "langchain-openai>=1.6.6",
     "langsmith>=0.14.1",
+    "python-dotenv>=1.2.3",
 ]
 mlx = [
     "mlx-vlm[train]>=0.7.3",

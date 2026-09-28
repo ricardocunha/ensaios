@@ -68,7 +68,7 @@ report:             ## Results tables -> docs/RESULTS.md
 
 # ---- Stage 2: Extractor + smithtune (PAID) --------------------------------------
 
+# Keys and the LangSmith project (LANGSMITH_PROJECT) come from .env.
 teacher:            ## Teacher trajectories -> LangSmith (Anthropic API). Try LIMIT=20 first to see the cost.
-	$(PY) cnh_ocr.extractor.run --role teacher --data data/synth/train --limit $(or $(LIMIT),1500) \
-	  --project cnh-extractor-teacher
+	$(PY) cnh_ocr.extractor.run --role teacher --data data/synth-v3/train --limit $(or $(LIMIT),1500)
 # smithtune steps: ./smithtune/run.sh <step>  (paid steps ask y/N)
