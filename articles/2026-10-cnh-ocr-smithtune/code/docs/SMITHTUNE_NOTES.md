@@ -195,6 +195,18 @@ Fix: feedback on `trace_id` with `session_id`. The 300 runs' scores were re-atta
 - My estimate: about 1.76M training tokens per epoch (upper bound). Fireworks SFT is $3.00/M tokens for 16–80B models, so about $5 per epoch, up to about $26 at 5 epochs.
 - smithtune's default replay judge is a Baseten model; on Fireworks pass `--judge-model accounts/fireworks/models/deepseek-v4p1-flash`. `--max-spend-usd` is Baseten-only; on Fireworks cap `--max-epochs`.
 
+## 2026-09-29: first smithtune training (Fireworks, qwen3p8-27b, 1 epoch)
+
+**Training worked.** Serverless LoRA SFT: rank 8, lr 1e-4, batch 32, 1 epoch = 7 steps on 214 trajectories. Validation loss **0.0133** (ppl 1.013). There's a promotable checkpoint on Fireworks. Run `sft-20260929-201651-9879a3d797fe`. (Epochs capped at 1 because of about $11 of Fireworks credit; about 1.76M tokens/epoch at $3/M ≈ $5 upper bound. Actual charge: check the Fireworks console.)
+
+**Replay evaluation: interrupted and unreliable.**
+- `evaluation interrupted: 63 cases failed; 45/108 saved; rerun to resume`. smithtune keeps only the count; the first exception is chained internally but the CLI doesn't print it. The cause is unknown (possibly credit).
+- On the 45 saved cases, **both base and tuned** are judged "Candidate tool calls violate the tools available at this assistant turn" in 32/35 tool-call cases. The deterministic metrics show `tool_name_match: true` but `arguments_json_valid: false`. The Fireworks sampler returns tool-call `arguments` as a **parsed object**, and the check expects a JSON **string** (OpenAI wire format). That looks like a sampler/parser mismatch in v0.1, not a model failure. It's worth an upstream issue.
+- A genuine model error in both: `numero_registro` sent as an integer (24885519110), not a string.
+- **Base vs tuned: identical output in 26/45 cases** (they are served from different routes: base model vs the epoch-1 checkpoint). The rest differ in details (`null` vs `""`). One epoch of rank-8 LoRA on 214 examples barely moved a 27B model that is already competent at the task, or the eval can't see the difference.
+
+**Takeaways for the article.** (1) smithtune's Fireworks path trains fine, but its replay eval needs work for tool-heavy agents. (2) Always inspect the deterministic metrics before trusting the judge's verdict. (3) Our own field-level eval on held-out transcriptions is the metric that matters, but it needs a deployment (US$8/h on Fireworks).
+
 ## Next entries
 
 - [ ] `smithtune doctor` output and install time
