@@ -13,12 +13,13 @@ set -a; [ -f .env ] && . ./.env; set +a
 : "${LANGSMITH_WORKSPACE_ID:?set in .env}"
 : "${LANGSMITH_PROJECT_ID:?set in .env (UUID of the cnh-extractor-teacher project)}"
 PROVIDER="${SMITHTUNE_PROVIDER:-baseten}"
-MODEL="${SMITHTUNE_MODEL:-Qwen/Qwen3.5-9B}"
+# Student: Baseten can train the 9B; Fireworks' smallest smithtune-supported model is the 27B.
+if [ "$PROVIDER" = fireworks ]; then MODEL="${SMITHTUNE_MODEL_FIREWORKS:-qwen3p8-27b}"; else MODEL="${SMITHTUNE_MODEL:-Qwen/Qwen3.5-9B}"; fi
 START="${TEACHER_START:-2026-09-25T00:00:00Z}"
 END="${TEACHER_END:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 GOLDEN_DIR=runs/smithtune/golden
 TRIAGE_DIR=runs/smithtune/triage-sample
-RUN_DIR=runs/smithtune/train-qwen35-9b
+RUN_DIR="runs/smithtune/train-$PROVIDER"
 # Trusted quality signal: our own ground-truth grading, written as LangSmith feedback by extractor/run.py
 GOLDEN_FILTER='and(eq(feedback_key, "exact"), eq(feedback_score, 1))'
 
@@ -67,14 +68,25 @@ case "${1:-}" in
     confirm "Replay evaluation (base vs tuned)." && \
       smithtune evaluate --provider "$PROVIDER" --data-dir "$GOLDEN_DIR" --run-dir "$RUN_DIR" --confirm ;;
   deploy)
-    confirm "Deploy the tuned model on an H200 (billed per minute until undeploy!)." && \
-      smithtune deploy --provider "$PROVIDER" --run-dir "$RUN_DIR" --accelerator H200:1 --max-seq-len 32768 --confirm ;;
+    if [ "$PROVIDER" = fireworks ]; then
+      : "${FIREWORKS_ACCOUNT_ID:?set in .env}"
+      confirm "Deploy the tuned model on Fireworks (billed until undeploy!)." && \
+        smithtune deploy --provider fireworks --run-dir "$RUN_DIR" --account-id "$FIREWORKS_ACCOUNT_ID" \
+          --output-model-id cnh-extractor-student --confirm
+    else
+      confirm "Deploy the tuned model on an H200 (billed per minute until undeploy!)." && \
+        smithtune deploy --provider baseten --run-dir "$RUN_DIR" --accelerator H200:1 --max-seq-len 32768 --confirm
+    fi ;;
   student-eval)
     : "${STUDENT_URL:?OpenAI-compatible URL printed by deploy}"; : "${STUDENT_MODEL:?model name printed by deploy}"
     uv run python -m cnh_ocr.extractor.run --role student --student-url "$STUDENT_URL" \
       --student-model "$STUDENT_MODEL" --data data/synth/test --project cnh-extractor-student ;;
   undeploy)
-    smithtune undeploy --provider "$PROVIDER" --run-dir "$RUN_DIR" --confirm ;;
+    if [ "$PROVIDER" = fireworks ]; then
+      smithtune undeploy --provider fireworks --run-dir "$RUN_DIR" --account-id "$FIREWORKS_ACCOUNT_ID" --confirm
+    else
+      smithtune undeploy --provider baseten --run-dir "$RUN_DIR" --confirm
+    fi ;;
   *)
     sed -n '2,8p' "$0"; exit 1 ;;
 esac
