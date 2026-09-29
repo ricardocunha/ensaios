@@ -1,4 +1,4 @@
-.PHONY: install test data data-v1 bid zero-shot train-reader eval-reader report teacher
+.PHONY: install test data data-v1 bid zero-shot train-reader eval-reader report teacher student-data train-student eval-student
 PY := uv run python -m
 MODELS := paddleocr_vl chandra2 qwen35_9b
 MODEL ?= paddleocr_vl
@@ -73,3 +73,27 @@ teacher:            ## Teacher trajectories -> LangSmith (Anthropic API). LIMIT=
 	$(PY) cnh_ocr.extractor.run --role teacher --data data/synth-v3/train --limit $(or $(LIMIT),1500) \
 	  $(if $(MAX_COST),--max-cost $(MAX_COST))
 # smithtune steps: ./smithtune/run.sh <step>  (paid steps ask y/N)
+
+# ---- Stage 2, plan B: local Student (mlx-lm) on smithtune's prepared splits ------------------
+# Qwen3-8B: Qwen3.5-9B's hybrid linear attention needs >48 GB to train at our ~3K-token lengths.
+STUDENT_BASE := runs/models/qwen3_8b-4bit
+student-data:       ## smithtune prepared splits -> mlx-lm chat SFT (one example per assistant turn)
+	$(PY) cnh_ocr.student.build_sft --prepared runs/smithtune/golden/prepared --out data/student-sft
+
+train-student:      ## LoRA on the M4 Pro: 1 epoch = 838 steps, ~3.3 h, ~10 GB peak
+	$(PY) mlx_lm lora --model $(STUDENT_BASE) --train --data data/student-sft --mask-prompt \
+	  --batch-size 1 --grad-accumulation-steps 8 --iters 838 --num-layers 16 --max-seq-length 3300 \
+	  --grad-checkpoint --learning-rate 1e-4 --steps-per-report 20 --steps-per-eval 200 --val-batches 30 \
+	  --save-every 200 --adapter-path runs/student/qwen3_8b-lora
+
+# Serve a Student locally (OpenAI-compatible, tool calls parsed) and run OUR field-level eval on
+# held-out test transcriptions. ADAPTER= empty evaluates the untuned base model.
+EVAL_N ?= 100
+eval-student:       ## make eval-student [ADAPTER=runs/student/qwen3_8b-lora] [EVAL_N=100]
+	$(PY) mlx_lm server --model $(STUDENT_BASE) $(if $(ADAPTER),--adapter-path $(ADAPTER)) --port 8088 \
+	  > logs/student-server.log 2>&1 & echo $$! > runs/student/server.pid; \
+	until curl -sf localhost:8088/v1/models >/dev/null; do sleep 2; done; \
+	$(PY) cnh_ocr.extractor.run --role student --student-url http://localhost:8088/v1 \
+	  --student-model $(STUDENT_BASE) --data data/synth-v3/test --limit $(EVAL_N) --concurrency 1 \
+	  --project cnh-extractor-student --out runs/extractor/student-$(if $(ADAPTER),tuned,base).jsonl; \
+	kill $$(cat runs/student/server.pid)

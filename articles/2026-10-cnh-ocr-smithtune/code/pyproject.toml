@@ -25,6 +25,9 @@ agent = [
 mlx = [
     "mlx-vlm[train]>=0.7.3",
 ]
+student = [
+    "mlx-lm>=0.31.3",
+]
 
 [build-system]
 requires = ["uv_build>=0.9.18,<0.10.0"]

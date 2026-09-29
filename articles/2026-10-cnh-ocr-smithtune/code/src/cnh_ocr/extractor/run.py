@@ -60,7 +60,9 @@ PRICES = {
 
 
 def run_cost(u: dict, model: str | None = None) -> float:
-    price = PRICES[model or u.get("model") or os.getenv("TEACHER_MODEL", "claude-sonnet-5")]
+    price = PRICES.get(model or u.get("model") or os.getenv("TEACHER_MODEL", "claude-sonnet-5"))
+    if price is None:  # local models (e.g. the mlx-lm Student) cost nothing per token
+        return 0.0
     uncached = u["input_tokens"] - u.get("cache_read", 0) - u.get("cache_creation", 0)
     return (uncached * price["input"] + u.get("cache_read", 0) * price["cache_read"]
             + u.get("cache_creation", 0) * price["cache_write"] + u["output_tokens"] * price["output"]) / 1e6

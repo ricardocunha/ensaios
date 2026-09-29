@@ -62,8 +62,11 @@ def teacher_model() -> BaseChatModel:
 def student_model(base_url: str, model: str, api_key: str | None = None) -> BaseChatModel:
     from langchain_openai import ChatOpenAI
 
-    return ChatOpenAI(base_url=base_url, model=model, api_key=api_key or os.getenv("BASETEN_API_KEY"),
-                      temperature=0)
+    # A local mlx-lm server accepts any key; hosted endpoints need a real one.
+    return ChatOpenAI(base_url=base_url, model=model, temperature=0, max_tokens=4000, timeout=300,
+                      api_key=api_key or os.getenv("STUDENT_API_KEY") or "local",
+                      # Qwen3: no thinking, matching how the Student was trained.
+                      extra_body={"chat_template_kwargs": {"enable_thinking": False}})
 
 
 def build_extractor(model: BaseChatModel):
