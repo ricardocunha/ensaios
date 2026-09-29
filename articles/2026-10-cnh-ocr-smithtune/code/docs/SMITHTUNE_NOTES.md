@@ -185,6 +185,16 @@ Three 20-run checks before the real run. Each one found a bug in *my* setup, not
 
 Fix: feedback on `trace_id` with `session_id`. The 300 runs' scores were re-attached (no re-run needed), but the backfill hit LangSmith's rate limit (429) at 8 parallel requests; batched lookups plus serial writes worked. Tip: **test the filter with `langsmith trace list --filter` before `smithtune dataset pull`**, as smithtune's skill says.
 
+## 2026-09-29: dataset pushed; training provider
+
+- `dataset pull`: 266/266 golden trajectories passed structural checks. `dataset push --confirm` created LangSmith dataset `cnh-extractor-golden` (266 examples).
+- **Baseten:** `prepare` fails with `Loops training is not enabled for your workspace. Contact Baseten`. Loops is gated per workspace. Request sent / pending.
+- **Fireworks:** also needs `BASETEN_API_KEY` for nothing, *but* my `run.sh` sourced `.env` after reading the environment, so `SMITHTUNE_PROVIDER=fireworks` was overridden and smithtune ran the Baseten preflight. Fixed: `.env` no longer overrides variables that are already set.
+- `prepare --provider fireworks --model qwen3p8-27b`: 266 accepted, split 214 / 23 / 29, rendered with the pinned Qwen3.8-27B tokenizer.
+- `plan`: LoRA rank 8, lr 1e-4, batch 32, max 5 epochs with early stopping (patience 1). Replay eval: 58 cases (29 text + 29 tool call), judge `deepseek-v4p1-flash`. **No dollar estimate:** "serverless token charges at the current account rate; resolve in the Fireworks console before confirmation".
+- My estimate: about 1.76M training tokens per epoch (upper bound). Fireworks SFT is $3.00/M tokens for 16–80B models, so about $5 per epoch, up to about $26 at 5 epochs.
+- smithtune's default replay judge is a Baseten model; on Fireworks pass `--judge-model accounts/fireworks/models/deepseek-v4p1-flash`. `--max-spend-usd` is Baseten-only; on Fireworks cap `--max-epochs`.
+
 ## Next entries
 
 - [ ] `smithtune doctor` output and install time

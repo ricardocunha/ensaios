@@ -8,7 +8,13 @@
 # Every step that spends money pauses for a y/N before it passes --confirm to smithtune.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-set -a; [ -f .env ] && . ./.env; set +a
+# Load .env without overriding variables already set, so `VAR=... ./smithtune/run.sh` wins.
+if [ -f .env ]; then
+  while IFS='=' read -r key value; do
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+    [ -n "${!key+x}" ] || export "$key=$value"
+  done < .env
+fi
 
 : "${LANGSMITH_WORKSPACE_ID:?set in .env}"
 : "${LANGSMITH_PROJECT_ID:?set in .env (UUID of the cnh-extractor-teacher project)}"
@@ -20,6 +26,8 @@ END="${TEACHER_END:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 GOLDEN_DIR=runs/smithtune/golden
 TRIAGE_DIR=runs/smithtune/triage-sample
 RUN_DIR="runs/smithtune/train-$PROVIDER"
+# Replay-eval judge. smithtune's default is a Baseten model, so use a Fireworks judge there.
+if [ "$PROVIDER" = fireworks ]; then JUDGE="${JUDGE_MODEL:-accounts/fireworks/models/deepseek-v4p1-flash}"; else JUDGE="${JUDGE_MODEL:-baseten/zai-org/GLM-5.3-Flash}"; fi
 # Trusted quality signal: our own ground-truth grading, written as LangSmith feedback by extractor/run.py
 GOLDEN_FILTER='and(eq(feedback_key, "exact"), eq(feedback_score, 1))'
 
@@ -59,14 +67,16 @@ case "${1:-}" in
     smithtune prepare --provider "$PROVIDER" --model "$MODEL" \
       --workspace-id "$LANGSMITH_WORKSPACE_ID" --dataset-id "$GOLDEN_DATASET_ID" --data-dir "$GOLDEN_DIR" ;;
   plan)
-    smithtune plan --provider "$PROVIDER" --data-dir "$GOLDEN_DIR" --evaluate --max-points-per-trajectory 2 ;;
+    smithtune plan --provider "$PROVIDER" --data-dir "$GOLDEN_DIR" --evaluate --judge-model "$JUDGE" --max-points-per-trajectory 2 ;;
   train)
-    confirm "LoRA SFT of $MODEL on $PROVIDER." && \
-      smithtune train --provider "$PROVIDER" --data-dir "$GOLDEN_DIR" --run-dir "$RUN_DIR" --evaluate --confirm ;;
+    # Fireworks bills per training token and has no spend flag in smithtune: cap epochs instead.
+    confirm "LoRA SFT of $MODEL on $PROVIDER (max ${MAX_EPOCHS:-5} epochs)." && \
+      smithtune train --provider "$PROVIDER" --data-dir "$GOLDEN_DIR" --run-dir "$RUN_DIR" --evaluate \
+        --judge-model "$JUDGE" --max-epochs "${MAX_EPOCHS:-5}" --confirm ;;
   evaluate)
     smithtune eval-plan --provider "$PROVIDER" --data-dir "$GOLDEN_DIR" --run-dir "$RUN_DIR"
     confirm "Replay evaluation (base vs tuned)." && \
-      smithtune evaluate --provider "$PROVIDER" --data-dir "$GOLDEN_DIR" --run-dir "$RUN_DIR" --confirm ;;
+      smithtune evaluate --provider "$PROVIDER" --data-dir "$GOLDEN_DIR" --run-dir "$RUN_DIR" --judge-model "$JUDGE" --confirm ;;
   deploy)
     if [ "$PROVIDER" = fireworks ]; then
       : "${FIREWORKS_ACCOUNT_ID:?set in .env}"
