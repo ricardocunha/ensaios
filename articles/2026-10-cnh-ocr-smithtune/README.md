@@ -9,7 +9,8 @@ A field report on **smithtune** (LangSmith Fine-Tuning, v0.1.0, released 2026-09
 
 | | |
 |---|---|
-| Article (EN) | [article-en.md](article-en.md) |
+| Article (EN), full: dev.to / Hashnode | [article-en.md](article-en.md) |
+| Article (EN), short: Medium | [article-en-medium.md](article-en-medium.md) |
 | Article (PT-BR) | [article-pt-br.md](article-pt-br.md) |
 | LinkedIn | [EN](linkedin-en.md) · [PT-BR](linkedin-pt-br.md) |
 | Code, results, ADRs, field notes | [code/](code/) · [results](code/docs/RESULTS.md) · [notes](code/docs/SMITHTUNE_NOTES.md) |
