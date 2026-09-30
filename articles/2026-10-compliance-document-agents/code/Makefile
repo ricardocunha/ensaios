@@ -1,4 +1,4 @@
-.PHONY: test download scans ocr-eval mcp synth serve review
+.PHONY: test download scans ocr-eval mcp synth serve review propose-real score-real
 
 test:
 	uv run pytest -q
@@ -31,3 +31,11 @@ serve:
 review:
 	uv run python -m compliance_agents.reviewer $(DOCS) --decide code --data data/synth/text --out runs/review_text_v2.jsonl
 	uv run python -m compliance_agents.evaluate runs/review_text_v2.jsonl --data data/synth/text
+
+# Reviewer proposals for the real-contract sheet (labels/real_contracts_proposed.csv)
+propose-real:
+	uv run python -m compliance_agents.reviewer $$(uv run python -m compliance_agents.real_labels docs) --decide code --data data/pncp --out runs/review_real.jsonl
+	uv run python -m compliance_agents.real_labels propose
+
+score-real:
+	uv run python -m compliance_agents.real_labels score
