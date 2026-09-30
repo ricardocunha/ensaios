@@ -207,6 +207,25 @@ Fix: feedback on `trace_id` with `session_id`. The 300 runs' scores were re-atta
 
 **Takeaways for the article.** (1) smithtune's Fireworks path trains fine, but its replay eval needs work for tool-heavy agents. (2) Always inspect the deterministic metrics before trusting the judge's verdict. (3) Our own field-level eval on held-out transcriptions is the metric that matters, but it needs a deployment (US$8/h on Fireworks).
 
+## 2026-09-29: Plan B, local Student (mlx-lm) on smithtune's prepared splits
+
+Why: Fireworks credit ran out (the replay eval's 63 failures most likely came from that); Baseten Loops isn't enabled.
+
+- **Data:** smithtune's `prepared/{train,validation}.jsonl` (214 / 23 trajectories), expanded to one example per assistant turn (838 / 90) with tool definitions and `--mask-prompt`, mirroring smithtune's policy. About 2.2M tokens per epoch, examples ≤ 3.2K tokens.
+- **Qwen3.5-9B can't be trained here:** its hybrid linear-attention layers used 33.6 GB at just 1,024 tokens in mlx-lm and ran out of memory at 2,048 (48 GB Mac). **Student = Qwen3-8B** (4-bit, 4.3 GB): 9.5–10.3 GB peak.
+- **Training:** LoRA on 16 layers, lr 1e-4, batch 1 × grad-accum 8, 1 epoch (838 steps) in about 3.5 h on the M4 Pro. Val loss 0.672 → 0.049 (200) → 0.024 (400) → 0.043 (600) → **0.013 (800)** → 0.017 (838). The step 800 checkpoint was used.
+- **mlx-lm server bug:** `--adapter-path` is silently ignored (0.31.3 remaps the model name before the adapter lookup). The first "tuned" eval was the base again, with 100/100 identical outcomes. Fix: send `"adapters": <path>` in each request.
+
+**Our field-level eval** (held-out synth-v3 test transcriptions with OCR noise and decoys):
+
+| Extractor | Exact | CNH exact | Decoys rejected | CNHs wrongly rejected | Field acc | Tool calls/run | $/run |
+|---|---|---|---|---|---|---|---|
+| Teacher DeepSeek-V4-Pro (300, train-dist) | 88.7% | 222/256 | 44/44 | 0 | 99.3% | 7.6 | ~0.016 |
+| Qwen3-8B base (100) | 46.0% | 34/86 | 12/14 | 0 | 93.1% | 6.2 | 0 (local) |
+| **Qwen3-8B + LoRA (99 scored, 1 failed)** | **80.8%** | 66/85 | **14/14** | 1 | **96.6%** | **8.2** | **0 (local)** |
+
+Tuning fixed 38 runs and broke 4. The Student picked up the Teacher's "validate before submitting" habit (6.2 → 8.2 tool calls) and rejects every decoy. Caveat: the Teacher was scored on train-distribution items and the Student on held-out ones (same generator).
+
 ## Next entries
 
 - [ ] `smithtune doctor` output and install time
