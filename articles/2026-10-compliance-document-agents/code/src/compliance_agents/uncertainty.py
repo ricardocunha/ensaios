@@ -22,7 +22,8 @@ from compliance_agents import mcp_server
 from compliance_agents.evaluate import flagged
 
 
-def decisions(rows: list[dict]) -> list[dict]:
+def decisions(rows: list[dict], audits: list[dict] | None = None) -> list[dict]:
+    disputed = {(a["doc"], a["rule"]) for a in audits or [] if a.get("auditor_agrees") is False}
     groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for r in rows:
         groups[(r["doc"], r["rule"])].append(r)
@@ -42,6 +43,7 @@ def decisions(rows: list[dict]) -> list[dict]:
             "doc": doc_id, "rule": rule, "flag": majority, "samples": len(rs),
             "agreement": votes / len(rs), "verbatim": verbatim, "page_quality": quality,
             "self_confidence": sum(r.get("confidence", 0) for r in rs) / len(rs),
+            "disputed": (doc_id, rule) in disputed,
         })
     return out
 
@@ -54,6 +56,8 @@ POLICIES = {
     "page quality < 0.9": lambda d: (d["page_quality"] or 1) < 0.9,
     "disagree OR not verbatim": lambda d: d["agreement"] < 1 or d["verbatim"] is False,
     "disagree OR not verbatim OR quality < 0.9": lambda d: d["agreement"] < 1 or d["verbatim"] is False or (d["page_quality"] or 1) < 0.9,
+    "auditor disputes": lambda d: d["disputed"],
+    "all of the above": lambda d: d["agreement"] < 1 or d["verbatim"] is False or (d["page_quality"] or 1) < 0.9 or d["disputed"],
 }
 
 
@@ -82,10 +86,12 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("runs", type=Path)
     ap.add_argument("--data", type=Path, default=Path("data/synth/text"))
+    ap.add_argument("--audit", type=Path, help="auditor results (jsonl)")
     args = ap.parse_args()
     os.environ["COMPLIANCE_DATA_DIR"] = str(args.data)
     labels = {x["doc"]: x for x in map(json.loads, (args.data / "labels.jsonl").read_text().splitlines())}
-    ds = decisions([json.loads(line) for line in args.runs.read_text().splitlines()])
+    audits = [json.loads(line) for line in args.audit.read_text().splitlines()] if args.audit else None
+    ds = decisions([json.loads(line) for line in args.runs.read_text().splitlines()], audits)
     print(f"{len(ds)} decisions, {ds[0]['samples']} samples each\n")
     print("| Escalate when | Escalated | Accuracy on kept | Errors caught | Violations missed and not escalated |")
     print("|---|---|---|---|---|")

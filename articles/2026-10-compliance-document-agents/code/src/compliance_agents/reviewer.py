@@ -24,7 +24,7 @@ from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from compliance_agents.limits import EXTRACTORS
+from compliance_agents.limits import EXTRACTORS, HINTS
 from compliance_agents.rules import RULES, RULES_BY_ID, Rule
 
 Verdict = Literal["compliant", "violation", "not_applicable", "unclear"]
@@ -105,7 +105,8 @@ def extract_prompt(doc_id: str, rule: Rule) -> str:
     return (
         f"Contrato: {doc_id}\n"
         f"Extraia do contrato os fatos necessários para a regra `{rule.id}` ({rule.article}). "
-        "Não julgue a regra: apenas extraia os valores como estão escritos, com citação literal."
+        "Não julgue a regra: apenas extraia os valores como estão escritos, com citação literal.\n"
+        f"{HINTS.get(rule.id, '')}"
     )
 
 

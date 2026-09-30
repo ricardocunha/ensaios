@@ -10,18 +10,21 @@ from pydantic import BaseModel, Field
 
 
 class GuaranteeFacts(BaseModel):
-    guarantee_required: bool = Field(description="Does the contract require the contractor to provide a guarantee (garantia contratual)?")
-    percent: float | None = Field(description="The guarantee as a percentage of the contract value, e.g. 5 for 5%; null if none")
+    guarantee_required: bool = Field(default=False, description="Does the contract require the contractor to provide a guarantee (garantia contratual)?")
+    percent: float | None = Field(default=None, description="The guarantee as a percentage of the contract value, e.g. 5 for 5%; null if none")
     justification_quote: str = Field(
-        description="Verbatim quote justifying a guarantee above 5% (technical complexity and risks); empty if there is none"
+        default="", description="Verbatim quote justifying a guarantee above 5% (technical complexity and risks); empty if there is none"
     )
     section_id: int | None = None
-    evidence: str = Field(description="Verbatim quote of the guarantee clause; empty if there is none")
+    evidence: str = Field(default="", description="Verbatim quote of the guarantee clause; empty if there is none")
     confidence: float = Field(ge=0, le=1)
 
 
 class TermFacts(BaseModel):
-    continuous: bool = Field(description="Is the object a continuous service or continuous supply (serviço/fornecimento contínuo)?")
+    continuous: bool = Field(
+        description="Is the OBJECT (cláusula do objeto) a continuous service or continuous supply (serviço/fornecimento contínuo)? "
+        "Decide from the object clause, not from the term clause"
+    )
     initial_months: int | None = Field(description="Initial term (vigência) in months; convert years to months")
     max_total_months: int | None = Field(description="Maximum total term including extensions (prorrogações), in months; null if not stated")
     section_id: int | None = None
@@ -54,6 +57,12 @@ def decide_term(f: TermFacts) -> tuple[str, str]:
         return "violation", f"Vigência máxima com prorrogações de {f.max_total_months} meses excede 10 anos (120 meses)."
     return "compliant", f"Vigência inicial de {f.initial_months} meses dentro de 5 anos; máximo dentro de 10 anos."
 
+
+# where to look, per rule: said in the prompt, since the facts can live in different clauses
+HINTS = {
+    "garantia_limite": "Procure a cláusula de garantia (busque 'garantia'). Se não houver, guarantee_required = false.",
+    "vigencia_limite": "Leia a cláusula do OBJETO para saber se o serviço/fornecimento é contínuo, e a cláusula de VIGÊNCIA para os prazos.",
+}
 
 EXTRACTORS = {
     "garantia_limite": (GuaranteeFacts, decide_guarantee),
