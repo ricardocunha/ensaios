@@ -1,0 +1,22 @@
+[project]
+name = "road-agents"
+version = "0.1.0"
+description = "Deterministic road-graph tools (criticality, closure impact, accessibility) for LLM maintenance agents"
+readme = "README.md"
+authors = [
+    { name = "Ricardo Cunha", email = "ricardocunha@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "networkx>=3.7",
+    "osmnx>=2.1.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.18,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
