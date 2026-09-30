@@ -67,7 +67,22 @@ CARE only includes about a year of data before each of its events, so T01, T11 a
 
 The replay should treat these as possibly one incident when scoring "did the agent learn". Otherwise a repeat gets counted as a new success.
 
-**Logbook timestamp meaning.** EDP gives timestamps in GMT and does not say whether they mark detection, stop or repair. [[VERIFY: timestamp semantics of the EDP failure logbook]]
+**Incidents (milestone 2, `incidents.py`).** Rows on one turbine are chained into one incident when:
+
+- a row has the same component as the incident's previous row and comes ≤ 45 days after it, or
+- it comes ≤ 7 days after the previous row, whatever the component.
+
+The result is **28 rows → 21 incidents**. The four merges are the three clusters above plus T07 transformer 2016-07-10 / 08-23 ("High temperature transformer", then "... refrigeration repaired", 43.9 days apart). The 45 days were set after reading the gaps: same-component gaps are either ≤ 43.9 d or ≥ 76.1 d. Counts for other gap values are in RESULTS.md.
+
+**Logbook timestamp meaning.** EDP gives timestamps in GMT and does not say whether they mark detection, stop or repair. We checked it against the SCADA: generator rpm in the 10-minute rows around each timestamp (`incidents.timestamp_context`, numbers in RESULTS.md).
+
+- **Trip (12 of 28).** The turbine was running at wind ≥ 5 m/s and stopped within the 10 minutes containing the timestamp.
+- **Already stopped (8).** 6 of these restart within 2 h after the timestamp.
+- **Other (4)**, **no data (3)**, **kept running (1)**. The last is T06's second "Generator replaced".
+
+So the timestamp marks a **stop event**: the fault stop, or the moment the fault was cleared. It is not the start of degradation, and not a work-order date. This is our reading of the SCADA; EDP does not document it.
+
+The partial power in the row that contains a trip also shows that CARE rows are stamped at the **end** of their 10-minute interval.
 
 **CARE Farm A event table.**
 
@@ -98,7 +113,9 @@ CARE says the Farm A status comes from the logbook and is meant for filtering tr
 - Hydraulic/brake-circuit errors and "oil leakage in hub" may be sudden and show little in 10-minute averages.
 - Transformer-fan damage should show up in the transformer temperatures (sensors 38-40).
 
-[[VERIFY: lead-time claims per component against the literature / CARE paper]]. The baseline in RESULTS.md is too crude to settle this.
+[[VERIFY: lead-time claims per component against the literature / CARE paper]].
+
+Milestone 2 measured this on our data (RESULTS.md). Generator-bearing incidents are the most visible: 4 of 5 have an alarm in the 14 days before, for the best detector. Hydraulic incidents are the least: 0-2 of 7 for every detector. With 18 evaluable incidents, this supports the hypotheses but does not settle them.
 
 ## Attribution
 

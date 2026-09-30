@@ -51,9 +51,43 @@ Wind energy is a large part of the Northeast's grid. The data is a public wind-t
   - The replay needs expanding-window training so the 2016 faults count.
   - Scoring must merge duplicate/clustered logbook rows.
 
+## Milestone 2 result (2026-09-30)
+
+Details and every number: `code/docs/RESULTS.md` ("Milestone 2").
+
+- **Features.**
+  - Normal-behaviour residuals: one gradient-boosted model per temperature, predicting the rise over ambient from ambient temperature, wind, power, rotor rpm and past 6 h / 24 h power. The model runs on hourly means.
+  - Signals are grouped by component: generator, generator bearing, gearbox, hydraulic, hub, transformer (+ converter/nacelle as context). Detectors score days.
+  - Farm A has no pressure signals.
+- **Walk-forward.**
+  - Retrain every 30 days on all data before the cutoff. Thresholds come from the last ≥ 21 days, which the model has not seen.
+  - Training drops only the windows around faults already logged. `status_type_id` is never used.
+  - A test proves that scores before a date do not change when anything after it changes.
+  - 2016 incidents are now scored too: 18-19 of the 21 incidents are evaluable, against 11 of 28 rows in milestone 1.
+- **Incidents.** 28 logbook rows → 21 incidents (same component ≤ 45 d apart, or any component ≤ 7 d apart).
+  - **Timestamps mark stops.** 12 rows are trips within the same 10-minute row, and 8 fall at the end of an existing stop. This answers the timestamp question left open in milestone 1, from our reading of the SCADA.
+- **Detectors at a matched budget of ≤ 1 healthy alarm-day per turbine-month**, hits at 14 d out of 18 evaluable incidents:
+
+  | Detector | 14-d hits (seeds 0/1/2) | Quiet-window rate | p | Farm-wide alarm dates |
+  |---|---|---|---|---|
+  | Isolation Forest on residuals | **7 / 7 / 7** | 0.18-0.20 | 0.03-0.06 | 3-4 |
+  | Raw Isolation Forest | 4-6 | 0.14-0.17 | | 12-13 |
+  | Per-signal residual threshold | 5 | 0.22 | 0.35 | |
+
+  The per-signal residual threshold does not beat chance.
+- **Honest reading.**
+  - Walk-forward retraining with recent calibration did most of the work against season. Residuals mainly remove farm-wide (weather/grid) alarms.
+  - The margin between the two Isolation Forests is 1-3 incidents, which is within the noise.
+  - Generator bearings are caught (4/5 at 14 d). Hydraulic (0-2/7) and gearbox (1/4) incidents mostly are not.
+  - The top residual group matches the logbook component in only 3 of 22 pre-incident episodes. Diagnosis is where milestone 3 has to add value.
+- **Hand-off to milestone 3.** `runs/m2_episodes.csv` holds 77 Isolation-Forest-on-residuals episodes and 66 threshold episodes, with turbine, dates, component group, top signals and context. It has no labels; the labels are in `runs/m2_episodes_eval.csv`.
+  - Of the 77 Isolation Forest episodes, 29 are false alarms in healthy periods, 22 precede 9 incidents, and 26 sit near incidents, mostly after repairs.
+  - That is a realistic mix for the agent.
+
 ## Open questions
 
-- How to score the agent on clustered logbook rows (one incident, several entries).
+- ~~How to score the agent on clustered logbook rows~~: score on incidents (milestone 2 rule). Keep the per-row remarks in the agent's view.
+- Episodes after repairs (sensor replaced, generator swapped) look like strong anomalies. Should the agent be told about recent maintenance (logbook rows before the episode), as a real operator would know?
 - Whether to add CARE Farm B (400 MB, 6 anomaly events) as a held-out farm.
 
 - Whether the fine-tuning step fits in the time budget or becomes a follow-up.
