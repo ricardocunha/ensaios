@@ -1,0 +1,30 @@
+[project]
+name = "compliance-agents"
+version = "0.1.0"
+description = "Compliance-review agents over scanned public contracts: Docling + MCP + Pydantic AI, with uncertainty-based escalation"
+readme = "README.md"
+authors = [
+    { name = "Ricardo Cunha", email = "ricardocunha@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "docling>=2.131.0",
+    "httpx>=0.28.1",
+    "mcp[cli]>=2.2.0",
+    "ocrmac>=1.0.1",
+    "pydantic-ai-slim[mcp,openai]>=2.52.0",
+    "python-dotenv>=1.2.3",
+    "rapidfuzz>=3.14.6",
+]
+
+[project.scripts]
+compliance-mcp = "compliance_agents.mcp_server:main"
+
+[build-system]
+requires = ["uv_build>=0.9.18,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

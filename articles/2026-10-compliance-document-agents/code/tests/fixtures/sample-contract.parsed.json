@@ -1,0 +1,53 @@
+{
+ "doc_id": "sample-contract",
+ "source": "synthetic",
+ "pages": 2,
+ "seconds": 0,
+ "ocr_used": true,
+ "mean_grade": "good",
+ "low_grade": "fair",
+ "page_scores": {
+  "1": {
+   "mean_score": 0.95
+  },
+  "2": {
+   "mean_score": 0.61
+  }
+ },
+ "sections": [
+  {
+   "id": 0,
+   "heading": "CONTRATO ADMINISTRATIVO Nº 1/2026 (SINTÉTICO)",
+   "text": "Contrato entre o MUNICÍPIO EXEMPLO e a EMPRESA FICTÍCIA LTDA.\n",
+   "pages": [
+    1
+   ]
+  },
+  {
+   "id": 1,
+   "heading": "CLÁUSULA PRIMEIRA - DO OBJETO",
+   "text": "Prestação de serviços de manutenção predial.\n",
+   "pages": [
+    1
+   ]
+  },
+  {
+   "id": 2,
+   "heading": "CLÁUSULA SEGUNDA - DA VIGÊNCIA",
+   "text": "O prazo de vigência de 12 (doze) meses, contados da assinatura.\n",
+   "pages": [
+    1,
+    2
+   ]
+  },
+  {
+   "id": 3,
+   "heading": "CLÁUSULA TERCEIRA - DA GARANTIA",
+   "text": "Será exigida garantia de 5% do valor do contrato.\n",
+   "pages": [
+    2
+   ]
+  }
+ ],
+ "markdown": ""
+}
