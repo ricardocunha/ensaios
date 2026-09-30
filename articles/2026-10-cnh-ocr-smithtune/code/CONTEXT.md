@@ -57,11 +57,11 @@ The outcome for a Non-CNH, decided from the Transcription (CNH Gate, then the Ex
 ### Training
 
 **Teacher**:
-The frontier model that runs the Extractor to produce Trajectories.
+The strong model that runs the Extractor to produce Trajectories. Its license must allow training on its outputs (ADR-0004): currently DeepSeek-V4-Pro (MIT).
 _Avoid_: oracle, labeler
 
 **Student**:
-The smaller open model fine-tuned with smithtune to imitate the Teacher's Extractor behavior.
+The smaller open model fine-tuned on smithtune-curated Golden Trajectories to imitate the Teacher's Extractor behavior, whether trained through smithtune's providers or locally.
 _Avoid_: tuned model, small model
 
 **Trajectory**:

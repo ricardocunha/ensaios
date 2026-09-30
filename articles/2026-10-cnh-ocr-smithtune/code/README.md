@@ -5,8 +5,9 @@ Reading Brazilian driver's licenses (CNH) with open models. It's also a hands-on
 ```
  CNH image ─► [ Reader ]  ─► Transcription ─► [ Extractor ] ─► CNH Record (validated JSON)
               vision OCR model                  text-only tool-calling agent
-              LoRA on Apple Silicon (mlx-vlm)   Teacher (Claude Sonnet 5) → Student (Qwen3.5-9B)
-                                                distilled with smithtune on Baseten
+              LoRA on Apple Silicon (mlx-vlm)   Teacher DeepSeek-V4-Pro (MIT) → Student Qwen3-8B
+                                                runs curated + prepared with smithtune,
+                                                Student trained with LoRA (Fireworks via smithtune; locally with mlx-lm)
 ```
 
 **Why two stages?** smithtune v0.1 [filters out every trajectory that contains images](docs/SMITHTUNE_NOTES.md) and can only train a fixed list of text LLMs. So the vision part is fine-tuned with Hugging Face / MLX tooling, and smithtune does what it was built for: distilling an agent's behavior. See [ADR-0001](docs/adr/0001-two-stage-reader-extractor.md).
@@ -33,7 +34,22 @@ What we learned:
 - **Let the vision model read, and decide elsewhere** ([ADR-0003](docs/adr/0003-reader-always-transcribes.md)). With the Reader always transcribing and the "is this a CNH?" decision made from text, real-template accuracy reached 81.0% with 0/70 real CNHs rejected. The cost: 8/72 real RG cards of one design leak through the simple label-count gate.
 - **mlx-vlm 0.7.3 gotcha:** its LoRA doesn't freeze PaddleOCR-VL's vision tower (named `visual`), so it trains 49.8% of the model and runs out of memory. [`reader/mlx_lora.py`](src/cnh_ocr/reader/mlx_lora.py) fixes it: 1.3% trainable, 5.7 GB peak, about 1h45 per epoch.
 
-Stage 2 (Extractor + smithtune) results: *pending.* Running notes are in [`docs/SMITHTUNE_NOTES.md`](docs/SMITHTUNE_NOTES.md).
+## Results (Stage 2: Extractor, distilled)
+
+Field-level scoring on held-out CNH transcriptions with injected OCR noise, plus RG/CPF decoys. The full story, including every bug, is in [`docs/SMITHTUNE_NOTES.md`](docs/SMITHTUNE_NOTES.md).
+
+| Extractor | Exactly right | Field accuracy | Decoys rejected | Real CNHs rejected | Tool calls / run | Cost per 1,000 CNHs |
+|---|---|---|---|---|---|---|
+| Teacher: DeepSeek-V4-Pro (Baseten API) | 89%* | 99.3% | 44/44 | 0 | 7.6 | ~$16 |
+| Qwen3-8B, not tuned (local) | 46% | 93.1% | 12/14 | 0 | 6.2 | $0 |
+| **Qwen3-8B + LoRA (local)** | **81%** | **96.6%** | **14/14** | 1 | **8.2** | **$0** |
+
+<sub>*Teacher: 300 training-distribution transcriptions; Students: 100 held-out ones (same generator). 99 of 100 Student runs were scored (1 failed).</sub>
+
+How it got there:
+- **Teacher:** after three 20-run checks with Claude Sonnet 5 (each found a bug in the setup), the Teacher became DeepSeek-V4-Pro (MIT), because smithtune's data-rights terms and Anthropic's terms restrict distilling Claude's outputs ([ADR-0004](docs/adr/0004-open-weight-teacher.md)). 300 runs, 266 exact, $4.84.
+- **smithtune:** `dataset pull` / `push` curated the 266 exact runs (feedback must sit on the trace **root** with `session_id`, or the filter finds nothing). Baseten training (Loops) isn't enabled for this workspace. Fireworks trained Qwen3.8-27B (1 epoch, val loss 0.013), but the replay eval ran out of credit, and it scores tool-call arguments returned as objects as invalid.
+- **Plan B:** the Student is trained locally on **smithtune's prepared splits** (`make student-data train-student`). Qwen3.5-9B's hybrid linear attention needs >48 GB to train at our lengths, so the Student is Qwen3-8B: 3.5 h per epoch, 10 GB peak. `mlx-lm`'s server ignores `--adapter-path`; the eval sends the adapter per request.
 
 ## Quickstart
 
@@ -42,22 +58,29 @@ uv sync --all-extras
 make test
 
 # Stage 1: free, local (Apple Silicon)
-make data                          # round-2 synthetic set: 2,293 train + 300 test, ~1 min
+make data                          # synthetic sets for rounds 2 and 3 (same images), ~1 min each
 make data-v1                       # round-1 set + hard set (single design), ~45 min
 make bid                           # BID sample → data/bid/test (cited, not redistributed)
 make zero-shot                     # all three Readers on synthetic + BID
-make train-reader                  # PaddleOCR-VL LoRA on round-2 data (TAG=v1 for round 1)
+make train-reader                  # PaddleOCR-VL LoRA, round 3 by default (TAG=v1|v2 for earlier rounds)
 make eval-reader                   # synthetic test, hard set, BID
 make report                        # → docs/RESULTS.md
 
-# Stage 2: paid; fill in .env first (cp .env.example .env)
-make teacher LIMIT=20              # check the cost, then: make teacher
-./smithtune/run.sh install && ./smithtune/run.sh doctor
-./smithtune/run.sh pull-golden && ./smithtune/run.sh push-golden
-./smithtune/run.sh triage-sample   # council vs ground truth (cnh_ocr.evaluation.council_agreement)
-./smithtune/run.sh prepare && ./smithtune/run.sh plan && ./smithtune/run.sh train
-./smithtune/run.sh evaluate && ./smithtune/run.sh deploy && ./smithtune/run.sh student-eval
-./smithtune/run.sh undeploy        # don't forget: deployments bill until removed
+# Stage 2: the Teacher is paid; fill in .env first (cp .env.example .env)
+make teacher LIMIT=20              # check cost and bugs on 20 runs first
+make teacher MAX_COST=5            # the Teacher run, capped at $5 (TEACHER_MODEL in .env)
+./smithtune/run.sh install && ./smithtune/run.sh doctor    # then: smithtune acknowledge-data-rights (interactive)
+TEACHER_START=<iso time> GOLDEN_TARGET=266 ./smithtune/run.sh pull-golden
+./smithtune/run.sh push-golden     # previews, then asks y/N
+./smithtune/run.sh prepare && ./smithtune/run.sh plan      # SMITHTUNE_PROVIDER=fireworks|baseten in .env
+MAX_EPOCHS=1 ./smithtune/run.sh train                      # paid; asks y/N
+./smithtune/run.sh deploy / student-eval / undeploy        # paid; undeploy when done
+
+# Stage 2, plan B: free, local (Apple Silicon)
+make student-data                  # smithtune's prepared splits → mlx-lm chat SFT
+make train-student                 # Qwen3-8B LoRA, ~3.5 h, 10 GB peak
+make eval-student                  # untuned base on 100 held-out transcriptions
+make eval-student ADAPTER=runs/student/qwen3_8b-lora
 ```
 
 ## Layout
@@ -76,8 +99,11 @@ make teacher LIMIT=20              # check the cost, then: make teacher
 
 | | License | Notes |
 |---|---|---|
-| `PaddlePaddle/PaddleOCR-VL-1.6` | Apache-2.0 | Fine-tuned here (rounds 1 and 2) |
-| `Qwen/Qwen3.5-9B` | Apache-2.0 | Zero-shot Reader, and the smithtune Student |
+| `PaddlePaddle/PaddleOCR-VL-1.6` | Apache-2.0 | Reader, fine-tuned here (rounds 1–3) |
+| `Qwen/Qwen3.5-9B` | Apache-2.0 | Zero-shot Reader |
+| `deepseek-ai/DeepSeek-V4-Pro-0813` | MIT | Extractor Teacher (via Baseten Model APIs) |
+| `Qwen/Qwen3-8B` | Apache-2.0 | Extractor Student, fine-tuned here (LoRA, local) |
+| `Qwen/Qwen3.8-27B` (Fireworks `qwen3p8-27b`) | Apache-2.0 | Student trained through smithtune on Fireworks (1 epoch) |
 | `datalab-to/chandra-ocr-2` | AI Pubs Open RAIL-M (modified) | Zero-shot only; no adapter published. Free for research and personal use; **commercial use prohibited above US$2M revenue or funding**; share-alike covers derivatives and outputs |
 | BID Dataset (Soares, Junior & Bezerra, SIBGRAPI 2020) | none stated | Evaluation only: cited, not redistributed, never trained on. Real CNH templates with synthetic personal data and blurred faces |
 

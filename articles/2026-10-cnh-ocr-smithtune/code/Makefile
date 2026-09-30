@@ -2,8 +2,9 @@
 PY := uv run python -m
 MODELS := paddleocr_vl chandra2 qwen35_9b
 MODEL ?= paddleocr_vl
-# Adapter tag: v1 = round 1 (one design), v2 = round 2 (domain-randomized).
-TAG ?= v2
+# Adapter tag: v1 = round 1 (one design), v2 = round 2 (domain-randomized),
+# v3 = round 3 (same images as v2, the Reader always transcribes; the best round).
+TAG ?= v3
 # Synthetic test images per Reader run.
 N ?= 50
 R := runs/reader
@@ -62,7 +63,7 @@ report:             ## Results tables -> docs/RESULTS.md
 	  $(PY) cnh_ocr.evaluation.report --data data/synth-hard/test --reader $(wildcard $(R)/hard-*.jsonl) | sed -n '3,$$p' | sed '/^## Extractor/,$$d'; \
 	  echo "## BID (real CNH templates)"; echo; \
 	  $(PY) cnh_ocr.evaluation.report --data data/bid/test --reader $(wildcard $(R)/bid-*.jsonl) \
-	    --extractor $(wildcard runs/extractor/*.jsonl) | sed -n '3,$$p'; \
+	    --extractor $(wildcard runs/extractor/cnh-teacher-deepseek.jsonl runs/extractor/student-base.jsonl runs/extractor/student-tuned.jsonl) | sed -n '3,$$p'; \
 	} > docs/RESULTS.md
 	@echo "wrote docs/RESULTS.md"
 

@@ -1,5 +1,14 @@
 # Plan: CNH OCR + smithtune field test
 
+> **Historical document.** This is the plan as agreed on 2026-09-25, kept for the record. Several decisions changed once real results came in:
+> - **Teacher:** Claude Sonnet 5 → DeepSeek-V4-Pro (MIT), for license reasons ([ADR-0004](docs/adr/0004-open-weight-teacher.md)).
+> - **Student:** Qwen3.5-9B → Qwen3-8B, trained locally on smithtune's prepared splits. Baseten Loops wasn't enabled, Fireworks credit ran out, and Qwen3.5-9B needs >48 GB to train locally.
+> - **Reader:** three rounds instead of one; the Reader always transcribes ([ADR-0003](docs/adr/0003-reader-always-transcribes.md)). Only PaddleOCR-VL was fine-tuned.
+> - **Council triage experiment:** not run (budget).
+>
+> What actually happened, with numbers: [README](README.md) · [docs/SMITHTUNE_NOTES.md](docs/SMITHTUNE_NOTES.md) · [docs/RESULTS.md](docs/RESULTS.md).
+
+
 Terms follow `CONTEXT.md`. Architecture: `docs/adr/0001`. Data policy: `docs/adr/0002`.
 Target publish date: **2026-10-16** (about 3 weeks after smithtune's 2026-09-24 launch).
 
