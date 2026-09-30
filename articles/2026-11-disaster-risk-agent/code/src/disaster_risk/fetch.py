@@ -6,7 +6,7 @@ import sys
 
 from . import basin
 from ._summary import summarize_ana, summarize_inmet
-from .sources import ana, cemaden, copernicus_ems, inmet, s2id, ufrgs_impact
+from .sources import ana, cemaden, copernicus_ems, inmet, s2id, sgb_sace, ufrgs_impact
 from .sources._http import BlockedError
 
 
@@ -17,6 +17,18 @@ def main() -> int:
         rows = ana.load_telemetry(code, basin.EVENT_START, basin.EVENT_END)
         print("ANA", summarize_ana(code, rows))
     status["ana"] = "works"
+
+    # Historical record for station thresholds (milestone 2), ~2019 → day before the window.
+    for code in basin.ANA_STATIONS:
+        rows = ana.load_telemetry(code, basin.HISTORY_START, basin.HISTORY_END)
+        print("ANA history", summarize_ana(code, rows))
+
+    # SGB SACE Taquari alert bulletins (official alert times), April-May 2024.
+    bulletins = [b for b in sgb_sace.list_bulletins() if b.nominal.year == 2024 and b.nominal.month in (4, 5)]
+    for b in bulletins:
+        sgb_sace.pdf_text(sgb_sace.download_bulletin(b))
+    print(f"SGB SACE Taquari bulletins 2024-04/05: {len(bulletins)}")
+    status["sgb_sace"] = "works"
 
     zip_path = inmet.download_year(basin.EVENT_START.year)
     for code in basin.INMET_STATIONS:

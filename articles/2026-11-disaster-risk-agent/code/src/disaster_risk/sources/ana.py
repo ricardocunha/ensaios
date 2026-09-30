@@ -22,7 +22,7 @@ BASE = "http://telemetriaws1.ana.gov.br/ServiceANA.asmx"
 @dataclass(frozen=True)
 class Reading:
     station: str
-    time: datetime  # as served by ANA [[VERIFY: timezone, assumed local BRT]]
+    time: datetime  # as served by ANA: naive local time, UTC-3 (see basin.ANA_UTC_OFFSET)
     level_cm: float | None
     flow_m3s: float | None
     rain_mm: float | None

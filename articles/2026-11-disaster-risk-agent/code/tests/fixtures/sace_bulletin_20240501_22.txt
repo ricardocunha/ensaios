@@ -1,0 +1,35 @@
+                                                SERVIÇO GEOLÓGICO DO BRASIL – SGB/CPRM
+                                                                 DIRETORIA DE HIDROLOGIA E GESTÃO TERRITORIAL
+                                                                 SUPERINTENDÊNCIA REGIONAL DE PORTO ALEGRE
+
+
+
+BOLETIM DE ALERTA HIDROLÓGICO DA BACIA DO RIO TAQUARI
+                                                                                                                                               Porto Alegre, 01 de maio de 2024.
+Prezados(as) Senhores(as),
+
+Estamos enviando o Boletim Extraordinário do Sistema de Alerta Hidrológico da Bacia do Rio Taquari (SAH Rio Taquari). O
+mapa com a localização das estações de monitoramento, os dados hidrológicos e as previsões aqui apresentados, assim
+como os boletins enviados até o presente momento estão disponíveis em www.sgb.gov.br/sace/taquari.
+                                                                                              Chuva                            Variação
+                                                                                            Acumulada     Nível Atual          Recente      Nível de
+                                                                                               24h                               24h                               Nível Previsto
+    Nome da Estação                                  Curso d'água        Município                                                         Inundação
+                                                                                               (mm)                     (cm)
+                                                                                                        01/05/2024 22:00                      (cm)        (cm)                  Data
+Auler                                           -                   Soledade                        -
+Guaporé                                         -                   Guaporé                   248,0
+Ibiraiaras                                      -                   Ibiraiaras                 68,4
+Vacaria                                         -                   Vacaria                    32,6
+Pq. Aparados da Serra ** -                                          Cambará do Sul                  -
+Passo Tainhas                                   Rio Tainhas         Jaquirana                 124,2           475                +87           #              #                     #
+Linha José Júlio                                Rio das Antas       Santa Tereza              195,4          2394                +963          #              #                     #
+Santa Tereza                                    Rio Taquari         Santa Tereza              180,4          2158                +878         1500            #                     #
+Muçum                                           Rio Taquari         Muçum                     202,4          2377                +881         1800        2246           02/05/2024 02:00
+Encantado                                       Rio Taquari         Encantado                 156,8            -                  -           1200                Em estabilização
+Barra do Fão                                    Rio Forqueta        Travesseiro               195,4            -                  -            #              #                     #
+Estrela                                         Rio Taquari         Estrela                    93,2          3015                +357         1900                 Em elevação
+Bom Retiro do Sul                               Rio Taquari         Bom Retiro do Sul          82,2          1999                +128         1650            #                     #
+Porto Mariante                                  Rio Taquari         Venâncio Aires             74,0          1563                +147         1400            #                     #
+Taquari                                         Rio Taquari         Taquari                    76,8          1195                +411         850             #                     #
+Legenda: * Valor informado pelo observador; - Equipamento em manutenção; # Sem valor definido; ** Equipamento operado pela SEMA-RS. *** Valor Estimado

@@ -25,8 +25,10 @@ class Product:
     kind: str  # DEL = delineation (flood extent), GRA = grading (damage)
     monitoring: int  # 0 = first product, 1.. = later monitoring updates
     sensor: str | None
-    acquired: str | None  # ISO time of the image the product was made from
+    acquired: str | None  # ISO time (UTC) of the image the product was made from
     download_url: str
+    delivered: str | None = None  # ISO time (UTC) the product was published (``version.deliveryTime``)
+    flooded_ha: float | None = None  # "Flooded area" from the product stats, hectares
 
     @property
     def filename(self) -> str:
@@ -35,6 +37,16 @@ class Product:
 
 def download_activation(code: str, data_dir: Path = DATA_DIR) -> Path:
     return fetch(API.format(code=code), data_dir / "copernicus_ems" / f"{code}.json", timeout=120)
+
+
+def _flooded_ha(stats: dict) -> float | None:
+    """``stats`` keys vary ("Flooded area", "Flooded area*"); take the first one."""
+    for key, groups in stats.items():
+        if key.startswith("Flooded area"):
+            for g in groups.values():
+                if g.get("unit") == "ha" and g.get("total") is not None:
+                    return float(g["total"])
+    return None
 
 
 def parse_products(activation_json: dict) -> list[Product]:
@@ -55,6 +67,8 @@ def parse_products(activation_json: dict) -> list[Product]:
                     sensor=img.get("sensorName"),
                     acquired=img.get("acquisitionTime"),
                     download_url=p["downloadPath"],
+                    delivered=(p.get("version") or {}).get("deliveryTime"),
+                    flooded_ha=_flooded_ha(p.get("stats") or {}),
                 )
             )
     out.sort(key=lambda p: (p.aoi_number, p.kind, p.monitoring))

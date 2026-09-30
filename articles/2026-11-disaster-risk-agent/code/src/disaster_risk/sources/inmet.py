@@ -23,7 +23,7 @@ MISSING = {"", "-9999"}
 @dataclass(frozen=True)
 class HourlyRain:
     station: str
-    time_utc: datetime  # end of the hour the total refers to [[VERIFY]]
+    time_utc: datetime  # end of the hour the total refers to (verified, docs/DATA.md)
     rain_mm: float | None
 
 
