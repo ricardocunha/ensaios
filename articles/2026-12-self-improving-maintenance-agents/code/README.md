@@ -11,7 +11,11 @@ make data       # ~158 MB download: CARE to Compare Wind Farm A + EDP failure lo
 make audit      # alignment, coverage and label checks -> runs/audit.json
 make baseline   # Isolation Forest sanity check -> runs/baseline_*.json
 make detect     # milestone 2: walk-forward detectors, incidents, episodes -> runs/m2_*
+make replay-dry # milestone 3: replay harness with an offline rule stand-in (no server)
+make replay     # milestone 3: 77 episodes x 3 memory arms on a local OpenAI-compatible server -> runs/m3_*
 ```
+
+The agent talks to any OpenAI-compatible server: `AGENT_BASE_URL` (default `http://localhost:8088/v1`), `AGENT_MODEL` (default `default_model`). We used mlx-lm serving Qwen3-8B 4-bit, with thinking off.
 
 `data/`, `runs/` and `.venv/` are git-ignored. Keep data, weights, run outputs and `.env` out of git.
 
@@ -26,6 +30,10 @@ make detect     # milestone 2: walk-forward detectors, incidents, episodes -> ru
 | `maintenance_agents.features` | Hourly aggregation, operating-state regressors, temperature-rise targets, component groups. |
 | `maintenance_agents.detect` | Walk-forward (expanding window) normal-behaviour model + three detectors: raw Isolation Forest, Isolation Forest on residuals, per-signal residual threshold. No future data. |
 | `maintenance_agents.incidents` | Logbook rows → incidents (documented merge rule); what the logbook timestamp marks in the SCADA. |
+| `maintenance_agents.episodes` | Milestone 3: an episode as known at decision time (end of the first alarm day), plus the agent's tool data (residual series, context signals, maintenance log), all cut at that time. |
+| `maintenance_agents.memory` | Episodic memory: outcomes from the logbook that become visible only when they would be known; similarity retrieval; the context gate (`GatePolicy`, `gate`). |
+| `maintenance_agents.agent` | The Pydantic AI diagnosis agent (typed `Diagnosis`, three tools), the prompt, and an offline rule stand-in for dry runs. |
+| `maintenance_agents.replay` | Chronological replay, three arms (no memory, ungated, gated), metrics and cost. |
 | `maintenance_agents.evaluate` | Event-level scoring (7/14/30-day lead windows, false alarms per turbine-month, per component) and the anomaly episode table for the diagnosis agent. |
 
 Docs: [docs/DATA.md](docs/DATA.md) (dataset choice, licenses, label audit) and [docs/RESULTS.md](docs/RESULTS.md) (measured numbers).

@@ -1,4 +1,4 @@
-.PHONY: sync data audit baseline detect detect-operating test
+.PHONY: sync data audit baseline detect detect-operating replay-dry replay replay-queued test
 
 sync:
 	uv sync
@@ -22,5 +22,17 @@ detect:
 detect-operating:
 	OMP_NUM_THREADS=1 nice uv run python -m maintenance_agents.evaluate --jobs 5 --tag m2_operating --operating-power-min 0.1
 
+# milestone 3: harness dry run with the offline rule stand-in (no server, seconds)
+replay-dry:
+	PYDANTIC_AI_NO_BANNER=1 uv run python -m maintenance_agents.replay --model rule --tag m3_dryrun_rule
+
+# milestone 3: full replay, 77 episodes x 3 arms, on the local OpenAI-compatible server ($$AGENT_BASE_URL)
+replay:
+	PYDANTIC_AI_NO_BANNER=1 nice uv run python -m maintenance_agents.replay --model local --tag m3 --resume
+
+# the same, queued behind another job's QUEUE_DONE file (survives logout)
+replay-queued:
+	nohup scripts/run_after_queue.sh >/dev/null 2>&1 &
+
 test:
-	uv run pytest -q
+	PYDANTIC_AI_NO_BANNER=1 uv run pytest -q
