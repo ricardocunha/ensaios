@@ -40,3 +40,21 @@ Takeaways:
 - `foro` rule on a Receita Federal contract ("É eleito o Foro de CURITIBA"; the contracting body sits in Curitiba): **violation, 3/3 samples, confidence 0.95**, before the fix. The reviewer never opened the preamble, despite an instruction to. With thinking on, still a violation (it keyed on a typo in the contract, "Lei nº 14.333/2021").
 - After `parse_document` started returning the preamble: **compliant, 3/3**, citing Curitiba. Changing the tool's output fixed what changing the instructions didn't.
 - Sample agreement was 3/3 on the wrong answer: agreement alone won't catch systematic mistakes.
+
+## 3. Reviewer on 20 synthetic contracts (text PDFs, 8 rules, 1 sample, Qwen3-8B 4-bit local)
+
+| | Baseline | v2: stem search + code-decided limits |
+|---|---|---|
+| Accuracy (160 findings) | 74.4% | **95.0%** |
+| Violations found (recall) | 22/23 (95.7%) | 21/23 (91.3%) |
+| Violation precision | 39.3% | **77.8%** |
+| False alarms | 34 | **6** |
+| Hard compliant cases right | 4/11 | **11/11** |
+| Quotes verbatim | 134/146 | 150/153 |
+| Unanswered (invalid output) | 7 | 1 |
+
+Baseline false alarms by rule: vigencia_limite 13, garantia_limite 10, vinculacao 10, preco_pagamento 1. Causes: search matched whole words only ("vinculação" never found "vincula-se"); arithmetic on limits ("12 meses excede 5 anos"). v2 remaining false alarms: reajuste 3, vigencia_limite 2, objeto 1. Missed: foro 1, garantia_limite 1.
+
+Self-reported confidence: baseline 88% of findings ≥ 0.95 with 80.7% accuracy on them (74.4% overall); v2 94% ≥ 0.95 with 95.3% (95.0% overall). It barely separates right from wrong.
+
+Runs: `runs/review_text_baseline.jsonl`, `runs/review_text_v2.jsonl` (git-ignored; regenerate with `make review`).

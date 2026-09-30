@@ -1,4 +1,4 @@
-.PHONY: test download scans ocr-eval mcp
+.PHONY: test download scans ocr-eval mcp synth serve review
 
 test:
 	uv run pytest -q
@@ -18,3 +18,16 @@ ocr-eval:
 # The MCP server (stdio)
 mcp:
 	uv run compliance-mcp
+
+DOCS := $(shell seq -f "synth-%03g" 0 19)
+
+synth:
+	uv run python -m compliance_agents.synth --n 60
+
+# needs a local model server: make serve (other terminal)
+serve:
+	uv run --group local mlx_lm.server --model mlx-community/Qwen3-8B-4bit --port 8088
+
+review:
+	uv run python -m compliance_agents.reviewer $(DOCS) --decide code --data data/synth/text --out runs/review_text_v2.jsonl
+	uv run python -m compliance_agents.evaluate runs/review_text_v2.jsonl --data data/synth/text
