@@ -39,3 +39,14 @@ def test_preamble_spans_sections_until_the_first_clause():
     ])
     doc = ParsedDocument("d", "s", 1, 0, False, "good", "good", {}, secs)
     assert "CURITIBA" in preamble_text(doc) and "Objeto." not in preamble_text(doc)
+
+
+def test_search_matches_word_stems(monkeypatch):
+    from pathlib import Path
+
+    from compliance_agents import mcp_server
+
+    monkeypatch.setenv("COMPLIANCE_DATA_DIR", str(Path(__file__).parent / "fixtures"))
+    hits = mcp_server.search_document("sample-contract", "vigências")
+    assert hits and "VIGÊNCIA" in hits[0]["heading"]
+    assert mcp_server.search_document("sample-contract", "garantido percentual")[0]["heading"].endswith("GARANTIA")

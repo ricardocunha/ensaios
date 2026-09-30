@@ -93,7 +93,10 @@ def ink_pages(pdf_path: Path, sample: int = 3) -> int:
 def download_contract(client: httpx.Client, c: dict, out: Path) -> ContractPdf | None:
     cnpj = c["orgaoEntidade"]["cnpj"]
     year, seq = c["anoContrato"], c["sequencialContrato"]
-    files = _get(client, f"{PNCP}/orgaos/{cnpj}/contratos/{year}/{seq}/arquivos").json()
+    resp = _get(client, f"{PNCP}/orgaos/{cnpj}/contratos/{year}/{seq}/arquivos")
+    if not resp.content:  # some contracts have no files: empty 200/204 instead of []
+        return None
+    files = resp.json()
     doc = next((f for f in files if f.get("tipoDocumentoNome") == "Contrato"), None)
     if doc is None:
         return None
@@ -154,7 +157,7 @@ def main() -> None:
                     continue
                 try:
                     pdf = download_contract(client, c, args.out)
-                except httpx.HTTPError:
+                except (httpx.HTTPError, ValueError):  # network errors, malformed JSON
                     continue
                 if pdf is None or pdf.blank:
                     if pdf is not None:

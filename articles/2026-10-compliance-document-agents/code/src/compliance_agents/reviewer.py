@@ -36,8 +36,8 @@ class Finding(BaseModel):
         description="compliant: the contract meets the rule; violation: it doesn't (including a required clause that is missing); "
         "not_applicable: the rule doesn't apply to this contract; unclear: the text doesn't let you decide"
     )
-    section_id: int | None = Field(description="The section the evidence comes from; null if there is none")
-    evidence: str = Field(description="A short verbatim quote from the contract that supports the verdict; empty if the clause is missing")
+    section_id: int | None = Field(default=None, description="The section the evidence comes from; null if there is none")
+    evidence: str = Field(default="", description="A short verbatim quote from the contract that supports the verdict; empty if the clause is missing")
     confidence: float = Field(ge=0, le=1, description="How sure you are of the verdict, 0 to 1")
     reason: str = Field(description="One or two sentences, in Portuguese")
 
@@ -87,7 +87,7 @@ def make_agent(toolset: MCPToolset, model=None, output_type=Finding) -> Agent:
         output_type=output_type,
         instructions=INSTRUCTIONS,
         toolsets=[toolset],
-        retries=2,
+        retries=3,
         model_settings=model_settings(),
     )
 

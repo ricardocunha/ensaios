@@ -15,7 +15,7 @@ class GuaranteeFacts(BaseModel):
     justification_quote: str = Field(
         description="Verbatim quote justifying a guarantee above 5% (technical complexity and risks); empty if there is none"
     )
-    section_id: int | None
+    section_id: int | None = None
     evidence: str = Field(description="Verbatim quote of the guarantee clause; empty if there is none")
     confidence: float = Field(ge=0, le=1)
 
@@ -24,7 +24,7 @@ class TermFacts(BaseModel):
     continuous: bool = Field(description="Is the object a continuous service or continuous supply (serviço/fornecimento contínuo)?")
     initial_months: int | None = Field(description="Initial term (vigência) in months; convert years to months")
     max_total_months: int | None = Field(description="Maximum total term including extensions (prorrogações), in months; null if not stated")
-    section_id: int | None
+    section_id: int | None = None
     evidence: str = Field(description="Verbatim quote of the term clause")
     confidence: float = Field(ge=0, le=1)
 

@@ -45,7 +45,10 @@ def normalize(text: str) -> str:
 
 
 def _page_quality(doc: ParsedDocument, pages: list[int]) -> float | None:
-    scores = [doc.page_scores[p]["mean_score"] for p in pages if p in doc.page_scores]
+    """Lowest OCR score on these pages; None when they weren't OCR'd (a text layer needs no OCR).
+    (Docling's mean_score mixes in layout confidence, which is low on perfectly readable pages.)"""
+    scores = [doc.page_scores[p].get("ocr_score") for p in pages if p in doc.page_scores]
+    scores = [s for s in scores if s is not None and s == s and s > 0]
     return round(min(scores), 3) if scores else None
 
 
@@ -91,18 +94,35 @@ def get_section(doc_id: str, section_id: int) -> dict:
     return {"id": s.id, "heading": s.heading, "pages": s.pages, "page_quality": _page_quality(doc, s.pages), "text": s.text}
 
 
+STEM = 6  # "vinculação" and "vincula-se" both start with "vincul"
+STOPWORDS = {"a", "o", "as", "os", "de", "da", "do", "das", "dos", "e", "em", "no", "na", "ao", "à", "que", "com", "por", "para", "um", "uma"}
+
+
+def _stems(text: str) -> list[str]:
+    words = [w.strip(".,;:()[]\"'-/") for w in normalize(text).split()]
+    return [w[:STEM] for w in words if w and w not in STOPWORDS]
+
+
 @server.tool()
 def search_document(doc_id: str, query: str, limit: int = 5) -> list[dict]:
-    """Sections whose heading or text contain every word of the query (accent-insensitive)."""
+    """Sections ranked by how many query words they contain (accent-insensitive, matching word stems,
+    so "vinculação" finds "vincula-se"). Returns a snippet around the first match."""
     doc = _doc(doc_id)
-    words = normalize(query).split()
+    q = list(dict.fromkeys(_stems(query)))
+    if not q:
+        return []
     hits = []
     for s in doc.sections:
         body = normalize(s.heading + " " + s.text)
-        if all(w in body for w in words):
-            pos = body.find(words[0]) if words else 0
-            hits.append({"id": s.id, "heading": s.heading, "pages": s.pages, "snippet": body[max(0, pos - 80) : pos + 220]})
-    return hits[:limit]
+        words = set(_stems(body))
+        matched = [w for w in q if w in words]
+        if not matched:
+            continue
+        pos = min(body.find(w) for w in matched)
+        hits.append({"id": s.id, "heading": s.heading, "pages": s.pages, "matched": f"{len(matched)}/{len(q)}",
+                     "snippet": body[max(0, pos - 80) : pos + 220], "_score": len(matched) / len(q)})
+    hits.sort(key=lambda h: -h["_score"])
+    return [{k: v for k, v in h.items() if k != "_score"} for h in hits[:limit]]
 
 
 @server.tool()
