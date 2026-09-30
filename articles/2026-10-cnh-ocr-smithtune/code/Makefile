@@ -93,7 +93,7 @@ eval-student:       ## make eval-student [ADAPTER=runs/student/qwen3_8b-lora] [E
 	$(PY) mlx_lm server --model $(STUDENT_BASE) $(if $(ADAPTER),--adapter-path $(ADAPTER)) --port 8088 \
 	  > logs/student-server.log 2>&1 & echo $$! > runs/student/server.pid; \
 	until curl -sf localhost:8088/v1/models >/dev/null; do sleep 2; done; \
-	$(PY) cnh_ocr.extractor.run --role student --student-url http://localhost:8088/v1 \
+	STUDENT_ADAPTER=$(ADAPTER) $(PY) cnh_ocr.extractor.run --role student --student-url http://localhost:8088/v1 \
 	  --student-model $(STUDENT_BASE) --data data/synth-v3/test --limit $(EVAL_N) --concurrency 1 \
 	  --project cnh-extractor-student --out runs/extractor/student-$(if $(ADAPTER),tuned,base).jsonl; \
 	kill $$(cat runs/student/server.pid)
