@@ -10,6 +10,8 @@ Does a maintenance agent actually get better when it keeps an episodic memory of
 
 Wind energy is a large part of the Northeast's grid. The data is a public wind-turbine SCADA dataset with recorded faults: CARE to Compare Wind Farm A (the EDP wind farm in Portugal) plus EDP's failure logbooks, both CC BY-SA 4.0. See `code/docs/DATA.md`.
 
+**Decision (2026-09-30): keep the Brazil framing.** No public Brazilian turbine-level SCADA with fault labels was found, so the data stays Portuguese (EDP). The article says so plainly and frames the result for Brazil's Northeast wind operators: what a self-improving maintenance agent would need from their own SCADA and maintenance logs, and why opening that data would matter.
+
 ## Architecture
 
 1. **Detection:** Isolation Forest (plus a simple threshold baseline) on SCADA features per turbine.
