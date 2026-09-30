@@ -11,6 +11,7 @@ Planning stage. See [PLAN.md](PLAN.md).
 | LinkedIn | [EN](linkedin-en.md) · [PT-BR](linkedin-pt-br.md) |
 | Code | [code/](code/) |
 | Plan | [PLAN.md](PLAN.md) |
+| Plan | [PLAN.md](PLAN.md) |
 
 ## Published
 
