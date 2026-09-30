@@ -8,7 +8,7 @@ Can LLM agents make good decisions over a road graph (which segments to fix firs
 
 ## Brazilian angle
 
-Belo Horizonte's road network from OpenStreetMap via OSMnx (chosen in milestone 1, see below). Condition data is synthetic, with a realism check against the city's open, geolocated "Tapa-Buraco" service requests (see `code/docs/DATA.md`).
+Belo Horizonte's road network from OpenStreetMap via OSMnx (chosen in milestone 1, see below). Road condition comes from the city's open, geolocated "Tapa-Buraco" pothole-repair requests, aggregated to road sections; repair costs are synthetic (milestone 2, see `code/docs/DATA.md`).
 
 ## Architecture
 
@@ -26,7 +26,7 @@ Belo Horizonte's road network from OpenStreetMap via OSMnx (chosen in milestone 
 ## Milestones
 
 1. OSMnx graph + tools + tests.
-2. Synthetic condition data.
+2. Road sections + condition data (real requests, synthetic cost) + knapsack baseline.
 3. Agents + baseline comparison.
 4. Drafts, with maps.
 
@@ -54,11 +54,26 @@ Cost of the choice: Porto Alegre would have given the flood cross-link (May 2024
 - `sample_od_pairs`, `compute_baseline`, `closure_impact`: exact travel-time deltas, affected and disconnected trips for any set of closed edges; the baseline is computed once and reused, and only trips through a closed edge are rerouted (5 closures × 1,000 OD pairs in ~14 s on BH).
 - `load_pois`, `snap_points`, `time_to_nearest`, `isochrone`, `accessibility`, `accessibility_loss`: OSM hospitals (94 in BH) and schools (422), time to nearest facility, share of nodes within 5/10/15 min, and nodes that lose access when edges close.
 
+## Milestone 2 result (2026-09-30)
+
+Numbers from `code/docs/RESULTS.md` ("Milestone 2"); definitions in `code/docs/DATA.md` ("Derived tables").
+
+**Sections.** Consecutive edges with the same name/ref and highway class merge until a strictly higher-class road crosses or the road forks; unnamed edges stay alone; chains over 1 km are cut into equal pieces. Belo Horizonte: **19,842 sections** (19,056 without the 1 km cap) from 82,718 directed edges; median 163 m, p90 614 m. The top-10 edges fall in 8 sections, but the top-10 *sections* are still all Anel Rodoviário pieces, so the useful agent view is the top-10 *roads* (best section per name): Anel, Av. Waldir Soeiro Emrich, Av. Presidente Antônio Carlos, R. Desembargador Reis Alves, R. Juarez Teixeira Pinto, Av. Cristiano Machado, Av. Dom Pedro I, … Closing a whole section can hurt far more than its betweenness suggests (S01500 on Av. Quatro Mil Cento e Setenta e Dois: 111 of 1,000 trips, mean +389 s).
+
+**Condition data.** 198,991 Tapa-Buraco requests, Aug 2022 – Jul 2023 (the newest month published), 88,942 distinct locations. 95.0% snap to a drivable link within 30 m (unsnapped 4.97%; median distance 12.5 m). 60.9% of sections (82.2% of km) have at least one request. Requests are a reporting signal: 21.0 locations/km on residential sections, 0.10 on the motorway (Anel); condition and criticality are nearly uncorrelated (Spearman −0.09).
+
+**Score and cost.** `condition` = percentile of a smoothed density (distinct locations per km, 0.5 km prior at the network rate), 0 without requests. `repair_cost` = pavement area (OSM lanes or class default × 3.5 m) × (0.3 + 0.7 × condition), in m²-of-resurfacing units, no currency. `value` = condition × criticality × km. Tidy table: `code/data/belo-horizonte-sections.csv` (git-ignored).
+
+**Baseline to beat.** 0/1 knapsack over 11,860 candidate sections. Greedy by value/cost is within 1e-5 of the exact optimum (SciPy/HiGHS, 14–19 s) at 5/10/20% budgets; 5% of the budget captures 54.4% of total value (445 sections, 175 km), 20% captures 84.0%. The plan buys arterials with some requests (Waldir Soeiro Emrich, Amazonas, Vilarinho, Cristiano Machado, Tancredo Neves), not the residential streets with the most requests: at 5% it covers only 5.4% of requests. That gap is where an agent's judgment could matter (or not) in milestone 3.
+
+**Verify items.** Newer months: none after Jul 2023 (resolved). `Restrito`: the ticket's access class inside BH Digital per the data dictionary (resolved). "Integração entre Sistemas": 97.7% Tapa-Buraco, pothole requests almost never arrive by phone, so probably an import from another system, still unconfirmed. CC-BY version: the portal states none. Maps: `figures/bh-critical-sections.png`, `figures/bh-pothole-density.png` (section aggregates only, OSM attribution on the figure).
+
 ## Open questions
 
-- **Edges vs. segments.** The top-5 edges in both cities are consecutive pieces of the same road. Agents should act on segments (edge chains between junctions, or named stretches); milestone 2 needs a segment definition.
+- **Edges vs. segments.** Resolved in milestone 2 (sections). Open: dual carriageways are two sections, and OSM name variants of one road are not merged.
+- **Condition vs. reporting.** Requests are a proxy; residential streets dominate. Should the agent see the bias explicitly (e.g. class-normalized condition)? Who maintains the Anel pavement? [[VERIFY]]
 - **Floods.** Reuse flood extents from the disaster article (Porto Alegre) or find flood-prone areas for Belo Horizonte? [[VERIFY: open flood-risk layer for BH]]
-- **Pothole data.** Newer months than Jul 2023, the meaning of the "Integração entre Sistemas" channel and of `Nivel Acesso = Restrito`, and the exact CC-BY version (all marked [[VERIFY]] in `code/docs/DATA.md`). Requests measure reporting, not pavement state.
+- **Pothole data.** Still open: the meaning of "Integração entre Sistemas" and the CC-BY version (both [[VERIFY]] in `code/docs/DATA.md`).
 - **Hospitals.** OSM `amenity=hospital` includes private hospitals and misses UPAs/clinics; decide whether to add `amenity=clinic` / `healthcare=*` or an official list (CNES).
 - **Travel times** are free-flow (OSMnx imputed speeds), so closure delays are lower bounds on real congestion effects.
 - Top-100 overlap for sampled k was measured on Porto Alegre only.

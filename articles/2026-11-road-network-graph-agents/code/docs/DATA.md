@@ -31,44 +31,71 @@ Checked on 2026-09-30.
   `speed_kph` (from `maxspeed` where tagged, otherwise the mean per highway
   type), so travel times are free-flow, not congested.
 
-## Road condition / service requests (checked, not yet used)
+## Road condition / service requests
 
-### Belo Horizonte: "Solicitações dos cidadãos, por meio dos canais de atendimento da PBH" (BH Digital)
+### Belo Horizonte: "Solicitações dos cidadãos, por meio dos canais de atendimento da PBH" (BH Digital) — in use since milestone 2
 
 - **Where:** <https://dados.pbh.gov.br/dataset/solicitacoes-dos-cidadaos-por-meio-dos-canais-de-atendimento-da-pbh>
-  (publisher SMPOG; maintainer SUMOG).
-- **License:** Creative Commons Attribution (CC-BY), as shown on the portal.
-  [[VERIFY: exact CC-BY version (4.0?) and attribution text PBH asks for]]
-- **Access:** monthly CSV files, no account. The CKAN API at
-  `dados.pbh.gov.br/api/3/...` returned HTTP 403 ("Acesso Bloqueado", a
-  GoCache block) to `curl`, but the direct resource download
-  (`ckan.pbh.gov.br/dataset/.../download/dadosabertos_bhdigital_2023_mai.csv`)
-  worked.
-- **What we saw in May 2023 (`2023 MAI`, 14 MiB, `;`-separated, UTF-8 with
-  BOM):** 62,404 requests, of which **16,225 are "Tapa-Buraco"** (pothole
-  repair), **all with coordinates** (10,739 distinct points), plus street
-  name, number, neighbourhood, regional, created/closed dates and status
-  (16,174 "Encerrado"). Channel: 11,696 "Integração entre Sistemas", 3,495
-  "Portal", 1,027 "Portal Mobile". Dates are `dd/mm/yyyy` although the header
-  says `YYYY-MM-DD`. Other road-related services exist ("Via Pública -
-  Patrolamento", "Obra em Ruas, Calçadas e Vias Públicas - Fiscalização").
-- **Coverage:** the portal lists files for 2020 (May–Dec), 2021, 2022 and
-  2023 (Jan–Jul). [[VERIFY: whether newer months exist, maybe under another
-  dataset; the ombudsman dataset "Dados gerais das manifestações processadas
-  pela ouvidoria ... BH DIGITAL" has 2024–2025 files but is a different
-  thing]]
-- **Personal data:** no requester fields in the file. Coordinates are
-  occurrence locations, which can still sit in front of a home, so we would
-  only use them aggregated to road segments and never publish points.
-  Every row is marked `Nivel Acesso = Restrito`. [[VERIFY: what "Restrito"
-  means here, given the file is published openly]]
-- **"Integração entre Sistemas":** most pothole rows come through this
-  channel, which may be internal/inspection-generated rather than citizen
-  reports. [[VERIFY: meaning of this channel]]
-- **Use in this article:** a candidate for a realism check on the synthetic
-  condition scores (milestone 2): does the synthetic "bad segment" map look
-  anything like where potholes are reported? Not a ground truth of road
-  condition: requests measure reporting, not pavement state.
+  (publisher SMPOG; maintainer SUMOG). Data dictionary: "SUMOG - Dicionário
+  de dados - Solicitações BHDIGITAL.pdf" on the same page (dated 25/07/2023).
+- **License:** Creative Commons Attribution. Checked 2026-09-30: the dataset
+  page shows "Creative Commons Attribution" linking to
+  `opendefinition.org/licenses/cc-by`, and the Open Definition badge. **No
+  version number and no required attribution text** appear on the page or in
+  the dictionary. We attribute as "Prefeitura de Belo Horizonte, BH Digital
+  (SMPOG/SUMOG), dados.pbh.gov.br, CC-BY". [[VERIFY: CC-BY version, only
+  answerable by asking PBH; the portal does not state it]]
+- **Access:** yearly (2020 May–Dec, 2021, 2022) and monthly (2023 Jan–Jul)
+  CSVs, no account. The CKAN API at `dados.pbh.gov.br/api/3/...` returned
+  HTTP 403 ("Acesso Bloqueado") to `curl`; the dataset HTML page and the
+  direct resource downloads (`ckan.pbh.gov.br/dataset/.../download/...`)
+  work with a browser user agent. `road_agents.potholes.download()` caches
+  them in `data/pbh/` (git-ignored). The 2022 file is 143 MB.
+- **Formats differ:** the 2022 file is Latin-1 with ISO dates; the 2023
+  files are UTF-8 with a BOM and `dd/mm/yyyy` dates although the header says
+  `YYYY-MM-DD`. Both `;`-separated, same 16 columns.
+  `potholes.read_requests()` handles both.
+- **Newer months (resolved):** on 2026-09-30 the dataset lists nothing after
+  "2023 JUL", although its metadata says "Última Atualização: junho 10,
+  2026". A portal search for "bhdigital" returns only this dataset; "bh
+  digital" adds the ombudsman dataset (different content) and unrelated
+  ones. So **Jul 2023 is the newest month published**; we use the 12 months
+  Aug 2022 – Jul 2023.
+- **`Nivel Acesso = Restrito` (resolved from the dictionary):** the field is
+  the "nível de acesso às informações do serviço solicitado", classified as
+  público, restrito or sigiloso, i.e. the access class of the ticket inside
+  BH Digital, not a restriction on the published file. Across all rows of
+  the 8 files we downloaded (Jan 2022 – Jul 2023, 951,808 requests of every
+  service): 943,249 Restrito, 1,357 Público, 7,202 blank (all "IPTU - Revisão
+  e Requerimentos"). All 198,991 Tapa-Buraco rows in our window are
+  Restrito. The published rows carry no requester fields, but they do carry
+  a street, a house number and coordinates, which is why we never publish
+  anything per request.
+- **"Integração entre Sistemas" (narrowed, not resolved):** the dictionary
+  defines `Canal Captacao` only as the channel the citizen used ("Presencial,
+  telefônico, Aplicativo PBH APP (Portal Mobile), Portal de Serviços, etc.")
+  and does not list this value. In the same 8 files, 161,835 rows use it and
+  158,106 of them (97.7%) are Tapa-Buraco (the rest: "Comunicação de Término
+  de Obra/Baixa de Construção" 2,644, "Licenciamento/Regularização de
+  Parcelamento do Solo" 1,084, 1 other). Only 18 Tapa-Buraco rows came by
+  "Telefônico", while 71,490 requests of other services did. That pattern
+  suggests pothole requests from another system (plausibly the 156 phone
+  line or an internal SMOBI/SUDECAP system) are imported into BH Digital
+  under this label, but nothing published says so. [[VERIFY: meaning of
+  "Integração entre Sistemas"; ask PBH via Fala BH / LAI]]
+- **Personal data:** no requester fields. Coordinates (SIRGAS 2000,
+  lat/lon) are occurrence addresses, which can sit in front of a home. We
+  snap them in memory to road sections and keep only per-section counts;
+  no point or per-request row is written to disk outside the raw cache,
+  committed, or drawn on a map.
+- **Use in this article:** the per-section condition score (below). Requests
+  measure *reporting*, not pavement state: they depend on who uses the app
+  or the 156 line, on traffic past the hole and on the city's own
+  inspections. Measured bias in our window: 21.0 request locations per km on
+  residential sections vs. 0.10 on motorway sections (Anel Rodoviário), whose
+  maintenance may not go through this municipal service.
+  [[VERIFY: who maintains the Anel Rodoviário pavement (federal/DNIT or
+  PBH) in 2022–2023]]
 
 ### Belo Horizonte: "Trecho Logradouro"
 
@@ -76,6 +103,11 @@ Checked on 2026-09-30.
   Street segments with a `situação` field (real / interno / projetado). No
   pavement type or condition field found in the description.
   [[VERIFY: full data dictionary for any pavement attribute]]
+- Related, found 2026-09-30: "Trecho com Pavimentação"
+  (<https://dados.pbh.gov.br/dataset/trecho-com-pavimentacao-3>, monthly,
+  latest file `20260901_trecho_pavimentacao`, EPSG:31983) gives pavement
+  *availability* per street segment (paved or not), not condition. Not used;
+  a possible filter for unpaved streets later. [[VERIFY: license and fields]]
 
 ### Porto Alegre: dadosabertos.poa.br
 
@@ -95,7 +127,72 @@ Checked on 2026-09-30.
   `eixos-de-logradouros` (street centre lines, shapefile). None describes
   pavement condition.
 
+## Derived tables (milestone 2)
+
+Built by `scripts/section_pipeline.py`, written to `data/` (git-ignored, not
+published: a published copy would be an ODbL derived database and would
+also need the PBH CC-BY attribution).
+
+### Road sections
+
+`road_agents.sections.build_sections(D, max_length_m=1000)`:
+
+1. Both directions of a street form one *link*.
+2. Consecutive links are the same section when they share a `name` (or
+   `ref` when unnamed; multi-valued names match if any value matches) and the
+   same highway class (the highest-ranked of OSM's values, `*_link` kept
+   apart), and neither forks at the shared node.
+3. A section stops where a road of strictly higher class (motorway > trunk >
+   primary > secondary > tertiary > residential/unclassified/living
+   street/busway > links) that is not the same road touches the node.
+   Residential streets therefore run across residential crossings; avenues
+   run across side streets.
+4. Unnamed links are never merged.
+5. Chains longer than 1,000 m are cut at edge boundaries into
+   `ceil(L / 1000)` pieces of about equal length (each link goes to the piece
+   holding its midpoint). A single OSM edge longer than 1,000 m stays whole.
+6. Ids `S00001`… sorted by (unnamed last, name, class, first link):
+   deterministic for a given graph, not stable across OSM downloads.
+
+Known limits: a dual carriageway is two sections (one per direction); a road
+with two OSM names that never co-occur on one edge (e.g. "Anel Rodoviário
+Celso Mello de Azevedo" and "Rodovia Anel Rodoviário Celso Mello Azevedo")
+is not merged.
+
+### `data/belo-horizonte-sections.csv` (one row per section; the agents read this)
+
+| Column | Meaning |
+|---|---|
+| `section_id`, `name`, `highway`, `oneway` | identity; `name` = the name covering most of the length |
+| `n_edges`, `length_m` | directed edges; length counting each link once |
+| `lanes` | OSM `lanes` (length-weighted over tagged links) or the class default below |
+| `area_m2` | `length_m × lanes × 3.5 m` |
+| `betweenness_max`, `betweenness_mean` | link flow = betweenness u→v + v→u (k=2000, seed 42); max and length-weighted mean over links |
+| `requests`, `request_points` | Tapa-Buraco requests Aug 2022 – Jul 2023 snapped within 30 m; distinct locations (lat/lon to 6 decimals) |
+| `points_per_km` | raw density |
+| `smoothed_rate_per_km` | `(points + r × 0.5) / (km + 0.5)`, r = network rate (17.4 / km): a Gamma-prior shrinkage so a 20 m section with one request does not top the list |
+| `condition` | 0 without requests; otherwise the percentile rank (0, 1] of the smoothed rate among sections with requests |
+| `criticality` | `betweenness_mean / max(betweenness_mean)` |
+| `repair_cost` | synthetic, see below |
+| `value` | `condition × criticality × length_km` (bad pavement × traffic that drives over it) |
+
+`data/belo-horizonte-section-edges.csv` maps `section_id` to directed edges
+`(u, v)` of the simplified DiGraph, for closure-impact calls.
+
+### Synthetic repair cost (assumptions, all in `road_agents/condition.py`)
+
+- Lanes when OSM has no tag (25.0% of sections have a tag on at least one
+  link): two-way motorway/trunk/primary 4, secondary/tertiary 2, other 2;
+  one-way motorway/trunk/primary/secondary 2, other 1. Lane width 3.5 m.
+- `repair_cost = area_m2 × unit_cost × (0.3 + 0.7 × condition)`: a section at
+  condition 0 needs spot patching (30% of full cost), one at condition 1
+  full milling and overlay. `unit_cost = 1` cost unit per m²; **no currency**.
+  The numbers are not prices. [[VERIFY: SINAPI/SUDECAP unit price per m² if
+  the article wants reais]]
+- Budgets are stated as a share of the total repair cost of candidate
+  sections (value > 0), so they do not depend on the unit.
+
 ## Synthetic data
 
-Road condition scores will be synthetic (milestone 2), generated from a fixed
-seed. Documented here when they exist.
+The condition score comes from real requests (above), not from a random
+generator. Only the repair cost is synthetic.

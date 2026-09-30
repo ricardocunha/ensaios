@@ -87,3 +87,144 @@ Top-5 edges by sampled betweenness and their single-edge closure impact
 The top edges are consecutive pieces of the same road. The agents should
 reason about *segments* (chains of edges between junctions, or whole named
 stretches), not single OSM edges.
+
+## Milestone 2: sections, pothole requests, condition, baseline (2026-09-30)
+
+Run: `nice uv run python scripts/section_pipeline.py belo-horizonte --k 2000`
+(165.1 s in total, machine shared with another heavy job, load average
+above 100 at times). Every number below is in `runs/m2-belo-horizonte-k2000.json`
+(git-ignored). Betweenness cached first with `scripts/cache_betweenness.py`:
+k=2000 took 278.7 s and k=500 61.9 s this time (both seed 42, run with `nice`).
+
+### Road sections (`road_agents.sections`, max length 1,000 m)
+
+Definition in `docs/DATA.md` ("Road sections") and the module docstring:
+same name/ref and same highway class, merged through nodes where no
+strictly higher-class road touches and the road does not fork; unnamed links
+never merged; chains over 1,000 m cut into equal pieces at edge boundaries.
+
+| | Value |
+|---|---:|
+| Directed edges (DiGraph) | 82,718 (56 self-loops left out) |
+| Undirected links (both directions of a street = 1) | 49,532 |
+| **Sections** | **19,842** (19,056 without the 1,000 m cap) |
+| Unnamed sections / one-way sections | 2,633 / 6,762 |
+| Total length (one direction per link) | 4,874 km |
+| Section length median / p90 / max | 163 m / 614 m / 4,063 m (one OSM edge longer than the cap) |
+| Directed edges per section, mean / max | 4.2 / 46 |
+| Build time | 0.55 s |
+
+By class: 14,423 residential, 2,705 tertiary, 542 secondary, 253 primary,
+154 trunk, 84 motorway, the rest links, living streets, busways etc.
+
+### Top-10 edges vs. top-10 sections (k=2000, 1,000 OD pairs, closure = all edges of the edge/section)
+
+Section criticality = length-weighted mean over its links of (betweenness
+u→v + v→u). OD baseline 12.7 s; the 30 closures below 93.2 s.
+
+- **Top-10 edges:** 9 on "Anel Rodoviário Celso Mello de Azevedo", 1 on
+  Avenida Waldir Soeiro Emrich / Avenida Quatro Mil Cento e Setenta e Dois.
+  They fall in **8 distinct sections**.
+- **Top-10 sections:** all 10 are Anel Rodoviário pieces (motorway, 383–2,004 m).
+  Sections remove the duplicates (two pairs of top edges were the same
+  section) but do not change the story: the Anel dominates betweenness.
+- **Top-10 roads** (best section per distinct name) is the useful list for
+  the agents:
+
+| # | Road (best section) | Class | Length | Trips affected | Mean / max extra time |
+|---|---|---|---:|---:|---|
+| 1 | Anel Rodoviário Celso Mello de Azevedo (S00112) | motorway | 1,005 m | 112 | 42.5 s / 53.1 s |
+| 2 | Avenida Waldir Soeiro Emrich (S01760) | primary | 728 m | 85 | 90.9 s / 122.8 s |
+| 3 | Rodovia Anel Rodoviário Celso Mello Azevedo (S02443)* | motorway | 1,240 m | 90 | 19.5 s / 26.9 s |
+| 4 | Avenida Presidente Antônio Carlos (S01395) | trunk | 953 m | 75 | 60.0 s / 222.3 s |
+| 5 | Rua Desembargador Reis Alves (S06302) | primary | 774 m | 88 | 43.0 s / 89.4 s |
+| 6 | Rua Juarez Teixeira Pinto (S10128) | primary | 1,102 m | 63 | 75.9 s / 87.1 s |
+| 7 | Avenida Cristiano Machado (S00611) | trunk | 306 m | 69 | 21.9 s / 31.0 s |
+| 8 | Avenida Quatro Mil Cento e Setenta e Dois (S01500) | primary | 884 m | 111 | 388.9 s / 689.4 s |
+| 9 | Avenida Dom Pedro I (S00702) | trunk | 1,357 m | 60 | 99.4 s / 440.9 s |
+| 10 | Avenida 3153 (S00200) | trunk | 721 m | 100 | 45.2 s / 140.6 s |
+
+\* The same road under a second OSM name; name matching does not merge it.
+No closure in these lists disconnects more than 1 of 1,000 trips (one top
+edge, S00113, disconnects 1).
+
+Criticality ranking vs. single-edge ranking: the worst *closure* is not the
+highest betweenness. Section S01500 (8th road) delays 111 trips by a mean
+388.9 s; the top Anel section delays 112 trips by 42.5 s. Closure impact is a
+separate signal from betweenness: the section table carries
+betweenness, and closure impact is a tool call (`closure_impact`).
+
+**k=500 vs. k=2000 on sections:** top-10 overlap 0.6, top-100 0.93,
+top-1,000 0.921. Use k=2000 for reported rankings.
+
+### Pothole requests (Tapa-Buraco), Aug 2022 – Jul 2023
+
+Files: `dadosabertos_bhdigital_2022.csv` (Aug–Dec used) and the seven 2023
+monthly files (Jan–Jul). Load + parse 3.3 s.
+
+| | Value |
+|---|---:|
+| Requests in the window | 198,991 |
+| With coordinates | 198,955 (36 without) |
+| Distinct locations (lat/lon to 6 decimals) | 88,942 |
+| Status "Serviço realizado" / "não realizado" / open | 188,596 / 9,858 / 537 |
+| Channel: Integração entre Sistemas / Portal / Portal Mobile / other | 115,314 / 45,702 / 37,423 / 552 |
+| Access level | all 198,991 "Restrito" |
+
+Per month: Aug 8,264 · Sep 6,535 · Oct 14,864 · Nov 17,229 · Dec 19,773 ·
+Jan 32,266 · Feb 24,870 · Mar 18,882 · Apr 18,264 · May 16,225 · Jun 10,908 ·
+Jul 10,911 (a rainy-season peak in Dec–Feb).
+
+**Snapping** to the nearest drivable link (EPSG:31983, `geopandas.sjoin_nearest`), 2.0 s:
+
+| Threshold | 5 m | 10 m | 15 m | **30 m (used)** | 50 m | 100 m |
+|---|---:|---:|---:|---:|---:|---:|
+| Share of requests with coordinates within | 1.6% | 28.2% | 67.3% | **95.0%** | 98.6% | 99.7% |
+
+Snapped at 30 m: 189,075 requests (unsnapped share **4.97%** of those with
+coordinates). Distance median 12.5 m, p90 23.3 m, p95 29.9 m. The
+coordinates look like geocoded addresses (few within 5 m of a centre line),
+which fits the address fields in the file.
+
+### Condition score (`road_agents.condition`)
+
+- Sections with ≥1 request location: **12,076 of 19,842 (60.9%)**, covering
+  82.2% of the network's km. 84,811 distinct locations snapped.
+- Network rate: 17.4 distinct locations per km per year.
+- Per section with requests: median 4 locations, p90 16, p99 36, max 84.
+  Smoothed rate median 18.0/km, p90 28.3, max 66.2.
+- Concentration: Gini 0.70 over all sections; the top 10% of sections hold
+  48.3% of locations.
+- By class (locations per km): residential 21.0, tertiary 12.5, secondary
+  8.2, primary 5.4, trunk 2.6, motorway 0.10. Requests come mostly from
+  residential streets; the Anel Rodoviário (motorway) has almost none.
+- Spearman correlation of smoothed rate with criticality: −0.09 (all
+  sections), −0.12 (sections with requests). Condition and criticality are
+  nearly independent, so the product ranks differently from either.
+- Top-10 by condition are all residential streets (e.g. Rua Augusto Abreu,
+  311 m, 45 locations; Rua das Verbenas, 954 m, 84).
+- OSM `lanes` tagged on at least one link of 25.0% of sections; the rest use
+  class defaults. Total pavement area (assumed widths) 33.9 million m².
+
+### Knapsack baseline (`road_agents.baseline`)
+
+Candidates: 11,860 sections with value > 0 (216 sections with requests have
+zero sampled betweenness). Budget = share of the candidates' total repair
+cost (16.8 million cost units = m² of full resurfacing).
+
+| Budget | Method | Sections | km | Value captured | Requests on chosen sections | Time |
+|---|---|---:|---:|---:|---:|---:|
+| 5% | greedy | 445 | 174.8 | 54.43% | 10,127 (5.4%) | 0.02 s |
+| 5% | exact (HiGHS) | 439 | 174.8 | 54.43% | 10,068 (5.3%) | 14.3 s |
+| 10% | greedy | 952 | 362.6 | 70.24% | 20,596 (10.9%) | 0.01 s |
+| 10% | exact | 951 | 362.7 | 70.24% | 20,593 (10.9%) | 18.9 s |
+| 20% | greedy | 1,997 | 738.9 | 83.98% | 40,940 (21.7%) | 0.01 s |
+| 20% | exact | 1,994 | 738.7 | 83.98% | 40,925 (21.6%) | 15.0 s |
+
+Greedy (value/cost ratio) is within 9e-6 (5%), 1.3e-6 (10%) and 1.5e-6
+(20%) of the optimum; the chosen sets overlap with Jaccard 0.982 / 0.997 /
+0.996. The top-value picks at every budget are Avenida Waldir Soeiro
+Emrich, Avenida Amazonas, Avenida Vilarinho, Avenida Cristiano Machado and
+Avenida Presidente Tancredo Neves. Value is concentrated (5% of the budget
+captures 54% of value) because betweenness is heavy-tailed; the plan buys
+arterials with some requests, not the streets with the most requests.
