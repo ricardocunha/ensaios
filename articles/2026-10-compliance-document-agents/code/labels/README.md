@@ -1,6 +1,6 @@
 # Hand labels for real contracts
 
-`real_contracts.csv`: 20 PNCP contracts (15 public bodies, 8 real scans) × 8 rules = 160 rows.
+`real_contracts.csv`: 20 PNCP contracts (see the header counts below; 10 real scans) × 8 rules = 160 rows.
 
 For each row, open `data/pncp/<doc>.pdf` (run `make download` first) and fill in:
 
