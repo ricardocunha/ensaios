@@ -97,6 +97,9 @@ make eval-student ADAPTER=runs/student/qwen3_8b-lora
 
 ## Models and data
 
+Published artifacts (private until launch): dataset [synthetic-cnh-br](https://huggingface.co/datasets/ricardopcunha/synthetic-cnh-br) · Reader LoRA [paddleocr-vl-cnh-reader-lora-mlx](https://huggingface.co/ricardopcunha/paddleocr-vl-cnh-reader-lora-mlx) · Extractor LoRA [qwen3-8b-cnh-extractor-lora-mlx](https://huggingface.co/ricardopcunha/qwen3-8b-cnh-extractor-lora-mlx)
+
+
 | | License | Notes |
 |---|---|---|
 | `PaddlePaddle/PaddleOCR-VL-1.6` | Apache-2.0 | Reader, fine-tuned here (rounds 1–3) |

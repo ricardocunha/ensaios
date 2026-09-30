@@ -301,7 +301,7 @@ A concordância no replay diz se o Student *imita* o Teacher. A pergunta de neg�
 
 ---
 
-**Código, dados e adapters:** [github.com/ricardocunha/ensaios › articles/2026-10-cnh-ocr-smithtune](https://github.com/ricardocunha/ensaios/tree/main/articles/2026-10-cnh-ocr-smithtune) · Dataset sintético: `[[LINK: URL do dataset no HF]]`
+**Código, dados e adapters:** [github.com/ricardocunha/ensaios › articles/2026-10-cnh-ocr-smithtune](https://github.com/ricardocunha/ensaios/tree/main/articles/2026-10-cnh-ocr-smithtune) · Dataset sintético: [synthetic-cnh-br](https://huggingface.co/datasets/ricardopcunha/synthetic-cnh-br) · Adapters: [Reader](https://huggingface.co/ricardopcunha/paddleocr-vl-cnh-reader-lora-mlx), [Extractor](https://huggingface.co/ricardopcunha/qwen3-8b-cnh-extractor-lora-mlx)
 
 *Todos os documentos deste projeto são sintéticos. Nenhum dado de pessoa real foi usado no treino.*
 

@@ -14,6 +14,23 @@ A field report on **smithtune** (LangSmith Fine-Tuning, v0.1.0, released 2026-09
 | LinkedIn | [EN](linkedin-en.md) · [PT-BR](linkedin-pt-br.md) |
 | Code, results, ADRs, field notes | [code/](code/) · [results](code/docs/RESULTS.md) · [notes](code/docs/SMITHTUNE_NOTES.md) |
 
+## Artifacts
+
+| | Where | Visibility |
+|---|---|---|
+| Synthetic CNH dataset (round 3) | [huggingface.co/datasets/ricardopcunha/synthetic-cnh-br](https://huggingface.co/datasets/ricardopcunha/synthetic-cnh-br) | private until launch |
+| Reader LoRA (PaddleOCR-VL-1.6, MLX) | [huggingface.co/ricardopcunha/paddleocr-vl-cnh-reader-lora-mlx](https://huggingface.co/ricardopcunha/paddleocr-vl-cnh-reader-lora-mlx) | private until launch |
+| Extractor Student LoRA (Qwen3-8B, MLX) | [huggingface.co/ricardopcunha/qwen3-8b-cnh-extractor-lora-mlx](https://huggingface.co/ricardopcunha/qwen3-8b-cnh-extractor-lora-mlx) | private until launch |
+
+## Launch checklist (this article)
+
+- [ ] Final read of both articles; remove the `status:` header line
+- [ ] `scripts/check-article.sh articles/2026-10-cnh-ocr-smithtune` passes
+- [ ] Make the Hugging Face repos public:
+      `hf repos settings ricardopcunha/synthetic-cnh-br --repo-type dataset --no-private` (and the two model repos)
+- [ ] Merge into `main` (`--no-ff`), tag `published/2026-10-cnh-ocr-smithtune`, make the GitHub repo public
+- [ ] Publish Medium EN → LinkedIn EN → PT-BR article + post → dev.to / Hashnode, then fill in the links below
+
 ## Published
 
 - Medium: [[LINK]]
