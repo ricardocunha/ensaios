@@ -1,6 +1,6 @@
-<!-- LinkedIn post (EN). ~1,300 chars. Attach the carousel (see carousel outline below). -->
+<!-- LinkedIn post (EN), about 1,900 characters (limit 3,000). Attach the carousel (see outline below). -->
 
-LangChain shipped smithtune two days ago. I pointed it at Brazilian driver's licenses. 🇧🇷🪪
+LangChain recently shipped smithtune, a fine-tuning CLI for LangSmith. In its first week, I pointed it at Brazilian driver's licenses. 🇧🇷🪪
 
 smithtune turns your agent's LangSmith traces into a fine-tuned open model: curate → LoRA on Fireworks/Baseten → replay eval → deploy, all from one CLI.
 
@@ -13,7 +13,9 @@ So I split the problem in two:
 2️⃣ Extractor: a tool-using agent (checksums, OCR fixes, date rules). An open-weight Teacher (DeepSeek-V4-Pro, MIT) whose best runs smithtune curated, distilled into a local 8B Student
 
 Results:
-📉 A 0.9B OCR model fine-tuned on a MacBook: 99.8% on my synthetic cards, then rejected 48 of 70 REAL CNHs as "not a CNH". Synthetic data taught it to read, and also what a CNH "looks like". 🔁 Round 2: same 2,293 images, just more varied (designs, scans, rotations) → +20 points on real cards, now ahead of zero-shot Qwen3.5-9B at 8× the speed. Round 3: let the vision model only read, and decide "is this a CNH?" from the text → 81% on real cards, 0/70 wrongly rejected. The biggest jump came from moving one decision, not from more data.
+📉 A 0.9B OCR model fine-tuned on a MacBook scored 99.8% on my synthetic cards, then rejected 48 of 70 REAL CNHs as "not a CNH". Synthetic data taught it to read, and also what a CNH "looks like".
+🔁 Round 2: the same 2,293 images, just more varied (designs, scans, rotations) → +20 points on real cards.
+✅ Round 3: the vision model only reads, and "is this a CNH?" is decided from the text → 81% on real cards, 0/70 wrongly rejected. The biggest jump came from moving one decision, not from more data.
 🎯 The local Qwen3-8B Student: 46% → 81% exact after one LoRA epoch on a MacBook, vs 89% for the API Teacher, at $0 per document.
 
 Along the way: I switched Teachers after reading the license terms, ran out of Fireworks credit mid-eval, and found three silent tool bugs, each of which only showed up as a number that couldn't be true.

@@ -81,7 +81,7 @@ Um alerta de licença, porque isso vai pegar alguém: **os pesos do Chandra 2 n�
 
 São 2.293 imagens de treino (o plano era 3.000; uma execução interrompida me fez parar por aí, e é mais que suficiente para LoRA), 300 de validação, 300 de teste e 100 "difíceis". Para checar realismo além do meu próprio gerador, também avalio no **BID Dataset** (Soares et al., SIBGRAPI 2020), citado e não redistribuído. Falo mais dele abaixo, porque ele mudou a história.
 
-**O treino roda local.** O `mlx-vlm` suporta LoRA em Apple Silicon para o PaddleOCR-VL e para a família Qwen3.5, na qual o Chandra 2 é baseado. Ajustei só o menor modelo, o PaddleOCR-VL (0,9B). Ele treina em menos de duas horas num M4 Pro de 48 GB, o que me permitiu rodar duas rodadas completas e aprender algo com cada uma. O Chandra 2 e o Qwen3.5-9B aparecem abaixo só em zero-shot; ajustá-los com QLoRA de 4 bits é o próximo experimento óbvio:
+**O treino roda localmente.** O `mlx-vlm` suporta LoRA em Apple Silicon para o PaddleOCR-VL e para a família Qwen3.5, na qual o Chandra 2 é baseado. Ajustei só o menor modelo, o PaddleOCR-VL (0,9B). Ele treina em menos de duas horas num M4 Pro de 48 GB, o que me permitiu rodar três rodadas completas e aprender algo com cada uma. O Chandra 2 e o Qwen3.5-9B aparecem abaixo só em zero-shot; ajustá-los com QLoRA de 4 bits é o próximo experimento óbvio:
 
 ```bash
 python -m mlx_vlm.lora --model-path PaddlePaddle/PaddleOCR-VL-1.6 --dataset data/synth \
@@ -151,7 +151,7 @@ De 99,8% nos meus cartões para 32,0% nos reais. O modelo ajustado **respondeu "
 
 E aqui está a parte interessante. Nas 22 CNHs reais que ele *aceitou*, fez **92,9% de acurácia por rótulo e 96,3% de recall**. A habilidade de ler foi transferida. O que não foi transferido foi a ideia de *como uma CNH se parece*. Meu gerador tinha um único visual, então o modelo aprendeu "CNH = aquele visual" e tratou todo o resto como isca. Mais duas pistas:
 
-- **Parar antes não ajuda.** No passo 1.000 o modelo já está com 99,9% nos sintéticos e ainda rejeita 49 de 70 CNHs reais. No passo 200 ele rejeita quase tudo, inclusive os sintéticos. O problema está nos dados, não no cronograma de treino.
+- **Parar antes não ajuda.** No passo 1.000 o modelo já está com 99,8% nos sintéticos e ainda rejeita 49 de 70 CNHs reais. No passo 200 ele rejeita quase tudo, inclusive os sintéticos. O problema está nos dados, não no cronograma de treino.
 - **Minhas iscas também eram irreais.** O Qwen zero-shot rejeita 59 de 72 RGs e CPFs *reais*, mas só 3 de 7 das minhas iscas sintéticas: notas fiscais, cartas e um cartão lilás de "REGISTRO GERAL" que não se parecem com nada real.
 
 Esse é o gap sim-to-real na forma mais pura, e um conjunto de teste sintético nunca vai mostrá-lo para você. **Se você faz fine-tuning com documentos sintéticos, precisa de pelo menos um pequeno conjunto de avaliação real**, mesmo que não possa treinar com ele.
@@ -179,7 +179,7 @@ Mas não está resolvido. Ele ainda recusa **30 de 70 CNHs reais**. Nas 40 que a
 
 Duas lições que vou levar para o próximo projeto:
 
-- **Variedade vale mais que volume.** Não adicionei nenhuma imagem; só deixei as mesmas 2.293 menos parecidas entre si. Só isso mexeu a acurácia no mundo real em 20 pontos.
+- **Variedade vale mais que volume.** Não adicionei nenhuma imagem; só deixei as mesmas 2.293 menos parecidas entre si. Só isso subiu a acurácia no mundo real em 20 pontos.
 - **O porteiro é a parte difícil, e talvez não deva ficar no modelo de visão.** Um modelo ajustado numa distribuição estreita fica muito confiante sobre o que "é" e muito rápido para rejeitar o que "não é". Neste pipeline o Extractor vê toda Transcrição de qualquer jeito, e o Qwen zero-shot rejeitou bem RGs e CPFs reais (59/72) sem treino nenhum. A rodada 3 testa exatamente isso.
 
 ### Rodada 3: tirar a decisão do modelo de visão
@@ -204,7 +204,7 @@ O que levo da Etapa 1:
 
 ## Etapa 2: destilando o agente Extractor
 
-A Etapa 2 é para o que o smithtune foi feito: gravar um agente forte e caro (o **Teacher**), guardar as boas execuções e ajustar um modelo aberto pequeno (o **Student**) para se comportar igual. O Extractor é um `create_agent` do LangChain com oito ferramentas. As entradas são Transcrições com **ruído de OCR injetado** (troca letra/dígito, separador de data quebrado, `A8` no lugar de `AB`, linha faltando) e também transcrições-isca de RG e CPF. Entrada limpa não ensina a recuperar erro.
+A Etapa 2 é exatamente o que o smithtune foi feito para fazer: gravar um agente forte e caro (o **Teacher**), guardar as boas execuções e ajustar um modelo aberto pequeno (o **Student**) para se comportar igual. O Extractor é um `create_agent` do LangChain com oito ferramentas. As entradas são Transcrições com **ruído de OCR injetado** (troca letra/dígito, separador de data quebrado, `A8` no lugar de `AB`, linha faltando) e também transcrições-isca de RG e CPF. Entrada limpa não ensina a recuperar erro.
 
 ### Três testes baratos, três bugs (todos meus)
 
@@ -216,7 +216,7 @@ Comecei com o Claude Sonnet 5 como Teacher e rodei 20 transcrições por vez ant
 | 2 | 16/20 | 0 | 2 | A correção passou do ponto: dois RGs viraram "CNHs incompletas". **Correção:** o prompt diz o que faz uma CNH (CAT. HAB., Nº REGISTRO…), e a ferramenta de envio recusa um registro sem pelo menos dois desses campos. |
 | 3 | 19/20 | 0 | 0 | O agente manteve `VITORIA` sem acento, como instruído, e minha nota marcou errado. **Correção:** comparar nomes sem considerar acentos. |
 
-O terceiro teste também ligou o **prompt caching**: 80% dos tokens de entrada vieram do cache, e o custo de 20 execuções caiu de US$ 0,80 para US$ 0,36.
+No terceiro teste também liguei o **prompt caching**: 80% dos tokens de entrada vieram do cache, e o custo de 20 execuções caiu de US$ 0,80 para US$ 0,36.
 
 ### Aí troquei o Teacher
 
@@ -254,7 +254,7 @@ Pulei o experimento com o conselho de agentes que eu tinha planejado (juízes LL
 - **Baseten:** o `prepare` parou em `Loops training is not enabled for your workspace. Contact Baseten.` O produto de treino deles é liberado por workspace, e o meu não estava.
 - **Fireworks:** o `prepare` aceitou as 266 trajetórias, renderizou no formato de chat exato do Qwen3.8-27B e dividiu em 214 / 23 / 29. O `plan` mostrou a receita inteira (LoRA rank 8, lr 1e-4, batch 32, early stopping), mas **nenhuma estimativa em dólar**, só "cobrança serverless por token na taxa atual da conta". O `--max-spend-usd` é só para a Baseten; na Fireworks a única alavanca é o `--max-epochs`.
 - **O treino funcionou:** 1 época, 7 passos, loss de validação 0,013, e o checkpoint salvo na minha conta da Fireworks.
-- **A avaliação por replay não terminou:** `63 cases failed; 45/108 saved`. O smithtune informa só a contagem, não o motivo, mas meus cerca de US$ 11 de crédito na Fireworks tinham acabado, e isso quase certamente explica. Eu tinha estimado uns US$ 6 para treino mais avaliação, então confira o console do provedor antes de confirmar.
+- **A avaliação por replay não terminou:** `63 cases failed; 45/108 saved`. O smithtune informa só a contagem, não o motivo, mas meus cerca de US$ 11 de crédito na Fireworks tinham acabado, e isso quase certamente explica as falhas. Eu tinha estimado uns US$ 6 para treino mais avaliação, então confira o console do provedor antes de confirmar.
 - **Os 45 casos concluídos também não eram confiáveis.** Em 32 de 35 casos com tool call, *tanto* o modelo base quanto o ajustado foram julgados como "violando as ferramentas disponíveis neste turno". Mas eles tinham chamado a ferramenta certa com os valores certos. O sampler da Fireworks devolve os argumentos da chamada como objeto já interpretado, e a checagem espera uma string JSON. Base e ajustado também produziram saída idêntica em 26 de 45 casos, então uma época mal mexeu num modelo de 27B que já ia bem na tarefa. **Leia as métricas determinísticas antes de confiar no juiz.**
 
 ### Plano B: treinar o Student no notebook
@@ -267,7 +267,7 @@ O smithtune já tinha feito a parte valiosa: curar as 266 boas trajetórias e pr
 
 ## Os números que importam
 
-A concordância no replay diz se o Student *imita* o Teacher. A pergunta de negócio é outra: **ele extrai a CNH certa?** Então rodei nossa própria avaliação campo a campo em 100 transcrições separadas para teste, CNHs com ruído de OCR mais iscas, que nenhum modelo tinha visto:
+A concordância no replay diz se o Student *imita* o Teacher. A pergunta de negócio é outra: **ele extrai a CNH certa?** Então rodei minha própria avaliação campo a campo em 100 transcrições separadas para teste, CNHs com ruído de OCR mais iscas, que nenhum modelo tinha visto:
 
 | Extractor | Exatas | Acurácia por campo | Iscas rejeitadas | CNHs reais rejeitadas | Tool calls / execução | Custo por 1.000 CNHs |
 |---|---|---|---|---|---|---|
@@ -281,7 +281,7 @@ A concordância no replay diz se o Student *imita* o Teacher. A pergunta de neg�
 
 ## Veredito sobre o smithtune (v0.1.0)
 
-**O que gostei**
+**Do que gostei**
 - **A abstração certa.** "Traces → dataset curado → LoRA → avaliação por replay → deploy" é o ciclo que todo time acaba reconstruindo na mão. Só a metade da curadoria já compensou: o dataset que ele montou treinou um bom Student, mesmo fora da plataforma.
 - **Engenharia cuidadosa:** tokenizer fixado, template de chat verificado, `--confirm` em todo passo pago, nenhuma rubrica padrão, e um termo de direitos sobre dados que me fez checar a licença do meu Teacher antes de treinar.
 - **A avaliação por replay é uma boa ideia:** comparação passo a passo sem executar ferramentas contra sistemas reais.

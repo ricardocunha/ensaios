@@ -81,7 +81,7 @@ A licensing note, because it will bite someone: **Chandra 2's weights are not fr
 
 That gives 2,293 training images (I planned 3,000; an interrupted run made me settle, and it's plenty for LoRA), 300 for validation, 300 for test, and 100 "hard" images. To check realism beyond my own renderer, I also evaluate on the **BID Dataset** (Soares et al., SIBGRAPI 2020), cited and not redistributed. More on that below, because it changed the story.
 
-**Training runs locally.** `mlx-vlm` supports LoRA on Apple Silicon for PaddleOCR-VL and for the Qwen3.5 family, which Chandra 2 is built on. I fine-tuned only the smallest model, PaddleOCR-VL (0.9B). It trains in under two hours on an M4 Pro with 48 GB, which let me run two full rounds and learn something from each. Chandra 2 and Qwen3.5-9B appear below zero-shot only; fine-tuning them with 4-bit QLoRA is the obvious next experiment:
+**Training runs locally.** `mlx-vlm` supports LoRA on Apple Silicon for PaddleOCR-VL and for the Qwen3.5 family, which Chandra 2 is built on. I fine-tuned only the smallest model, PaddleOCR-VL (0.9B). It trains in under two hours on an M4 Pro with 48 GB, which let me run three full rounds and learn something from each. Chandra 2 and Qwen3.5-9B appear below zero-shot only; fine-tuning them with 4-bit QLoRA is the obvious next experiment:
 
 ```bash
 python -m mlx_vlm.lora --model-path PaddlePaddle/PaddleOCR-VL-1.6 --dataset data/synth \
@@ -151,7 +151,7 @@ From 99.8% on my cards to 32.0% on real ones. The fine-tuned model **answered "N
 
 Here's the interesting part. On the 22 real CNHs it *did* accept, it scored **92.9% label accuracy and 96.3% value recall**. The reading skill transferred. What didn't transfer was its idea of *what a CNH looks like*. My generator had one design, so the model learned "CNH = that design" and treated everything else as a decoy. Two more clues:
 
-- **Stopping earlier doesn't help.** By step 1,000 the model is already at 99.9% on synthetic data and still rejects 49 of 70 real CNHs. At step 200 it rejects nearly everything, synthetic included. The problem is in the data, not the schedule.
+- **Stopping earlier doesn't help.** By step 1,000 the model is already at 99.8% on synthetic data and still rejects 49 of 70 real CNHs. At step 200 it rejects nearly everything, synthetic included. The problem is in the data, not the schedule.
 - **My decoys were unrealistic too.** Zero-shot Qwen rejects 59 of 72 *real* RG and CPF cards, but only 3 of 7 of my synthetic decoys: invoices, letters and a lavender "REGISTRO GERAL" card that look like nothing real.
 
 This is the sim-to-real gap in its purest form, and a synthetic test set will never show it to you. **If you fine-tune on synthetic documents, you need at least a small real evaluation set**, even one you can't train on.
@@ -216,7 +216,7 @@ I started with Claude Sonnet 5 as the Teacher and ran 20 transcriptions at a tim
 | 2 | 16/20 | 0 | 2 | The fix overcorrected: two RG transcriptions were "incomplete CNHs". **Fix:** the prompt says what makes a CNH (CAT. HAB., Nº REGISTRO…), and the submit tool refuses a record without at least two of those fields. |
 | 3 | 19/20 | 0 | 0 | The agent kept `VITORIA` without an accent, as instructed, and my scoring marked it wrong. **Fix:** compare names accent-insensitively. |
 
-The third check also turned on **prompt caching**: 80% of input tokens came from cache, and the cost of 20 runs fell from $0.80 to $0.36.
+For the third check I also turned on **prompt caching**: 80% of input tokens came from cache, and the cost of 20 runs fell from $0.80 to $0.36.
 
 ### Then I changed the Teacher
 
@@ -267,7 +267,7 @@ smithtune had already done the valuable part: curating the 266 good trajectories
 
 ## The numbers that matter
 
-Replay agreement tells you whether the Student *imitates* the Teacher. The business question is different: **does it extract the right CNH?** So I ran our own field-level evaluation on 100 held-out transcriptions, CNHs with OCR noise plus decoys, that no model had seen:
+Replay agreement tells you whether the Student *imitates* the Teacher. The business question is different: **does it extract the right CNH?** So I ran my own field-level evaluation on 100 held-out transcriptions, CNHs with OCR noise plus decoys, that no model had seen:
 
 | Extractor | Exactly right | Field accuracy | Decoys rejected | Real CNHs rejected | Tool calls / run | Cost per 1,000 CNHs |
 |---|---|---|---|---|---|---|
