@@ -31,6 +31,8 @@ def propose(runs: Path, sheet: Path = SHEET, out: Path = Path("labels/real_contr
 
 
 def score(runs: Path, sheet: Path = SHEET) -> None:
+    if not runs.exists():
+        raise SystemExit(f"{runs} not found: run `make propose-real` first")
     found = {(r["doc"], r["rule"]): r for r in map(json.loads, runs.read_text().splitlines())}
     n = agree = 0
     with sheet.open() as f:
