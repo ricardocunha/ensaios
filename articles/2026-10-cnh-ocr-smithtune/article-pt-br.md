@@ -263,7 +263,7 @@ O smithtune já tinha feito a parte valiosa: curar as 266 boas trajetórias e pr
 
 - **O Qwen3.5-9B não dava para treinar no Mac.** Suas camadas híbridas de atenção linear precisaram de 33,6 GB com só 1.024 tokens e estouraram a memória com 2.048; meus exemplos chegam a uns 3.200. O **Qwen3-8B**, com atenção padrão e pesos em 4 bits, chegou a no máximo 10 GB.
 - **Uma época levou cerca de 3,5 horas num M4 Pro.** O loss de validação foi 0,672 → 0,049 → 0,024 → 0,043 → **0,013** no passo 800, o checkpoint que usei.
-- **Mais um bug silencioso:** o servidor do `mlx-lm` ignora o `--adapter-path` (ele procura o adapter depois de renomear o modelo). Minha primeira avaliação "ajustada" era o modelo base de novo, com resultado idêntico em 100 de 100 execuções. Mandar o adapter em cada requisição resolveu.
+- **Mais um bug silencioso:** o servidor do `mlx-lm` (0.31.3, a versão mais recente) ignora o `--adapter-path` (ele procura o adapter depois de renomear o modelo). Já está [corrigido no main](https://github.com/ml-explore/mlx-lm/pull/1249), só não foi lançado ainda. Minha primeira avaliação "ajustada" era o modelo base de novo, com resultado idêntico em 100 de 100 execuções. Mandar o adapter em cada requisição resolveu.
 
 ## Os números que importam
 
@@ -293,7 +293,7 @@ A concordância no replay diz se o Student *imita* o Teacher. A pergunta de neg�
 - **Seu feedback precisa estar na execução raiz, com `session_id`,** ou o filtro não acha nada, em silêncio.
 - **Na v0.1 a avaliação por replay é frágil para agentes com muitas ferramentas:** falhas não são explicadas, e argumentos devolvidos como objeto contam como inválidos. Leia as métricas determinísticas, e meça também a sua métrica de negócio.
 - **Confira a licença do Teacher** antes de destilar qualquer coisa.
-- É um beta público lançado no fim de setembro. Espere arestas. `[[LINK: issues upstream, se abertas]]`
+- É um beta público lançado no fim de setembro. Espere arestas. Issues que abri: [smithtune #103](https://github.com/langchain-ai/smithtune/issues/103), [mlx-vlm #2399](https://github.com/Blaizzy/mlx-vlm/issues/2399).
 
 **Quem deveria usar hoje?** Times que já têm um agente funcionando com tracing no LangSmith, querem um modelo mais barato que se comporte igual e têm acesso a treino num provedor. Com orçamento pequeno, a curadoria e o preparo do smithtune já valem por si: dá para pegar as divisões preparadas e treinar onde quiser, como eu fiz.
 

@@ -1,6 +1,12 @@
-# Upstream issue drafts (not filed)
+# Upstream issues
 
-These are drafts for review, to be filed from the author's GitHub account if approved. Each was reproduced in this project; the versions are in each report.
+| # | Project | Status |
+|---|---|---|
+| 1 | smithtune | **Filed:** [https://github.com/langchain-ai/smithtune/issues/103](https://github.com/langchain-ai/smithtune/issues/103) (2026-09-30) |
+| 2 | mlx-lm | **Not filed: already fixed** on main by [PR #1249](https://github.com/ml-explore/mlx-lm/pull/1249) (2026-08-21; issues #1745, #1248). The bug is in release 0.31.3, the latest at the time. |
+| 3 | mlx-vlm | **Filed:** [https://github.com/Blaizzy/mlx-vlm/issues/2399](https://github.com/Blaizzy/mlx-vlm/issues/2399) (2026-09-30) |
+
+The texts below are as drafted; the filed versions drop the repo link from the footer, since the repo was private at the time.
 
 ---
 

@@ -80,7 +80,7 @@ The exact-match rate went 8/20 → 16/20 → 19/20, and **prompt caching** cut t
 **Plan B: train the Student on the laptop.** smithtune had already done the valuable part, curating 266 correct trajectories into clean train and validation splits. I trained on **exactly those splits** with `mlx-lm`: 838 examples, one per assistant turn, with the history masked.
 - **Qwen3.5-9B couldn't be trained on the Mac:** its hybrid linear-attention layers needed 33.6 GB at just 1,024 tokens.
 - So the Student is **Qwen3-8B**: 3.5 hours on the M4 Pro, 10 GB peak, validation loss 0.672 → 0.013.
-- **One last silent bug:** mlx-lm's server ignores `--adapter-path`. My first "tuned" evaluation was the base model again, 100/100 identical. Sending the adapter with each request fixed it.
+- **One last silent bug:** mlx-lm's server (0.31.3) ignores `--adapter-path` ([already fixed on main](https://github.com/ml-explore/mlx-lm/pull/1249), not yet released). My first "tuned" evaluation was the base model again, 100/100 identical. Sending the adapter with each request fixed it.
 
 ## The numbers that matter
 
@@ -122,7 +122,7 @@ The total cost of the experiment was about $23 in API and training credit, plus 
 
 ---
 
-**Full write-up, code and every bug:** [github.com/ricardocunha/ensaios › articles/2026-10-cnh-ocr-smithtune](https://github.com/ricardocunha/ensaios/tree/main/articles/2026-10-cnh-ocr-smithtune) · Dataset: [synthetic-cnh-br](https://huggingface.co/datasets/ricardopcunha/synthetic-cnh-br) · Adapters: [Reader](https://huggingface.co/ricardopcunha/paddleocr-vl-cnh-reader-lora-mlx), [Extractor](https://huggingface.co/ricardopcunha/qwen3-8b-cnh-extractor-lora-mlx) · Upstream issues: `[[LINK: if filed]]`
+**Full write-up, code and every bug:** [github.com/ricardocunha/ensaios › articles/2026-10-cnh-ocr-smithtune](https://github.com/ricardocunha/ensaios/tree/main/articles/2026-10-cnh-ocr-smithtune) · Dataset: [synthetic-cnh-br](https://huggingface.co/datasets/ricardopcunha/synthetic-cnh-br) · Adapters: [Reader](https://huggingface.co/ricardopcunha/paddleocr-vl-cnh-reader-lora-mlx), [Extractor](https://huggingface.co/ricardopcunha/qwen3-8b-cnh-extractor-lora-mlx) · Issues filed: [smithtune #103](https://github.com/langchain-ai/smithtune/issues/103), [mlx-vlm #2399](https://github.com/Blaizzy/mlx-vlm/issues/2399)
 
 *All documents in this project are synthetic. No real person's data was used for training.*
 

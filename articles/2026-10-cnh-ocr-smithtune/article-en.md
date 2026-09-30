@@ -263,7 +263,7 @@ smithtune had already done the valuable part: curating the 266 good trajectories
 
 - **Qwen3.5-9B couldn't be trained on the Mac.** Its hybrid linear-attention layers needed 33.6 GB at just 1,024 tokens and ran out of memory at 2,048; my examples run to about 3,200. **Qwen3-8B**, with standard attention and 4-bit weights, peaked at 10 GB.
 - **One epoch took about 3.5 hours on an M4 Pro.** Validation loss went 0.672 → 0.049 → 0.024 → 0.043 → **0.013** at step 800, the checkpoint I used.
-- **Another silent bug:** `mlx-lm`'s server ignores `--adapter-path` (it looks the adapter up after renaming the model). My first "tuned" evaluation was the base model again, with identical outcomes in 100 of 100 runs. Sending the adapter with each request fixed it.
+- **Another silent bug:** `mlx-lm`'s server (0.31.3, the latest release) ignores `--adapter-path` (it looks the adapter up after renaming the model). It's already [fixed on main](https://github.com/ml-explore/mlx-lm/pull/1249), just not released yet. My first "tuned" evaluation was the base model again, with identical outcomes in 100 of 100 runs. Sending the adapter with each request fixed it.
 
 ## The numbers that matter
 
@@ -293,7 +293,7 @@ Replay agreement tells you whether the Student *imitates* the Teacher. The busin
 - **Your feedback must sit on the root run, with `session_id`,** or the filter silently finds nothing.
 - **In v0.1 the replay eval is fragile for tool-heavy agents:** failures aren't explained, and tool-call arguments returned as objects are scored as invalid. Read the deterministic metrics, and measure your real metric too.
 - **Check the Teacher's license** before distilling anything.
-- It's a public beta that shipped in late September. Expect sharp edges. `[[LINK: upstream issues, if filed]]`
+- It's a public beta that shipped in late September. Expect sharp edges. Issues I filed: [smithtune #103](https://github.com/langchain-ai/smithtune/issues/103), [mlx-vlm #2399](https://github.com/Blaizzy/mlx-vlm/issues/2399).
 
 **Who should use it today?** Teams that already trace a working agent in LangSmith, want a cheaper model that behaves the same, and have training access with a provider. If you're on a small budget, smithtune's curation and preparation are useful on their own: you can take the prepared splits and train wherever you like, as I did.
 

@@ -49,7 +49,7 @@ Field-level scoring on held-out CNH transcriptions with injected OCR noise, plus
 How it got there:
 - **Teacher:** after three 20-run checks with Claude Sonnet 5 (each found a bug in the setup), the Teacher became DeepSeek-V4-Pro (MIT), because smithtune's data-rights terms and Anthropic's terms restrict distilling Claude's outputs ([ADR-0004](docs/adr/0004-open-weight-teacher.md)). 300 runs, 266 exact, $4.84.
 - **smithtune:** `dataset pull` / `push` curated the 266 exact runs (feedback must sit on the trace **root** with `session_id`, or the filter finds nothing). Baseten training (Loops) isn't enabled for this workspace. Fireworks trained Qwen3.8-27B (1 epoch, val loss 0.013), but the replay eval ran out of credit, and it scores tool-call arguments returned as objects as invalid.
-- **Plan B:** the Student is trained locally on **smithtune's prepared splits** (`make student-data train-student`). Qwen3.5-9B's hybrid linear attention needs >48 GB to train at our lengths, so the Student is Qwen3-8B: 3.5 h per epoch, 10 GB peak. `mlx-lm`'s server ignores `--adapter-path`; the eval sends the adapter per request.
+- **Plan B:** the Student is trained locally on **smithtune's prepared splits** (`make student-data train-student`). Qwen3.5-9B's hybrid linear attention needs >48 GB to train at our lengths, so the Student is Qwen3-8B: 3.5 h per epoch, 10 GB peak. `mlx-lm` 0.31.3's server ignores `--adapter-path` (fixed on main, [PR #1249](https://github.com/ml-explore/mlx-lm/pull/1249), not yet released); the eval sends the adapter per request. Upstream reports: [smithtune #103](https://github.com/langchain-ai/smithtune/issues/103), [mlx-vlm #2399](https://github.com/Blaizzy/mlx-vlm/issues/2399).
 
 ## Quickstart
 
