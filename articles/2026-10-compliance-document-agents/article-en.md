@@ -62,10 +62,12 @@ The reviewer is a Pydantic AI agent with **one run per rule**. That's easier for
 
 **Let the model extract and code decide.** On the guarantee and term rules the 8B model quoted "12 (doze) meses" correctly and then said it exceeds "5 anos". Those two rules had 23 false alarms in 40 findings. Now the model only **extracts** values (percentage, justification quote, months, whether the service is continuous) and ten lines of Python apply the law. It's the same split as in my previous article: the model reads, rules decide.
 
+Together, the two fixes took accuracy from **74.4% to 95.0%** and cut false alarms **from 34 to 6**. All 11 hard compliant cases are now right, against 4 before. Recall dipped slightly, from 22 to 21 of 23 violations found.
+
 | Reviewer | Violations found (recall) | Precision | False alarms | Hard cases right | Quotes verbatim |
 |---|---|---|---|---|---|
 | Baseline (text PDFs) | 95.7% | 39.3% | 34 | 4/11 | 134/146 |
-| + stem search, code-decided limits | [[RESULT: v2 recall]] | [[RESULT: v2 precision]] | [[RESULT]] | [[RESULT]] | [[RESULT]] |
+| + stem search, code-decided limits | 91.3% | **77.8%** | **6** | **11/11** | 150/153 |
 
 ## Part 3: when should the agent escalate?
 
