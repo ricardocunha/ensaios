@@ -58,3 +58,32 @@ Baseline false alarms by rule: vigencia_limite 13, garantia_limite 10, vinculaca
 Self-reported confidence: baseline 88% of findings ≥ 0.95 with 80.7% accuracy on them (74.4% overall); v2 94% ≥ 0.95 with 95.3% (95.0% overall). It barely separates right from wrong.
 
 Runs: `runs/review_text_baseline.jsonl`, `runs/review_text_v2.jsonl` (git-ignored; regenerate with `make review`).
+
+## 4. Escalation on text PDFs (20 synthetic contracts × 8 rules × 3 samples, v2 reviewer, majority vote)
+
+160 decisions. "Escalated" always includes decisions with no valid answer. 20 of 480 runs failed with a connection error to the local server (one burst); they will be re-run (`--redo-errors`), so this table is provisional.
+
+| Escalate when | Escalated | Accuracy on kept | Errors caught | Violations missed and not escalated |
+|---|---|---|---|---|
+| never escalate | 4% | 97.4% | 60% | 1 |
+| self-confidence < 0.9 | 11% | 97.2% | 60% | 1 |
+| samples disagree | 16% | 99.3% | 90% | 1 |
+| quote not verbatim | 6% | 97.3% | 60% | 1 |
+| page quality < 0.9 | 4% | 97.4% | 60% | 1 |
+| disagree OR not verbatim | 16% | 99.3% | 90% | 1 |
+| disagree OR not verbatim OR quality < 0.9 | 16% | 99.3% | 90% | 1 |
+| auditor disputes | 18% | 99.2% | 90% | 1 |
+| all of the above | 22% | 99.2% | 90% | 1 |
+
+- Majority vote of 3 samples alone: 97.4% accuracy on kept decisions (single sample, v2: 95.0%).
+- **Escalating when samples disagree** sends 16% to a human, catches 90% of the wrong decisions, and leaves 99.3% accuracy on the rest.
+- On clean text, OCR quality and quote verification add nothing beyond disagreement.
+
+**Auditor** (tries to refute each reported violation; a dispute counts only with a verbatim counter-quote): 69 violation findings audited.
+
+| | Auditor agrees | Auditor disputes |
+|---|---|---|
+| True violation | 36 | 20 |
+| False alarm | 0 | **13** |
+
+It disputed every false alarm, and also 36% of the true violations, with quotes that are real but irrelevant (e.g. quoting "72 (setenta e dois) meses" against a 72-month-term violation). The verbatim check proves a quote exists, not that it supports the claim. Because a dispute escalates and never overturns, nothing wrong is kept; the cost is human review time.
