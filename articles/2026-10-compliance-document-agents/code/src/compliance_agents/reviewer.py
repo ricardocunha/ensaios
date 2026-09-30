@@ -133,6 +133,29 @@ async def review(agent: Agent, doc_id: str, rule: Rule, extractor: Agent | None 
     }
 
 
+INFRA_ERRORS = ("ModelAPIError", "Connection", "Timeout")  # the server, not the model
+
+
+async def redo_errors(args) -> None:
+    """Re-run only rows that failed for infrastructure reasons, replacing them in place."""
+    rows = [json.loads(line) for line in args.out.read_text().splitlines()]
+    toolset = mcp_toolset(args.data)
+    agent = make_agent(toolset)
+    extractors = {rid: make_agent(toolset, output_type=facts) for rid, (facts, _) in EXTRACTORS.items()} if args.decide == "code" else {}
+    async with toolset:
+        for i, r in enumerate(rows):
+            if not any(k in r.get("error", "") for k in INFRA_ERRORS):
+                continue
+            rule = RULES_BY_ID[r["rule"]]
+            try:
+                new = await review(agent, r["doc"], rule, extractors.get(rule.id))
+            except Exception as e:
+                new = {"doc": r["doc"], "rule": rule.id, "error": f"{type(e).__name__}: {e}"[:500]}
+            rows[i] = {**new, "sample": r.get("sample", 0), "decide": args.decide, "redone": True}
+            print(f"redo {r['doc']} {rule.id} -> {new.get('verdict', 'ERROR')}")
+    args.out.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
+
+
 async def amain(args) -> None:
     toolset = mcp_toolset(args.data)
     agent = make_agent(toolset)
@@ -157,14 +180,16 @@ async def amain(args) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("docs", nargs="+")
+    ap.add_argument("docs", nargs="*")
     ap.add_argument("--rules", nargs="*")
     ap.add_argument("--samples", type=int, default=1, help="runs per (doc, rule); >1 feeds the uncertainty profile")
     ap.add_argument("--data", type=Path, default=Path("data/pncp"))
     ap.add_argument("--out", type=Path, default=Path("runs/review.jsonl"))
     ap.add_argument("--decide", choices=["llm", "code"], default="llm",
                     help="code: for limit rules, the model extracts values and code applies the law")
-    asyncio.run(amain(ap.parse_args()))
+    ap.add_argument("--redo-errors", action="store_true", help="re-run rows of --out that failed for infrastructure reasons")
+    args = ap.parse_args()
+    asyncio.run(redo_errors(args) if args.redo_errors else amain(args))
 
 
 if __name__ == "__main__":
