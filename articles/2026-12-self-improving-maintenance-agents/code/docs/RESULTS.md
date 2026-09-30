@@ -311,3 +311,85 @@ These shares include the days near incidents, so they are not false-alarm rates.
 | Near an incident otherwise (mostly after one) | 26 | 24 |
 | Top component group | transformer 18, generator 18, gearbox 14, generator_bearing 11, hydraulic 9, hub 7 | transformer 27, hydraulic 15, generator 11, gearbox 9, generator_bearing 4 |
 | Length | median 1 day, max 18 | median 1 day, max 30 |
+
+## Milestone 3 (2026-09-30): diagnosis agent, episodic memory, context gating, replay harness
+
+Code: `episodes.py`, `memory.py`, `agent.py`, `replay.py`; tests in `tests/test_memory_replay.py`. Environment adds pydantic-ai-slim 2.52.0. Model: Qwen3-8B 4-bit on the local mlx-lm server (mlx-lm 0.31.3, `default_model`), thinking off, temperature 0.
+
+**Framing (decision, see PLAN.md):** a case study on 21 incidents. With 22 pre-incident episodes and 29 false alarms, no difference between arms can be claimed statistically; the point is to show what memory changes, episode by episode.
+
+### Setup
+
+- **Episodes:** the 77 `iforest_resid` episodes of `runs/m2_episodes.csv`. Scoring labels come only from `runs/m2_episodes_eval.csv`: 22 **pre-incident** (start ≤ 30 d before an incident, covering 9 incidents), 29 **false alarms** (start on a healthy day), 26 **near incidents** (neither; mostly after repairs).
+- **Decision time:** the end of the first alarm day (`start + 1 day`). The m2 episode summary covers the whole episode (up to 18 days), so the agent's summary is rebuilt from the first day only. The agent's tools (residual series of any group, converter/nacelle context and other turbines' scores, maintenance log) return only data before the decision time.
+- **Agent output** (`Diagnosis`): `component` (a logbook component or `none`), `action` (inspect / monitor / ignore), `urgency`, `evidence`, `confidence`.
+- **Memory record:** (first-day summary + residual vector, diagnosis, outcome). **Outcome** from the logbook only: the first logbook row on the same turbine dated within `[start, start + 30 d]`, known at its `fault_time`; otherwise "no logbook failure within 30 days", known at `start + 31 d`. A deterministic lesson compares the diagnosis with the outcome. Before `known_at`, the memory shows "Outcome: not known yet".
+- **Retrieval:** cosine similarity of first-day residual vectors, `sign(z)·log1p(|z|)` over 24 signals (14 scored + 10 context). No embedding model. Pairwise similarity among the 77 episodes (no labels used): median 0.07, 90th percentile 0.55, 95th 0.66.
+- **Arms**, each with its own memory, replayed in decision-time order:
+  - `none`: no memory block.
+  - `ungated`: the 3 most similar past episodes, any age, turbine or similarity, outcome known or not.
+  - `gated`: outcome known; similarity ≥ 0.5; ≤ 365 days old; same turbine or same first-day top group; at most 3. Values fixed before any model run.
+- **Metrics:** component accuracy on the 22 pre-incident episodes (correct if the component is any of the incident's logbook components, the m2 rule); action appropriateness (inspect on pre-incident, ignore on false alarm; "not inspect" on false alarms is also reported); per-month curve; tokens, requests, tool calls, seconds.
+
+### Detector-only baselines (component, 22 pre-incident episodes)
+
+| Baseline | Correct |
+|---|---|
+| Top residual group over the whole episode (milestone 2) | 3 / 22 |
+| Top residual group on the first alarm day (what the agent sees) | 1 / 22 |
+
+### No look-ahead (tests)
+
+`test_replay_before_a_date_does_not_depend_on_anything_after_it` (one per arm) replays a synthetic farm three times: the base data; the same with the future changed after a split date (a logbook row changes component, a new row appears, residuals are scrambled, an episode is added); and the data cut at the split. A recording `FunctionModel` calls every tool and derives its diagnosis from a hash of everything it read. For every episode decided before the split, the prompt, every tool result, the memories, the gate decisions and the diagnosis are identical in all three runs. The test also checks that the change is visible after the split, and that pre-split prompts hold known outcomes (and, in `ungated`, pending ones). Breaking the store (outcomes always visible) fails 3 tests; letting tools read the first alarm day's next day fails all 3 replay tests.
+
+Test count: 67 (22 new in milestone 3), all offline.
+
+### What the gate lets through (model-independent)
+
+Which memories exist and which pass the gate depend only on the episodes and the logbook, not on what the model answers (as long as no episode errors). From the offline dry run (`make replay-dry`, 77 episodes):
+
+| | ungated | gated |
+|---|---|---|
+| Memories shown, total (mean per prompt) | 225 (2.92) | 75 (0.97) |
+| … with outcome known / pending | 154 / 71 | 75 / 0 |
+| … whose outcome is a logbook failure | 70 | 28 |
+| Episodes with at least one memory | 76 | 39 |
+| … of the 22 pre-incident episodes | 21 | 8 |
+| Pre-incident episodes whose prompt shows a past failure of the *right* component | 4 | 1 |
+| Similarity of memories shown: min / median | 0.002 / 0.64 | 0.505 / 0.66 |
+
+Gate rejections (candidate-episode pairs, first failing rule): low similarity 2,340, outcome pending 278, other turbine and group 155, too old 58, over k 20.
+
+**Reading.** On this farm, memory can rarely hand the agent the answer: in only 1 (gated) or 4 (ungated) of the 22 pre-incident episodes does a shown memory record a failure of the component that later failed. Whatever memory changes must mostly come from the other direction: past alarms that were followed by nothing.
+
+### Smoke calls (2026-09-30, shared server): NOT the result
+
+6 agent runs (30 chat requests) while the server was also running another article's evaluation. Episodes 0 and 1 in the `none` arm (`runs/m3_smoke1_none.jsonl`); episodes 23 and 47 in `ungated` and `gated` (`runs/m3_smoke2_*.jsonl`). **In the memory smoke runs, the earlier episodes were diagnosed by the offline rule stand-in, not the LLM, so the memory contents differ from the full run.** These runs also preceded two changes: the outcome window now includes the first alarm day, and runs are capped at 12 requests.
+
+| Run | Label | Diagnosis | Requests / tool calls | Input / output tokens | Seconds |
+|---|---|---|---|---|---|
+| none, ep 0 | pre-incident, generator_bearing | inspect transformer | 4 / 3 | 6,536 / 212 | 20.6 |
+| none, ep 1 | pre-incident, generator_bearing | inspect hydraulic_group | 4 / 3 | 6,252 / 237 | 17.0 |
+| gated, ep 23 | false alarm | inspect generator | 7 / 5 | 20,649 / 276 | 34.7 |
+| ungated, ep 23 | false alarm | inspect generator_bearing | 5 / 3 | 12,663 / 248 | 20.7 |
+| gated, ep 47 | pre-incident, generator_bearing | inspect hydraulic_group | 5 / 3 | 9,751 / 239 | 15.8 |
+| ungated, ep 47 | pre-incident, generator_bearing | inspect generator_bearing | 5 / 3 | 10,596 / 227 | 14.7 |
+
+- Tool calling and the typed output worked in all 6 runs (0 errors). The model called the tools every time, 3-5 times per episode. Input tokens are summed over the requests of a run.
+- Median 18.8 s per episode (14.7-34.7), mean 11,075 input and 240 output tokens.
+- All 6 answers were "inspect", including the false alarm. Six runs are far too few to call this a bias; watch for it in the full run.
+
+### Full run
+
+Queued with `scripts/run_after_queue.sh` (waits for the other job's `QUEUE_DONE`, then `python -m maintenance_agents.replay --model local --arms none,ungated,gated --tag m3 --resume`). Output: `runs/m3_{none,ungated,gated}.jsonl`, `runs/m3_summary.json`, `logs/m3_replay.log`.
+
+| Arm | Component (of 22) | Inspect on pre-incident (of 22) | Ignore on false alarm (of 29) | Not inspect on false alarm (of 29) | Appropriate (of 51) | Errors | Input / output tokens | Median s / episode |
+|---|---|---|---|---|---|---|---|---|
+| none | [[RESULT: m3 none component]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] |
+| ungated | [[RESULT: m3 ungated component]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] |
+| gated | [[RESULT: m3 gated component]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] |
+| detector only | 3 / 22 (whole episode), 1 / 22 (first day) | – | – | – | – | – | 0 | – |
+
+Per-month curve: [[RESULT: m3 monthly, from runs/m3_summary.json arms.*.monthly]]. Episodes where the arms disagree, and what memory showed: [[RESULT: m3 per-episode diff]].
+
+Seconds are measured on a shared server (another article's job is queued on the same `QUEUE_DONE`), so compare arms on tokens, not seconds.

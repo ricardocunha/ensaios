@@ -86,11 +86,25 @@ Details and every number: `code/docs/RESULTS.md` ("Milestone 2").
   - Of the 77 Isolation Forest episodes, 29 are false alarms in healthy periods, 22 precede 9 incidents, and 26 sit near incidents, mostly after repairs.
   - That is a realistic mix for the agent.
 
+## Milestone 3 result (2026-09-30): agent + memory + replay harness
+
+Details and every number: `code/docs/RESULTS.md` ("Milestone 3"). The full run is queued; its numbers are `[[RESULT: …]]` there.
+
+- **Agent.** Pydantic AI, typed `Diagnosis` {component, action inspect/monitor/ignore, urgency, evidence, confidence}. Three tools: residual series of any signal group, context (converter/nacelle residuals, other turbines' scores that day), maintenance log. Qwen3-8B 4-bit on the local mlx-lm server, thinking off, temperature 0.
+- **Decision time = end of the first alarm day.** The m2 episode summary used the whole episode, which is later information, so the agent's view is rebuilt from day one. Detector-only component baseline at that time: 1 / 22 (3 / 22 over the whole episode).
+- **Memory.** One record per diagnosed episode: first-day summary + residual vector, diagnosis, logbook outcome. The outcome is the first logbook row on the turbine within 30 days (known at its timestamp), or "no failure within 30 days" (known at day 31). Until then the memory says "not known yet". The memory never reads the scoring labels.
+- **Retrieval:** cosine similarity of first-day residual vectors (sign·log1p|z|, 24 signals). No embedding model.
+- **Gate** (`GatePolicy`, fixed before any model run): outcome known, similarity ≥ 0.5, ≤ 365 days old, same turbine or same top group, k ≤ 3. Every rejected candidate carries its reason. The ungated arm takes the top 3 by similarity with no filter.
+- **No look-ahead, tested.** Changing the future (logbook rows, residuals, episodes) or cutting it off leaves every pre-split prompt, tool result, gate decision and diagnosis identical, in all three arms. Breaking the store or the tools' time cut makes the test fail. 67 offline tests.
+- **What the gate does, independent of the model.** Memories per prompt: 2.92 ungated, 0.97 gated. Pre-incident episodes with any memory: 21 / 22 vs 8 / 22. Only 4 (ungated) and 1 (gated) of the 22 pre-incident prompts show a past failure of the component that later failed. On this farm, memory can rarely hand over the answer; its effect must mostly come from past alarms that led to nothing.
+- **Smoke** (6 runs, 30 requests, shared server): tools and typed output worked every time. Median 18.8 s and about 11k input tokens per episode. All 6 answers were "inspect", including one false alarm; too few to call it a bias.
+- **Queued full run:** `code/scripts/run_after_queue.sh`, 231 agent runs. It starts when the compliance queue writes `QUEUE_DONE` and shares the server with another queued article job. Expected: about 1.2 h at the smoke pace (231 × 18.8 s); allow up to 2 h, because memory prompts are longer and the other job shares the server.
+
 ## Open questions
 
 - ~~How to score the agent on clustered logbook rows~~: score on incidents (milestone 2 rule). Keep the per-row remarks in the agent's view.
-- Episodes after repairs (sensor replaced, generator swapped) look like strong anomalies. Should the agent be told about recent maintenance (logbook rows before the episode), as a real operator would know?
-- Whether to add CARE Farm B (400 MB, 6 anomaly events) as a held-out farm.
+- ~~Should the agent be told about recent maintenance?~~ Yes (milestone 3): the `maintenance_log` tool returns logbook rows recorded before the decision time, as an operator would know them.
+- CARE Farm B (400 MB, 6 anomaly events): optional replication check, only if time allows (after milestone 4).
 
 - Whether the fine-tuning step fits in the time budget or becomes a follow-up.
 
