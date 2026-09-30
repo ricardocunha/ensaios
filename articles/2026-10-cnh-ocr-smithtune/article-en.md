@@ -1,6 +1,6 @@
 ---
 title: "I tested LangSmith's brand-new smithtune on Brazilian driver's licenses. Here's what it can and can't do"
-subtitle: "Fine-tuning open OCR models for the CNH, and distilling a Claude agent into a 9B model, in the first week of smithtune"
+subtitle: "Fine-tuning open OCR models for the CNH, and distilling an open-weight agent into a local 8B model, in smithtune's first week"
 platforms: Medium, dev.to, Hashnode
 status: DRAFT — replace every [[RESULT: …]] before publishing
 repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2026-10-cnh-ocr-smithtune
@@ -12,7 +12,7 @@ On September 24, 2026, LangChain released **LangSmith Fine-Tuning** and its CLI,
 
 I wanted to try it on a problem I care about: **reading Brazilian driver's licenses (CNH)**. Fintechs, car-rental apps, delivery platforms: half of Brazil's onboarding flows start with "take a photo of your CNH." Frontier APIs handle this well, but they are expensive per document, and they send personal data out of the country, which is a real LGPD conversation.
 
-Two days after launch, this is a field report, not a tutorial. There's plenty of code (the repo is linked at the end), and one early finding changed the whole design.
+Written in smithtune's first week, this is a field report, not a tutorial. There's plenty of code (the repo is linked at the end), and one early finding changed the whole design.
 
 ---
 
@@ -53,7 +53,7 @@ I split the problem at the point where pixels become text:
 ```
 CNH photo ─► [ Reader ] ─► Transcription ─► [ Extractor ] ─► CNH Record (validated JSON)
              vision OCR model                 text-only agent with tools
-             fine-tuned with HF / MLX         Claude Sonnet 5 → Qwen3.5-9B via smithtune
+             fine-tuned with MLX              DeepSeek-V4-Pro → Qwen3-8B, curated with smithtune
 ```
 
 - The **Reader** is a vision model that turns the photo into a *Transcription*: one `LABEL: value` line per printed field, **exactly as printed, errors included**. It never validates anything.
@@ -69,7 +69,7 @@ I started from Hugging Face's excellent overview of open OCR models ([Supercharg
 |---|---|---|
 | **Chandra 2** (`datalab-to/chandra-ocr-2`) | ~5B | OCR specialist. Its model card reports **95.2% on Portuguese** (Chandra 1: 84.3%) |
 | **PaddleOCR-VL-1.6** | 0.9B | A tiny specialist, 109 languages, Apache-2.0 |
-| **Qwen3.5-9B** | 9B | A generalist, and the *same base model* as my smithtune Student |
+| **Qwen3.5-9B** | 9B | A general-purpose vision-language model |
 
 A licensing note, because it will bite someone: **Chandra 2's weights are not free for most companies to use commercially.** The license (a modified OpenRAIL-M) prohibits commercial use by organizations with more than US$2M in revenue *or* funding, and a share-alike clause covers derivatives *and outputs*. "Open weights" isn't the same as "free to use at work." Read the license.
 
@@ -202,70 +202,106 @@ What I'll take away from Stage 1:
 - **Synthetic scores can't tell good from bad.** All three rounds score 99–100% on my synthetic sets. Only the real set separates them: 32%, 52%, 81%.
 - **Let the vision model read, and decide elsewhere.** The biggest jump didn't come from more data or a bigger model; it came from taking one decision away from the part of the system that couldn't generalize it.
 
-## Stage 2: distilling a Claude agent with smithtune
+## Stage 2: distilling the Extractor agent
 
-### Recording the Teacher
+Stage 2 is what smithtune is for: record a strong, expensive agent (the **Teacher**), keep its good runs, and fine-tune a small open model (the **Student**) to behave the same way. The Extractor is a LangChain `create_agent` with eight tools, and its inputs are Transcriptions with **injected OCR noise** (letter/digit swaps, broken date separators, `A8` instead of `AB`, dropped lines) plus decoy transcriptions of RG and CPF cards. Clean inputs don't teach error recovery.
 
-The Extractor is a LangChain `create_agent` with eight tools. The Teacher is **Claude Sonnet 5**. I ran it on 1,500 Transcriptions: real Reader output plus ground-truth Transcriptions with **injected OCR noise** (letter/digit swaps, broken date separators, `A8` instead of `AB`, dropped lines). Clean inputs don't teach error recovery.
+### Three cheap test runs, three bugs (all mine)
 
-Here's the most useful trick: **because the data is synthetic, every run has ground truth.** So the runner scores each trajectory field by field and writes the score back to LangSmith as feedback (`field_accuracy`, `exact`). That gives smithtune a *trusted* quality signal to filter on, which its own documentation recommends over "no errors" or "the agent finished":
+I started with Claude Sonnet 5 as the Teacher and ran 20 transcriptions at a time before spending real money. Each 20-run check found a bug in *my* setup, not in the model:
+
+| Check | Exact | Real CNHs rejected | RG accepted as CNH | What it exposed |
+|---|---|---|---|---|
+| 1 | 8/20 | 5 | 0 | My noise sometimes deleted a required line. The prompt forbade inventing values, so "reject" was the only way out. **Fix:** a CNH Record can have null fields; rejection is for non-CNH documents only. |
+| 2 | 16/20 | 0 | 2 | The fix overcorrected: two RG transcriptions were "incomplete CNHs". **Fix:** the prompt says what makes a CNH (CAT. HAB., Nº REGISTRO…), and the submit tool refuses a record without at least two of those fields. |
+| 3 | 19/20 | 0 | 0 | The agent kept `VITORIA` without an accent, as instructed, and my scoring marked it wrong. **Fix:** compare names accent-insensitively. |
+
+The third check also turned on **prompt caching**: 80% of input tokens came from cache, and the cost of 20 runs fell from $0.80 to $0.36.
+
+### Then I changed the Teacher
+
+Before training on those runs, I read smithtune's data-rights terms, which you must accept before using it. They forbid using smithtune to get around model licenses that restrict "distillation, training competing models, or other uses of model outputs". Anthropic's terms restrict using Claude's outputs to train AI models, so a Claude-distilled Student is exactly the case to avoid. I kept those Claude runs out of every dataset and switched the Teacher to **DeepSeek-V4-Pro**, an open-weight model under the **MIT license**, served through Baseten's API. If you plan to distill any hosted model, read its terms first. I should have done that at the planning stage.
+
+The switch had one surprise of its own. Through Baseten's OpenAI-compatible endpoint, DeepSeek's list argument (the parents' names) arrived **concatenated** (`MARQUESMARIA`). The tool rejected it, the model retried the same call, and a single run looped until LangGraph's step limit, about five minutes. The fix was to take that field as one `"FATHER / MOTHER"` string and to cap every run at 40 steps.
+
+### The Teacher run
+
+| Teacher: DeepSeek-V4-Pro (MIT) | 300 runs |
+|---|---|
+| Exactly right (every field) | **266 (89%)** |
+| Decoys rejected | 44/44 |
+| Real CNHs wrongly rejected | 0 |
+| Most-missed field | `doc_identidade`: an RG number has no check digit, so an `O↔0` swap can't be caught the way a CPF's can |
+| Cost | **$4.84** (about $0.016 per run) |
+
+Because the data is synthetic, **every run has ground truth**. The runner scores each trajectory field by field and writes `exact` and `field_accuracy` back to LangSmith as feedback. That's the trusted quality signal smithtune's own docs recommend filtering on:
 
 ```bash
 smithtune dataset pull runs/smithtune/golden --project-id $PROJECT \
-  --filter 'and(eq(feedback_key, "exact"), eq(feedback_score, 1))' \
-  --target-count 1000 --no-triage
+  --filter 'and(eq(feedback_key, "exact"), eq(feedback_score, 1))' --target-count 266 --no-triage
 ```
 
-`[[RESULT: how many of 1,500 Teacher runs were exact; Teacher cost]]`
+**The first pull found zero traces.** There were two silent bugs in how I wrote the feedback:
+1. I called `create_feedback` without `session_id`. That's now required, and feedback without it isn't indexed for trace filters.
+2. I attached the feedback to the first run LangChain collected, which is the **first model call (a child run)**, not the agent run at the root of the trace. Filters only look at roots.
 
-### Does the agent council agree with ground truth?
+Once the scores were re-attached to the roots, all 266 matched. **Test your filter with `langsmith trace list --filter` before `smithtune dataset pull`**, as smithtune's docs suggest. Then `dataset push` uploaded the 266 curated trajectories to LangSmith as a dataset.
 
-Since I had ground truth anyway, I ran an experiment no one could run on day two: I ran **council triage** on 200 trajectories with my rubric ("validated checksums before submitting", "never invented a missing field", …) and compared its keep/drop verdicts with the truth.
+I skipped the council-triage experiment I had planned (LLM judges vs. my ground truth) to save budget for training.
 
-`[[RESULT: agreement %, false keeps, false drops, one example of a council mistake]]`
+### Training with smithtune: what worked and what didn't
 
-### Training, replay evaluation, deploy
+- **Baseten:** `prepare` stopped at `Loops training is not enabled for your workspace. Contact Baseten.` Their training product is enabled per workspace, and mine wasn't.
+- **Fireworks:** `prepare` accepted all 266 trajectories, rendered them in Qwen3.8-27B's exact chat format and split them 214 / 23 / 29. `plan` showed the whole recipe (LoRA rank 8, lr 1e-4, batch 32, early stopping) but **no dollar estimate**, only "serverless token charges at the current account rate". `--max-spend-usd` is Baseten-only; on Fireworks the only lever is `--max-epochs`.
+- **Training worked:** 1 epoch, 7 steps, validation loss 0.013, and the checkpoint saved in my Fireworks account.
+- **The replay evaluation didn't finish:** `63 cases failed; 45/108 saved`. smithtune reports only the count, not the reason, but my ~$11 of Fireworks credit was gone, and that almost certainly explains it. I had estimated about $6 for training plus evaluation, so check your provider's console before you confirm.
+- **The 45 finished cases weren't trustworthy either.** In 32 of 35 tool-call cases, *both* base and tuned were judged to "violate the tools available at this assistant turn". Yet they had called the right tool with the right values. The Fireworks sampler returns tool-call arguments as a parsed object, and the check expects a JSON string. Base and tuned also produced identical output in 26 of 45 cases, so one epoch had barely moved a 27B model that was already decent at the task. **Read the deterministic metrics before you trust the judge.**
 
-```bash
-smithtune prepare --provider baseten --model Qwen/Qwen3.5-9B --dataset-id $GOLDEN ...
-smithtune plan    --provider baseten --data-dir runs/smithtune/golden --evaluate
-smithtune train   --provider baseten --data-dir runs/smithtune/golden --run-dir runs/... --evaluate --confirm
-```
+### Plan B: train the Student on the laptop
 
-`[[RESULT: plan estimate vs actual time/cost; anything that broke]]`
+smithtune had already done the valuable part: curating the 266 good trajectories and preparing clean train and validation splits. So I trained on **exactly those splits** locally with `mlx-lm`, one example per assistant turn with the history masked, mirroring smithtune's own policy (838 training examples, about 2.2M tokens).
 
-`[[RESULT: replay eval: teacher_agreement base vs tuned]]`
+- **Qwen3.5-9B couldn't be trained on the Mac.** Its hybrid linear-attention layers needed 33.6 GB at just 1,024 tokens and ran out of memory at 2,048; my examples run to about 3,200. **Qwen3-8B**, with standard attention and 4-bit weights, peaked at 10 GB.
+- **One epoch took about 3.5 hours on an M4 Pro.** Validation loss went 0.672 → 0.049 → 0.024 → 0.043 → **0.013** at step 800, the checkpoint I used.
+- **Another silent bug:** `mlx-lm`'s server ignores `--adapter-path` (it looks the adapter up after renaming the model). My first "tuned" evaluation was the base model again, with identical outcomes in 100 of 100 runs. Sending the adapter with each request fixed it.
 
 ## The numbers that matter
 
-Replay agreement tells you whether the Student *imitates* the Teacher. The business question is different: **does it extract the right CPF?** So I deployed the Student and ran it on the same 300 held-out test Transcriptions as the Teacher:
+Replay agreement tells you whether the Student *imitates* the Teacher. The business question is different: **does it extract the right CNH?** So I ran our own field-level evaluation on 100 held-out transcriptions, CNHs with OCR noise plus decoys, that no model had seen:
 
-`[[RESULT: table: Teacher (Sonnet 5) vs base Qwen3.5-9B vs tuned Qwen3.5-9B. Field accuracy, exact records, avg tool calls, p50 latency, $/1k CNHs]]`
+| Extractor | Exactly right | Field accuracy | Decoys rejected | Real CNHs rejected | Tool calls / run | Cost per 1,000 CNHs |
+|---|---|---|---|---|---|---|
+| Teacher: DeepSeek-V4-Pro (API) | 89%* | 99.3% | 44/44 | 0 | 7.6 | ~$16 |
+| Qwen3-8B, not tuned (local) | 46% | 93.1% | 12/14 | 0 | 6.2 | $0 |
+| **Qwen3-8B + LoRA (local)** | **81%** | **96.6%** | **14/14** | 1 | **8.2** | **$0** |
 
-`[[RESULT: headline sentence: "the tuned 9B reaches X% of the Teacher's field accuracy at Y% of the cost"]]`
+<sub>*The Teacher was scored on 300 training-distribution transcriptions and the Student on 100 held-out ones: the same generator and noise, different items. One Student run failed with an error; 99 were scored. "$0" means no per-document fee; it runs on hardware you already own.</sub>
+
+**Fine-tuning took the local 8B model from 46% to 81% exactly right, about 90% of the way to the Teacher's 89%, for no per-document cost.** It fixed 38 runs the base model got wrong and broke 4. It also learned the Teacher's *habits*, not just its answers: it now rejects every decoy, and it validates before submitting (6.2 → 8.2 tool calls per run, against the Teacher's 7.6). What's left is mostly the field the Teacher also struggles with, the RG number that has no checksum.
 
 ## Verdict on smithtune (v0.1.0)
 
 **What I liked**
-- **The right abstraction.** "Traces → curated dataset → LoRA → replay eval → deploy" is the loop teams keep rebuilding by hand.
-- **Replay evaluation** is a smart, safe default: it compares models step by step without running tools against real systems.
-- **Careful engineering:** pinned tokenizers, verified chat templates, `--confirm` on every paid step, and no default rubric.
-- **It's built to be driven by a coding agent:** it ships as a skill (`npx skills add langchain-ai/smithtune`), and the docs read like instructions for one.
+- **The right abstraction.** "Traces → curated dataset → LoRA → replay eval → deploy" is the loop teams keep rebuilding by hand. The curation half alone paid off: the dataset it built trained a good Student, even off-platform.
+- **Careful engineering:** pinned tokenizers, verified chat templates, `--confirm` on every paid step, no default rubric, and a data-rights attestation that made me check my Teacher's license before training.
+- **Replay evaluation is a good idea:** step-by-step comparison without running tools against real systems.
+- **It's built to be driven by a coding agent:** it ships as a skill (`npx skills add langchain-ai/smithtune`).
 
 **What to know before you start**
-- **Text and tool calls only.** Vision, audio and document traces are filtered out.
-- **A fixed model list** on two providers. You can't bring your own Hugging Face model.
-- **Replay agreement is not task accuracy.** Measure your real metric too.
-- **Deployments cost money until you undeploy.** Set a reminder.
-- It's a public beta that shipped this week. Expect sharp edges. `[[RESULT: link any issues I opened]]`
+- **Text and tool calls only;** image, audio and document traces are filtered out. The base models come from a fixed list.
+- **Check provider access first.** Baseten training is gated per workspace, and Fireworks has no cost estimate or spend cap in smithtune.
+- **Your feedback must sit on the root run, with `session_id`,** or the filter silently finds nothing.
+- **In v0.1 the replay eval is fragile for tool-heavy agents:** failures aren't explained, and tool-call arguments returned as objects are scored as invalid. Read the deterministic metrics, and measure your real metric too.
+- **Check the Teacher's license** before distilling anything.
+- It's a public beta that shipped in late September. Expect sharp edges. `[[LINK: upstream issues, if filed]]`
 
-**Who should use it today?** Teams that already trace a working agent in LangSmith, pay frontier-model prices for it, and want a cheaper, faster model that behaves the same. If that's you, the path from traces to a tuned model has never been shorter.
+**Who should use it today?** Teams that already trace a working agent in LangSmith, want a cheaper model that behaves the same, and have training access with a provider. If you're on a small budget, smithtune's curation and preparation are useful on their own: you can take the prepared splits and train wherever you like, as I did.
 
-**What I'd love in v0.2:** multimodal trajectories. Fireworks can already fine-tune Qwen3-VL-8B on images through its own API. The moment smithtune supports that, a one-stage image→JSON Student becomes possible, and I'll rerun this experiment.
+**What I'd love in v0.2:** multimodal trajectories (so the Reader could be trained end to end), a cost estimate and spend cap on Fireworks, clear reasons for failed evaluation cases, and evaluation that accepts tool-call arguments as objects.
 
 ---
 
-**Code, data and adapters:** [github.com/ricardocunha/ensaios › articles/2026-10-cnh-ocr-smithtune](https://github.com/ricardocunha/ensaios/tree/main/articles/2026-10-cnh-ocr-smithtune) · Synthetic dataset: `[[RESULT: HF dataset URL]]`
+**Code, data and adapters:** [github.com/ricardocunha/ensaios › articles/2026-10-cnh-ocr-smithtune](https://github.com/ricardocunha/ensaios/tree/main/articles/2026-10-cnh-ocr-smithtune) · Synthetic dataset: `[[LINK: HF dataset URL]]`
 
 *All documents in this project are synthetic. No real person's data was used for training.*
 

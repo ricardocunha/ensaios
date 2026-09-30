@@ -10,13 +10,13 @@ My plan was to fine-tune an OCR model with it. Then I read the source:
 
 So I split the problem in two:
 1️⃣ Reader: 3 open OCR models (Chandra 2, PaddleOCR-VL, Qwen3.5-9B) compared zero-shot; the 0.9B one LoRA-tuned on synthetic CNHs, on a MacBook
-2️⃣ Extractor: a tool-using agent (checksums, OCR fixes, date rules). Claude Sonnet 5 as Teacher, distilled with smithtune into Qwen3.5-9B
+2️⃣ Extractor: a tool-using agent (checksums, OCR fixes, date rules). An open-weight Teacher (DeepSeek-V4-Pro, MIT) whose best runs smithtune curated, distilled into a local 8B Student
 
 Results:
 📉 A 0.9B OCR model fine-tuned on a MacBook: 99.8% on my synthetic cards, then rejected 48 of 70 REAL CNHs as "not a CNH". Synthetic data taught it to read, and also what a CNH "looks like". 🔁 Round 2: same 2,293 images, just more varied (designs, scans, rotations) → +20 points on real cards, now ahead of zero-shot Qwen3.5-9B at 8× the speed. Round 3: let the vision model only read, and decide "is this a CNH?" from the text → 81% on real cards, 0/70 wrongly rejected. The biggest jump came from moving one decision, not from more data.
-[[RESULT: 1 line Student vs Teacher, cost]]
+🎯 The local Qwen3-8B Student: 46% → 81% exact after one LoRA epoch on a MacBook, vs 89% for the API Teacher, at $0 per document.
 
-Bonus: I measured how often smithtune's "agent council" agrees with ground truth → [[RESULT: %]]
+Along the way: I switched Teachers after reading the license terms, ran out of Fireworks credit mid-eval, and found three silent tool bugs, each of which only showed up as a number that couldn't be true.
 
 Full write-up + code (100% synthetic data, no real documents) 👇
 [[LINK]]
@@ -30,6 +30,6 @@ Carousel (8 slides):
 3. The catch: `multimodal_types()` code snippet + fixed model list
 4. Architecture: Reader → Transcription → Extractor
 5. Stage 1 results chart (zero-shot vs LoRA, 3 models)
-6. Council vs ground truth
+6. What broke: license terms, credits, three silent bugs
 7. Teacher vs Student: accuracy vs cost chart
 8. Verdict: 4 pros / 4 cons + repo link
