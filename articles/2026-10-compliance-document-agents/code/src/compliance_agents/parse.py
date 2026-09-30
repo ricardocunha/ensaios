@@ -20,7 +20,7 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.types.doc import DocItemLabel
 
 # Contract clauses: "CLÁUSULA PRIMEIRA – DO OBJETO", "CLÁUSULA 5ª", "CLÁUSULA DÉCIMA SEGUNDA"...
-CLAUSE_RE = re.compile(r"^\s*CL[ÁA]USULA\b", re.IGNORECASE)
+CLAUSE_RE = re.compile(r"^\s*(?:\d+[.)]?\s*)?CL[ÁA]USULA\b", re.IGNORECASE)  # "1. CLÁUSULA PRIMEIRA" too
 
 
 @dataclass

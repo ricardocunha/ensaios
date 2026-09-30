@@ -16,3 +16,7 @@ def test_spearman():
     assert spearman([1, 2, 3, 4], [10, 20, 30, 40]) == 1.0
     assert spearman([1, 2, 3, 4], [4, 3, 2, 1]) == -1.0
     assert spearman([1, 2], [1, 2]) is None
+
+
+def test_numbers_split_across_lines_are_joined():
+    assert numbers("cláusula 14.\r\n3 A contratada") == numbers("cláusula 14.3 A contratada")

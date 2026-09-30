@@ -28,3 +28,6 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.1.1",
 ]
+local = [
+    "mlx-lm>=0.31.3",
+]

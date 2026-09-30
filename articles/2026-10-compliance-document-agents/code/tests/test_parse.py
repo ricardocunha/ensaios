@@ -24,3 +24,18 @@ def test_empty_preamble_is_dropped():
 
 def test_normalize_ignores_case_accents_and_spacing():
     assert normalize("Prazo de  VIGÊNCIA\n12") == normalize("prazo de vigencia 12")
+
+
+def test_preamble_spans_sections_until_the_first_clause():
+    from compliance_agents.mcp_server import preamble_text
+    from compliance_agents.parse import ParsedDocument
+
+    secs = split_sections([
+        (L.TITLE, "Ministério Exemplo", 1),
+        (L.TITLE, "Contrato nº 1/2026", 1),
+        (L.TEXT, "A União, na cidade de CURITIBA / PR, doravante CONTRATANTE", 1),
+        (L.TEXT, "1. CLÁUSULA PRIMEIRA - OBJETO", 1),
+        (L.TEXT, "Objeto.", 1),
+    ])
+    doc = ParsedDocument("d", "s", 1, 0, False, "good", "good", {}, secs)
+    assert "CURITIBA" in preamble_text(doc) and "Objeto." not in preamble_text(doc)

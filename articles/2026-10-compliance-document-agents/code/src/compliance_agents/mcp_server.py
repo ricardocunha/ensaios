@@ -12,7 +12,9 @@ from pathlib import Path
 
 from mcp.server.mcpserver import MCPServer
 
-from compliance_agents.parse import ParsedDocument, load_or_parse
+from compliance_agents.parse import CLAUSE_RE, ParsedDocument, load_or_parse
+
+PREAMBLE_CHARS = 1500  # the parties, their seats and the legal basis are usually here
 
 server = MCPServer(
     "contract-parser",
@@ -47,6 +49,17 @@ def _page_quality(doc: ParsedDocument, pages: list[int]) -> float | None:
     return round(min(scores), 3) if scores else None
 
 
+def preamble_text(doc: ParsedDocument) -> str:
+    """Everything before the first clause: letterhead, title and the parties' qualification.
+    (Docling often labels the title as a heading, so the preamble can span several sections.)"""
+    parts = []
+    for s in doc.sections:
+        if CLAUSE_RE.search(s.heading):
+            break
+        parts.append(f"{s.heading}\n{s.text}".strip())
+    return "\n".join(parts)
+
+
 @server.tool()
 def list_documents() -> list[str]:
     """IDs of the available contracts."""
@@ -55,13 +68,15 @@ def list_documents() -> list[str]:
 
 @server.tool()
 def parse_document(doc_id: str) -> dict:
-    """Outline of a contract: page count, Docling quality grades and section headings."""
+    """Outline of a contract: page count, quality grades, the preamble (who the parties are) and section headings."""
     doc = _doc(doc_id)
+    preamble = preamble_text(doc)
     return {
         "doc_id": doc.doc_id,
         "pages": doc.pages,
         "ocr_used": doc.ocr_used,
         "quality": {"mean_grade": doc.mean_grade, "low_grade": doc.low_grade},
+        "preamble": preamble[:PREAMBLE_CHARS],
         "sections": [{"id": s.id, "heading": s.heading, "pages": s.pages, "chars": len(s.text)} for s in doc.sections],
     }
 

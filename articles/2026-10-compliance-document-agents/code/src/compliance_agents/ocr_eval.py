@@ -12,16 +12,19 @@ import re
 from collections import Counter
 from pathlib import Path
 
+from docling_core.types.doc import ContentLayer
 from rapidfuzz.distance import Levenshtein
 
 from compliance_agents.mcp_server import normalize
 from compliance_agents.parse import converter, item_text
 
 NUMBER_RE = re.compile(r"(?:\d[\d.,/-]*\d|\d)%?")
+SPLIT_NUMBER_RE = re.compile(r"(\d[.,/-])\s+(?=\d)")  # "14.\r\n3" in some text layers -> "14.3"
 
 
 def numbers(text: str) -> Counter:
     """Numeric tokens (amounts, dates, percentages, process numbers), punctuation kept."""
+    text = SPLIT_NUMBER_RE.sub(r"\1", text)
     return Counter(m.rstrip(".,") for m in NUMBER_RE.findall(text))
 
 
@@ -44,7 +47,10 @@ def page_metrics(truth: str, ocr: str) -> dict:
 def ocr_pages(pdf: Path) -> tuple[dict[int, str], dict[int, dict]]:
     res = converter().convert(pdf)
     texts: dict[int, list[str]] = {}
-    for item, _ in res.document.iterate_items():
+    # Headers and footers (letterhead, page numbers) are "furniture" in Docling, not body text.
+    # The text layer has them, so include them here, or OCR is blamed for Docling's layout choice.
+    layers = {ContentLayer.BODY, ContentLayer.FURNITURE}
+    for item, _ in res.document.iterate_items(included_content_layers=layers):
         text = item_text(item, res.document)
         if text and item.prov:
             texts.setdefault(item.prov[0].page_no, []).append(text)
