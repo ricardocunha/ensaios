@@ -70,7 +70,8 @@ def mcp_toolset(data_dir: Path) -> MCPToolset:
         env={**os.environ, "COMPLIANCE_DATA_DIR": str(data_dir.resolve())},
         cwd=str(Path(__file__).resolve().parents[2]),
     )
-    return MCPToolset(transport)
+    # a generous start-up timeout: under heavy machine load the server's first import took too long
+    return MCPToolset(transport, init_timeout=180)
 
 
 def model_settings() -> dict:
