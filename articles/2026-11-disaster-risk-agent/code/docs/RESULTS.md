@@ -106,3 +106,190 @@ Copernicus EMS labels become visible at delivery: first one Guaporé DEL0 (image
 - ANA vs INMET rain, best shift of ANA time towards UTC (Pearson r): Cais Mauá–A801 +2:45 (0.95; 0.42 at 0 h); CatSul–B807 +2:15 (0.93); CatSul–A801 +2:30 (0.91); Muçum–A840 +1:30 (0.86); Estrela–A882 +2:30 (0.58); Muçum–A894 +2:15 (0.54); Encantado–A882 +3:15 (0.33).
 - INMET radiation-weighted mean row label vs solar noon (UTC h): A840 15.88 vs 15.44; A882 15.75 vs 15.45; A801 15.89 vs 15.41.
 - SACE bulletin levels equal ANA readings at the same local clock time (6 of 6 values on 04-30 06:00 and 05-01 22:00 where both had a reading; at 05-01 22:00 the bulletin printed Estrela 3015 cm while ANA has no Estrela reading).
+
+## Milestone 3: fusion, backtest, alert agent (2026-09-30)
+
+Command: `make evaluate` (`python -m disaster_risk.evaluate`, 73 s on the M4 Pro), output in `runs/m3/`
+(`summary.json`, `fused_2024.csv`, `lr_table.json`, `key_hours.json`). Times are local (UTC-3) unless marked.
+
+### Fusion formula (`fusion.py`)
+
+Per place (the five gauges with an official flood level: Muçum, Encantado, Estrela, Taquari, Porto Alegre/Cais Mauá) and replay hour t:
+
+    H(place, t)  = the place's gauge reads >= its flood level in (t - 1 h, t + 24 h]
+    log_odds(t)  = logit(prior) + Σ_i w_i · r_i · ln LR_i          p(t) = sigmoid(log_odds)
+
+- prior: share of labelled hours with H = 1 in TRAIN (2019-2022), add-one smoothed.
+- r_i: signal reliability, which already contains the freshness decay (halves every 6 h after 1 h; 0 after 72 h).
+- w_i (fixed a priori): own gauge level 1.0; each upstream/neighbour level gauge 0.5; rain group 1.0 split evenly over its N stations (1/N each), because rain stations in one storm are correlated.
+- LR_i, two modes: **hand-set** = the milestone 2 round numbers; **calibrated** = each band keeps its definition but gets LR = P(band | H) / P(band | not H) from the 2019-2022 replay, pooled across places per (role, source, band), add-half smoothing, ≥ 20 records, clipped to [0.01, 1000] (`calibration.py`).
+- Risk levels (fixed before the backtest): normal < 0.10 ≤ attention < 0.50 ≤ alert < 0.90 ≤ emergency.
+- Silent gauge: a level gauge (own or upstream) whose latest reading is > 3 h old, or missing.
+
+Place → signals: Muçum = own gauge + own rain + INMET A840/A894/A837/A844; Encantado adds Muçum level (upstream) and rain; Estrela: Encantado + Muçum upstream, A882; Taquari: Estrela + Encantado upstream; Porto Alegre: Taquari, CatSul Guaíba and Gasômetro levels (upstream/neighbour), ANA rain Cais Mauá/CatSul, INMET A801/A879/A882.
+
+Historical replay (`history.py`): 2019-01-05 → 2024-04-19 local, 46,368 hourly steps, 973,728 signals, same adapters, INMET yearly files 2019-2024. TRAIN = up to 2022-12-31 (priors and LR table), TEST = 2023-01-01 → 2024-04-19 (1.30 years; contains the July, September and November 2023 floods). Station level thresholds (p90/p99) still come from the whole 2019-2024-04 record (milestone 2), so they are in-sample for TEST.
+
+### Priors (TRAIN)
+
+| Place | Hours with H = 1 / labelled | Prior |
+|---|---|---|
+| Muçum | 52 / 34,333 | 0.0015 |
+| Encantado | 198 / 35,037 | 0.0057 |
+| Estrela | 203 / 16,369 | 0.0125 |
+| Taquari | 0 / 9,411 (record starts 2021-11) | 0.0001 |
+| Porto Alegre (Cais Mauá ≥ 300 cm) | 25 / 32,178 | 0.0008 |
+
+### Calibrated LR table (TRAIN; `runs/m3/lr_table.json`)
+
+Band = the hand-set LR the adapter gave (level: 0.5 below p90, 1.5 ≥ p90, 4 ≥ p99, 10 ≥ flood level, ×2 for a 1 m rise in 6 h; rain: 0.5 dry, 1 none, 2/5/10 by 24 h/72 h totals).
+
+| Role, source | Band (hand-set LR) → calibrated LR (n H=1 / n H=0) |
+|---|---|
+| own gauge level | 0.5 → 0.079 (33 / 116,672); 1.5 → 3.02 (96 / 8,809); 3 → 32.5 (39 / 335); 4 → 18.1 (24 / 374); 8 → 142 (56 / 109); 10 → 1000 cap (143 / 0); 20 → 1000 cap (63 / 0) |
+| upstream level | 0.5 → 0.029; 1.5 → 1.96; 3 → 31.2; 4 → 112; 8 → 236; 10 → 110 (49 / 75); 20 → 468 (37 / 13) |
+| ANA gauge rain | 0.5 → 0.067; 1 → 2.82; 2 → 20.2; 5 → 52.7; 10 → 133 (13 / 24) |
+| INMET rain | 0.5 → 0.112; 1 → 2.46; 2 → 22.3; 5 → 79.1; 10 → 673 (16 / 5) |
+
+The hand-set LRs were far too timid for priors of 0.01–1.3 %: the data says a rising river at p90 is worth ~30, not 3, and even the "no band" rain state (1) is evidence for H (2.5–2.8) because floods follow wet weeks.
+
+### 2024 lead times (lead = flood-level crossing − alert onset; positive = alert first)
+
+| Place | Flood-level crossing | Fusion attention | **Fusion alert (calibrated)** | Lead | Hand-set LRs: alert | Own gauge LR ≥ 10 (M2) | Lead | Any of the place's signals LR ≥ 10 | Lead |
+|---|---|---|---|---|---|---|---|---|---|
+| Muçum | 05-01 12:45 | 04-29 21:00 | **04-30 11:00** | **+25.75 h** | never (max p < 0.5) | 05-01 13:00 | −0.25 h | 04-30 07:00 | +29.75 h |
+| Encantado | 04-30 14:15 | 04-29 20:00 | **04-29 21:00** | **+17.25 h** | never | 04-30 15:00 | −0.75 h | 04-30 05:00 | +9.25 h |
+| Estrela | 04-30 08:15 | 04-29 19:00 | **04-29 20:00** | **+12.25 h** | 04-30 09:00 (−0.75 h) | 04-30 09:00 | −0.75 h | 04-30 05:00 | +3.25 h |
+| Taquari | 05-01 04:15 | 04-30 02:00 | **04-30 08:00** | **+20.25 h** | never | 05-01 05:00 | −0.75 h | 04-30 09:00 | +19.25 h |
+| Porto Alegre | 05-02 13:15 | 05-01 16:00 | **05-02 06:00** | **+7.25 h** | never | 05-02 14:00 | −0.75 h | 04-30 10:00 (Canela rain) | +51.25 h |
+
+The replay is hourly and reports at the end of the hour, so any replay time lags a 15-min event by up to 1 h. "Any signal LR ≥ 10" fires early but is not an alert rule anyone could run: for Porto Alegre it is a rain station 51 h before the crossing, and single rain signals reach LR ≥ 10 at stations that never flooded (milestone 2 table).
+
+Against the SGB SACE bulletins (upload times; SACE covers the Taquari gauges, not the Guaíba):
+
+| Place | First SACE bulletin (upload) | Fusion alert − bulletin | First bulletin printing the station ≥ flood (upload) | Fusion alert − that bulletin |
+|---|---|---|---|---|
+| Muçum | 04-30 07:54 | bulletin 3.1 h earlier | 05-02 00:28 | alert 37.5 h earlier |
+| Encantado | 04-30 07:54 | alert 10.9 h earlier | 05-12 14:51 (no Encantado reading printed in the first wave) | — |
+| Estrela | 04-30 07:54 | alert 11.9 h earlier | 04-30 11:49 | alert 15.8 h earlier |
+| Taquari | 04-30 07:54 | bulletin 0.1 h earlier (alert 08:00) | 05-01 07:39 | alert 23.7 h earlier |
+
+The first SACE bulletin is a basin-wide warning, not a per-station flood call, so the fair comparison is: the fusion put Encantado and Estrela on alert about 11–12 h before SGB's first bulletin, and Muçum and Taquari within about 3 h of it.
+
+### Historical floods: same fusion, same rule (TRAIN events are in-sample for the LR table; TEST events are not)
+
+Flood onset = first reading ≥ flood level after 7 days below it. SACE column = first bulletin uploaded within ±72 h of the onset.
+
+| Place | Onset | Split | Calibrated alert onset | Lead | Hand-set lead | First SACE upload (±72 h) | SACE lead | Alert − SACE |
+|---|---|---|---|---|---|---|---|---|
+| Muçum | 2020-07-08 03:30 | TRAIN | 07-07 21:00 | +6 h | missed | 07-07 21:01 | +6 h | +0 h |
+| Muçum | 2023-09-04 16:45 | TEST | 09-04 13:00 | +4 h | missed | 09-04 14:51 | +2 h | +2 h |
+| Muçum | 2023-11-18 09:15 | TEST | 11-17 23:00 | +10 h | missed | 11-17 11:36 | +22 h | −11 h |
+| Encantado | 2019-11-05 09:00 | TRAIN | 11-05 00:00 | +9 h | missed | — | — | — |
+| Encantado | 2020-07-07 23:00 | TRAIN | 07-06 06:00 | +41 h | missed | 07-07 21:01 | +2 h | +39 h |
+| Encantado | 2022-05-04 01:45 | TRAIN | 05-01 18:00 | +56 h | missed | 05-03 17:14 | +9 h | +47 h |
+| Encantado | 2023-07-13 04:15 | TEST | 07-12 18:00 | +10 h | missed | 07-13 00:20 | +4 h | +6 h |
+| Encantado | 2023-09-04 15:00 | TEST | 09-04 06:00 | +9 h | −3 h | 09-04 14:51 | +0 h | +9 h |
+| Encantado | 2023-11-18 02:15 | TEST | 11-16 14:00 | +36 h | −8 h | 11-17 11:36 | +15 h | +22 h |
+| Estrela | 2020-07-09 04:00 | TRAIN | 07-07 18:00 | +34 h | +0 h | 07-07 21:01 | +31 h | +3 h |
+| Estrela | 2022-05-03 10:00 | TRAIN | 05-02 01:00 | +33 h | missed | 05-03 17:14 | −7 h | +40 h |
+| Estrela | 2022-05-30 11:15 | TRAIN | 05-29 18:00 | +17 h | missed | 05-30 08:19 | +3 h | +14 h |
+| Estrela | 2022-06-07 08:00 | TRAIN | 06-06 12:00 | +20 h | missed | 06-06 23:21 | +9 h | +11 h |
+| Estrela | 2022-06-23 06:30 | TRAIN | 06-22 05:00 | +26 h | missed | 06-22 18:41 | +12 h | +14 h |
+| Estrela | 2023-07-13 06:15 | TEST | 07-12 18:00 | +12 h | +2 h | 07-13 00:20 | +6 h | +6 h |
+| Estrela | 2023-09-04 18:30 | TEST | 09-04 06:00 | +12 h | +2 h | 09-04 14:51 | +4 h | +9 h |
+| Estrela | 2023-11-18 01:45 | TEST | 11-16 14:00 | +36 h | +2 h | 11-17 11:36 | +14 h | +22 h |
+| Taquari | 2023-09-05 14:30 | TEST | 09-04 16:00 | +22 h | missed | 09-04 14:51 | +24 h | −1 h |
+| Taquari | 2023-11-18 15:30 | TEST | 11-18 06:00 | +10 h | missed | 11-17 11:36 | +28 h | −18 h |
+| Porto Alegre | 2019-06-27 13:15 | TRAIN | — | missed | missed | — | — | — |
+| Porto Alegre | 2023-09-27 08:30 | TEST | — | missed | missed | — | — | — |
+| Porto Alegre | 2023-11-20 07:15 | TEST | 11-19 16:00 | +15 h | missed | — | — | — |
+
+Calibrated fusion: 20 of 22 onsets had an alert before the crossing (all 10 TEST onsets at the four Taquari gauges, 1 of 2 TEST onsets at Cais Mauá). Hand-set: 4 of 22 with lead ≥ 0 h (all at Estrela), 2 more alerted after the crossing, 16 missed. September 2023 (the second event): Muçum +4 h, Encantado +9 h, Estrela +12 h, Taquari +22 h; the first SACE bulletin (uploaded 09-04 14:51) came after the fusion alert for Muçum (13:00), Encantado and Estrela (06:00), and 1 h before the Taquari alert (16:00). In November 2023 SACE was earlier than the fusion at Muçum (11 h) and Taquari (18 h).
+
+### False alarms (alert episodes; episodes < 24 h apart are merged)
+
+An episode is a false alarm when no reading ≥ flood level exists from its onset − 1 h to its end + 24 h while the gauge did report ("unverifiable" when it did not report at all).
+
+| Fusion | Period | Place-years | Alert episodes: hits / false / unverifiable | False alarms per place-year |
+|---|---|---|---|---|
+| calibrated | TEST 2023-01 → 2024-04 | 6.50 | 11 / 21 / 1 | **3.23** |
+| calibrated | TRAIN 2019-01 → 2022-12 (in-sample) | 19.95 | 10 / 19 / 3 | 0.95 |
+| calibrated | 2024 window 04-20 → 05-20 | 0.42 | 9 / 0 / 0 | 0 |
+| hand-set | TEST | 6.50 | 5 / 0 / 0 | 0 |
+| hand-set | TRAIN | 19.95 | 1 / 0 / 0 | 0 |
+
+Per place, calibrated TEST (hits/false/unverifiable): Muçum 2/3/0, Encantado 3/7/0, Estrela 3/9/1, Taquari 2/1/0, Porto Alegre 1/1/0.
+The false alarms were near misses: the highest reading during a TEST false alarm was 0.39–0.96 × the flood level (median 0.77; TRAIN 0.35–0.98, median 0.73). 2023 was an unusually wet year in the valley; 3.23 per place-year is the price of the 7–36 h leads above. The hand-set LRs have no false alarms because they almost never alert.
+
+### Calibration (Brier score over hours with a label; climatology = the prior)
+
+| Fusion | TEST Brier (climatology 0.0132) | BSS | 2024 window Brier (climatology 0.3426) | BSS |
+|---|---|---|---|---|
+| calibrated | 0.0074 | 0.44 | 0.1148 | 0.66 |
+| hand-set | 0.0111 | 0.16 | 0.2679 | 0.22 |
+
+TEST: 52,675 labelled place-hours, 697 positive. 2024 window: 2,453 labelled place-hours of 3,720 (the rest had a silent gauge), 849 positive.
+
+Reliability table, calibrated fusion (bin: n, mean p, observed frequency):
+
+| Bin | TEST | 2024 window |
+|---|---|---|
+| [0, 0.01) | 49,421, 0.000, 0.001 | 1,583, 0.001, 0.098 |
+| [0.01, 0.1) | 1,792, 0.040, 0.064 | 134, 0.046, 0.425 |
+| [0.1, 0.3) | 672, 0.173, 0.107 | 100, 0.171, 0.410 |
+| [0.3, 0.5) | 163, 0.398, 0.491 | 71, 0.404, 0.789 |
+| [0.5, 0.7) | 136, 0.599, 0.294 | 81, 0.603, 0.728 |
+| [0.7, 0.9) | 218, 0.800, 0.523 | 74, 0.827, 0.959 |
+| [0.9, 1] | 273, 0.981, 0.894 | 410, 0.986, 1.000 |
+
+In the TEST years the fusion is overconfident between 0.5 and 0.9 (naive Bayes still double-counts correlated evidence); in 2024 it is underconfident everywhere below 0.9 (the event was bigger than anything in TRAIN). Hand-set, 2024: every bin from 0.01 to 0.9 had observed frequency 0.83–1.00.
+
+### Ablations (calibrated LR table; lead in h for the 2024 crossings; TEST false alarms and Brier)
+
+| Config | Muçum | Encantado | Estrela | Taquari | Porto Alegre | TEST false (per place-year) | TEST hits / false / unverif. | Brier TEST | BSS TEST | Brier 2024 | BSS 2024 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| hand-set LRs | missed | missed | −0.75 | missed | missed | 0 (0.00) | 5 / 0 / 0 | 0.0111 | 0.16 | 0.2679 | 0.22 |
+| **full** | +25.75 | +17.25 | +12.25 | +20.25 | +7.25 | 21 (3.23) | 11 / 21 / 1 | 0.0074 | 0.44 | 0.1148 | 0.66 |
+| no ANA level (rain only) | missed | missed | missed | missed | missed | 0 (0.00) | 0 / 0 / 0 | 0.0124 | 0.06 | 0.3104 | 0.09 |
+| no upstream level | +26 | +7 | +13 | −1 | −1 | 7 (1.08) | 9 / 7 / 0 | 0.0078 | 0.41 | 0.1609 | 0.53 |
+| no ANA rain | +19 | +17 | +12 | +20 | +7 | 18 (2.77) | 11 / 18 / 1 | 0.0069 | 0.48 | 0.1228 | 0.64 |
+| no INMET rain | −0 | +17 | +12 | +19 | −1 | 8 (1.23) | 11 / 8 / 0 | 0.0073 | 0.44 | 0.1429 | 0.58 |
+| no freshness decay | +26 | +17 | +12 | +20 | +7 | 20 (3.08) | 12 / 20 / 1 | **0.0062** | **0.53** | **0.0927** | **0.73** |
+| equal weights (all w = 1) | +41 | +19 | +14 | +33 | +58 | 51 (7.84) | 13 / 51 / 18 | 0.0385 | −1.93 | 0.1343 | 0.61 |
+
+(Ablation leads other than "full" are rounded to the hour in the evaluate output.)
+
+Readings: river levels are the backbone (without them no alert fired in TEST or in 2024); upstream gauges buy the lead at Taquari (+20 → −1 h) and Porto Alegre (+7 → −1 h) and at Encantado (+17 → +7 h), and account for 14 of the 21 TEST false alarms (21 → 7 without them); INMET rain buys Muçum's lead (+26 → 0 h) and Porto Alegre's; ANA gauge rain adds 7 h at Muçum and 3 false alarms. **Freshness decay made calibration worse** (Brier 2024 0.0927 without it vs 0.1148 with it; TEST 0.0062 vs 0.0074) without changing any 2024 lead: when a gauge goes silent in a flood, the river is usually still high, so discounting its last reading throws away true evidence. Equal weights (plain naive Bayes) alerts earliest but has 2.4× the false alarms and is worse than climatology in TEST (BSS −1.93).
+
+### Silent gauges in the 2024 replay (calibrated fusion)
+
+Key hours chosen by `evaluate.key_hours` (each place's first alert, and its first hour at ≥ attention with its own gauge silent):
+
+| Place | Kind | Local time | p | Level | Silent gauges |
+|---|---|---|---|---|---|
+| Estrela | first alert | 04-29 20:00 | 0.888 | alert | — |
+| Encantado | first alert | 04-29 21:00 | 0.749 | alert | — |
+| Taquari | first alert | 04-30 08:00 | 0.703 | alert | — |
+| Muçum | first alert | 04-30 11:00 | 0.646 | alert | — |
+| Encantado | own gauge silent | 05-01 01:00 | 0.988 | emergency | 86720000 |
+| Estrela | own gauge silent | 05-01 20:00 | 0.999 | emergency | 86720000, 86879300 |
+| Porto Alegre | first alert | 05-02 06:00 | 0.887 | alert | 87450020 (Gasômetro, not started) |
+| Taquari | own gauge silent | 05-02 12:00 | 0.854 | alert | 86720000, 86950000 |
+| Porto Alegre | own gauge silent | 05-03 03:00 | 0.956 | emergency | 86950000, 87450004, 87450020 |
+
+### Alert agent (`alerts.py`; Qwen3-8B 4-bit via the local mlx-lm server, thinking off, temperature 0)
+
+The agent gets the fused state rendered as text (probability, level, every signal with value, age, LR, reliability, log-odds effect and "probability without it", and the silent gauges) and returns `AlertDraft{headline, explanation, drivers, silent_gauges}`. It has no field for the probability or level: `Alert.probability/level` are copied from fusion. The **citation audit** is deterministic: every number in the headline/explanation must appear in the input block (up to the text's own rounding), every station code and place name must be in the input (river/valley/lake uses of "Taquari"/"Guaíba" excluded), each silent gauge must be named by code, or by place in a sentence that says it is silent/stale/not reporting, the `silent_gauges` field must equal the input's, and a stated risk level must be the fused one. With `--audit-retry` a failed audit is sent back to the model as a retry (Pydantic AI output validator). The audit checks grounding, not pairing: a real number attached to the wrong station would pass.
+
+Smoke run (4 calls, `runs/m3/alerts_smoke.jsonl`, server shared with another job):
+
+| Key hour | Output mode | Audit | Seconds | Note |
+|---|---|---|---|---|
+| Encantado, own gauge silent, 05-01 01:00 | tool | pass (6 numbers) | 16.7 | names 86720000 as silent for 3.5 h; cites effects +4.66 and +2.12 |
+| Estrela, first alert, 04-29 20:00 | tool | pass (7 numbers) | 10.3 | "No gauges are silent." |
+| Porto Alegre, 3 silent gauges, 05-03 03:00 | tool | **fail**: `silent_gauges` listed only 87450020, not 86950000 and 87450004 | 16.1 | the text called 87450004 "stale" but did not flag it as silent |
+| same hour | prompted | pass (7 numbers) | 14.0 | lists all three; calls Gasômetro "upstream" (its role label in the input) |
+
+Full run over the 9 key hours × 3 modes (tool, tool + audit retry, prompted): queued behind the shared server (`scripts/run_after_queue.sh`, output `runs/m3/alerts_queued.jsonl` and `alerts_queued_summary.json`).
+[[RESULT: audit pass rate per mode over the 9 key hours, failure kinds, retries used, seconds per alert]]

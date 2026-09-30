@@ -2,8 +2,9 @@
 
 At each step ``t`` every adapter receives ``store.as_of(t)`` and nothing else,
 so a reading is usable only once it is available (see observations.py).
-Fusion and alerting come in milestone 3; for now the replay reports when each
-signal first crossed a likelihood-ratio level, and how stale the gauges were.
+This module reports when each signal first crossed a likelihood-ratio level and
+how stale the gauges were; fusion, lead times and false alarms are in
+``fusion.py`` and ``evaluate.py`` (milestone 3).
 
 ``uv run python -m disaster_risk.backtest`` runs the full 2024-04-20 → 05-20
 window and writes every signal to ``runs/signals.csv`` (git-ignored).

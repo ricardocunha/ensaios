@@ -60,6 +60,18 @@ Numbers: [code/docs/RESULTS.md](code/docs/RESULTS.md). Sources and verification:
 - **Findings for the article:** gauges fail at the crest (Encantado has no level for 105 h from 04-30 22:00 local; Cais Mauá stops at 23:15 on 05-02, three days before the 5.37 m crest; the same happened at Muçum in September 2023, so historical maxima under-state floods). Single signals already cross LR ≥ 10 on 04-30 at Estrela and Encantado, the day the first SACE bulletin went out.
 - **Next (milestone 3):** fusion in log-odds with reliability weights, mapping of rain stations to municipalities, scoring against the flood-level crossings and SACE times, and quiet-period false alarms (the 2019–2024 record is already cached).
 
+## Milestone 3 result (2026-09-30)
+
+Numbers: [code/docs/RESULTS.md](code/docs/RESULTS.md) ("Milestone 3"). Command: `make evaluate`.
+
+- **Fusion** (`fusion.py`): per place, `log_odds = logit(prior) + Σ w·r·ln LR`, H = "the place's gauge reaches its flood level within 24 h". Weights fixed a priori (own gauge 1, upstream 0.5, rain group 1 split over its stations); r already carries the freshness decay; levels normal/attention/alert/emergency at p = 0.10/0.50/0.90. Prior and LR table from 2019–2022 only.
+- **Hand-set LRs don't work.** With priors of 0.01–1.3 %, the milestone 2 round numbers never put Muçum, Encantado, Taquari or Porto Alegre on alert in 2024 (Estrela: 45 min after the crossing). Calibrating each band's LR on 2019–2022 (same bands, empirical ratio) fixes it: 2024 leads of +26 h (Muçum), +17 h (Encantado), +12 h (Estrela), +20 h (Taquari), +7 h (Porto Alegre) against the first flood-level reading; 11–12 h before SGB's first SACE bulletin at Encantado and Estrela, within ~3 h of it at Muçum and Taquari.
+- **Out of sample** (2023-01 → 2024-04): all 10 flood onsets at the Taquari gauges alerted in advance (September 2023: +4 to +22 h); Porto Alegre 1 of 2. The price: 3.23 false alarms per place-year (near misses at a median 0.77 × flood level) vs 0 for the hand-set rules. Brier skill vs climatology 0.44 (TEST) and 0.66 (2024); overconfident at 0.5–0.9 in TEST, underconfident in 2024.
+- **Ablations:** river levels carry the system (without them: no alert at all); upstream gauges give the lead at Taquari and Porto Alegre and cause two thirds of the false alarms; INMET rain gives Muçum its lead; freshness decay *hurts* calibration (a silent gauge in a flood is still in a flood) and changes no lead; equal weights (plain naive Bayes) = 7.84 false alarms per place-year.
+- **Alert agent** (`alerts.py`, Pydantic AI, typed `AlertDraft`, Qwen3-8B local): the LLM has no field for the number; a deterministic citation audit checks numbers, stations, places, silent gauges and the stated level against the input. Smoke (4 calls): 3 pass; the failure was real (tool mode listed 1 of 3 silent gauges at Porto Alegre). Full run of 9 key hours × 3 modes is queued (`scripts/run_after_queue.sh`) behind the shared server: [[RESULT: queued alert-agent audit pass rates]].
+- **For the article:** "LLM-only fusion vs Bayesian fusion" from the evaluation plan is not done yet; the audit checks grounding, not whether a real number is attached to the right station.
+- **Next (milestone 4):** agents + explanations on top of the queued run; ADRs for calibrated LRs, the "silent ≠ unknown" decay finding, and the audit.
+
 ## Open questions
 
 - ~~Satellite: precomputed flood masks vs. computing them~~ Precomputed: EMSR720 exists (see audit).
