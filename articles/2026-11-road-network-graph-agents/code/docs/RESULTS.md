@@ -228,3 +228,106 @@ Emrich, Avenida Amazonas, Avenida Vilarinho, Avenida Cristiano Machado and
 Avenida Presidente Tancredo Neves. Value is concentrated (5% of the budget
 captures 54% of value) because betweenness is heavy-tailed; the plan buys
 arterials with some requests, not the streets with the most requests.
+
+## Milestone 3: agents vs. the pure solver (2026-09-30)
+
+Code: `src/road_agents/planning.py` (tools), `agents.py` (Pydantic AI 2.52
+agents), `audit.py` (evaluation), `scripts/evaluate_agents.py`. Model:
+Qwen3-8B 4-bit (MLX) behind the shared `mlx_lm.server` at
+`localhost:8088/v1`, thinking off, temperature 0.7, top_p 0.8. Trips: the
+same 1,000 sampled OD pairs as milestone 2. Access: graph nodes within 10 min
+of an OSM hospital / 5 min of an OSM school (free-flow). Solver = greedy
+knapsack at k=2000 values (within 1e-5 of the exact MILP, milestone 2).
+
+**Set-up of the comparison.** The quarter has 3 months. The 15 plan sections
+with the highest criticality are the *major works* (all trunk/primary/
+motorway pieces of Anel, Waldir Soeiro Emrich, Antônio Carlos, Cristiano
+Machado, …); each must go to one month, at most 5 per month. A *violation*
+is a month whose simultaneous closures make nodes lose hospital or school
+access that no single work of that month cuts alone (an interaction that
+sequencing can avoid). Three schedules are scored with the same exact tool
+(`schedule_report`): *naive* (priority order, criticality descending, 5 per
+month), *heuristic* (deterministic: pairwise conflict check + greedy + swap
+search, no LLM), and the *agent's*.
+
+### Pure-solver arm (deterministic, from `runs/m3-eval-scripted.jsonl`)
+
+| Budget | Sections | Value captured | Budget used | Requests covered | Naive: violations / interaction nodes / worst-month delay | Heuristic: violations / worst-month delay |
+|---|---:|---:|---:|---:|---|---|
+| 5% | 445 | 54.43% | 100.0% | 5.36% | 1 / 2 / 67,089.5 s | 0 / 51,731.9 s |
+| 10% | 952 | 70.24% | 100.0% | 10.89% | 1 / 2 / 61,563.3 s | 0 / 50,883.2 s |
+| 20% | 1,997 | 83.98% | 100.0% | 21.65% | 1 / 6 / 29,514.6 s | 0 / 21,619.8 s |
+
+"Worst-month delay" = total extra travel time over the 1,000 sampled trips
+with that month's works all closed. The naive schedule's violation comes
+from the same pair at every budget: Anel Rodoviário S00102 with Avenida
+Presidente Antônio Carlos S01395 in month 1 (2 interaction nodes); at 20%
+also Waldir Soeiro Emrich S01749 + S01760 (6 interaction nodes in total).
+Pairs from `planning.pair_conflicts` / `schedule_report`. A non-LLM heuristic
+removes all violations and lowers the worst month by 17–27% (5%: 22.9%,
+10%: 17.3%, 20%: 26.7%). **This is the bar for the closure agent.**
+
+Most access loss is not an interaction. Closed alone, the major works cut
+0–6 nodes each from 10-min hospital access (S01394, Antônio Carlos: 6;
+S00611, Cristiano Machado: 0): nodes on or behind the closed section, which
+no sequencing can fix. Per month, the schedules above lose 9–20 hospital
+nodes in total (graph has 32,311 nodes). With free-flow times and 94 OSM
+hospitals, 10-min coverage is 98.7% before any closure, so the access
+constraint bites only locally.
+
+Timings (machine shared with other jobs, load average 30–60): planning data
+load 16.1–19.6 s (graph, sections, POIs, 1,000-pair OD baseline); solver arm
+per budget 57–141 s (mostly the heuristic's closure recomputations).
+
+### Dry run without an LLM (`--model scripted`, `runs/m3-eval-scripted.jsonl`)
+
+A scripted `FunctionModel` (adds the most-requested section left out, S09924
+with 509 requests; round-robin months by criticality; copies tool numbers)
+exercises the whole pipeline on the real data: every agent returns a typed
+output, the final plan is feasible (100.0% budget use; value 99.85 / 99.95 /
+99.98% of the solver's at 5 / 10 / 20%), and the structured audit matches
+12/12 month fields at each budget; the prose audit finds 3 of 4 numbers, the missing one being a number planted as fabricated (123.45). Round-robin by criticality still has 1
+violation per budget: the conflicts are not visible from single-work numbers.
+Pipeline wall time 22–39 s per run (tools only, no LLM), plus the evaluation.
+
+### Smoke with Qwen3-8B (SMOKE, 1 pipeline at 10%, not the evaluation)
+
+`runs/m3-smoke.jsonl`, request limits 5 / 6 / 2, then one closure-agent-only
+debug run with a limit of 3. At most 15 LLM requests in total. The tool
+output of `check_schedule` did not yet name the conflicting pairs (added
+after this smoke).
+
+| Agent | Result | Requests | Wall time |
+|---|---|---:|---:|
+| Maintenance | failed: request limit 5 reached before an output. It called `rank_sections` 4 times (requests / value-per-cost / criticality not in plan; value in plan), then `try_plan` with 15 adds and 5 removals (the instructions say at most 6) | 5 | 26.9 s |
+| Closure | failed: `check_schedule` exceeded its 2 retries (the failing arguments were not logged in that version) | ≤ 6 | 40.5 s |
+| Coordinator | ok (fell back to the solver plan, no schedule) | 1 (1,032 in / 285 out tokens) | 14.2 s |
+| Closure, debug run | failed at the limit of 3: proposed month 1 = S00102, S01756, S01758, S01750, S01393 (Anel + three Waldir Soeiro Emrich sections + Antônio Carlos; the tool reported a VIOLATION with 3 hospital + 3 school interaction nodes), then re-checked the *same* month sets twice, only reordered | 3 | 37.1 s |
+
+Number audit of the coordinator's prose: 11 of 12 numbers found in the tool
+ledger; the one not found, "gives up on 29.76% of the total value", is
+100 − 70.24, a correct derived number that the audit (verbatim lookup only)
+does not credit.
+
+What the smoke says so far (smoke, n=1): with a small request budget the 8B
+model explores instead of converging, and on sequencing it did not act on a
+tool output that said VIOLATION. Changes made after the smoke, before the
+queued run: `check_schedule` names the conflicting pairs, the instructions
+tell the agent to move one work of each pair and not to re-check a schedule,
+the closure agent gets 3 retries, and failed runs keep a transcript.
+
+### Full evaluation (queued)
+
+`scripts/run_after_queue.sh` (nohup) waits for the compliance article's
+`QUEUE_DONE`, then runs 3 × {5, 10, 20%} with limits 12 / 14 / 4 into
+`runs/m3-eval-local.jsonl` (+ `.summary.json`).
+
+- Value captured, agent vs. solver: [[RESULT: m3-eval-local value_share_pct per run vs 54.43 / 70.24 / 83.98%]]
+- Budget use: [[RESULT: budget_used_pct per run]]
+- Deviations proposed and their value cost: [[RESULT: adds / removes, value_vs_solver_pct]]
+- Access-loss violations, agent vs. naive (1/1/1) vs. heuristic (0/0/0): [[RESULT: agent_violations per run]]
+- Worst-month delay, agent vs. heuristic: [[RESULT: agent_peak_delay_s vs heuristic_peak_delay_s]]
+- Closure-scenario audit, stated vs. recomputed month numbers: [[RESULT: phase_fields_ok / phase_fields; flags_ok; flags_missed]]
+- Prose numbers found in the tool ledger: [[RESULT: text_numbers_grounded]]
+- Consistency over 3 runs: [[RESULT: deviation_jaccard_mean, final_plan_jaccard_mean, schedule_co_assignment_mean, value_share_pct_std]]
+- Agent failures and wall time per pipeline: [[RESULT: agents_ok, errors, mean_seconds_per_pipeline]]

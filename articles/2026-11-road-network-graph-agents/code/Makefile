@@ -2,7 +2,7 @@ CITY ?= belo-horizonte
 K ?= 500
 PAIRS ?= 1000
 
-.PHONY: install test smoke bench bench-exact betweenness sections maps
+.PHONY: install test smoke bench bench-exact betweenness sections maps agents-dry agents-smoke agents-eval agents-queue
 
 install:
 	uv sync
@@ -32,3 +32,19 @@ sections:
 
 maps:
 	uv run python scripts/maps.py $(CITY) --k 2000
+
+# Milestone 3. No LLM: the whole pipeline with a scripted FunctionModel.
+agents-dry:
+	nice uv run python scripts/evaluate_agents.py --model scripted --runs 1
+
+# Needs the local mlx-lm server (Qwen3-8B) at http://localhost:8088/v1. At most 13 LLM requests.
+agents-smoke:
+	nice uv run python scripts/evaluate_agents.py --model local --runs 1 --budgets 0.10 --limits 5 6 2 --out runs/m3-smoke.jsonl
+
+# Full evaluation: 3 runs x 5/10/20% budgets.
+agents-eval:
+	nice uv run python scripts/evaluate_agents.py --model local --runs 3 --budgets 0.05 0.10 0.20
+
+# Same, but waits for the compliance article's queue to finish first (nohup, survives the shell).
+agents-queue:
+	nohup scripts/run_after_queue.sh > runs/m3-queue.log 2>&1 &
