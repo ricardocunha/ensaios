@@ -12,6 +12,8 @@ Wind energy is a large part of the Northeast's grid. The data is a public wind-t
 
 **Decision (2026-09-30): keep the Brazil framing.** No public Brazilian turbine-level SCADA with fault labels was found, so the data stays Portuguese (EDP). The article says so plainly and frames the result for Brazil's Northeast wind operators: what a self-improving maintenance agent would need from their own SCADA and maintenance logs, and why opening that data would matter.
 
+**Decision (2026-09-30, after milestone 2): "Option 2", a case study.** Keep this dataset (Farm A + EDP logbooks, 21 incidents) and frame the article as a case study. Show the memory mechanism and exactly what it changes on these incidents, episode by episode. Say plainly that ~20 incidents are too few to claim an improvement statistically. CARE Farm B is an optional replication check, only if time allows, and not part of milestone 3.
+
 ## Architecture
 
 1. **Detection:** Isolation Forest (plus a simple threshold baseline) on SCADA features per turbine.
