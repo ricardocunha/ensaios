@@ -9,12 +9,14 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "docling>=2.131.0",
+    "faker>=40.40.0",
     "httpx>=0.28.1",
     "mcp[cli]>=2.2.0",
     "ocrmac>=1.0.1",
     "pydantic-ai-slim[mcp,openai]>=2.52.0",
     "python-dotenv>=1.2.3",
     "rapidfuzz>=3.14.6",
+    "reportlab>=5.0.1",
 ]
 
 [project.scripts]

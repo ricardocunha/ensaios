@@ -24,6 +24,7 @@ from pydantic_ai.mcp import MCPToolset
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
+from compliance_agents.limits import EXTRACTORS
 from compliance_agents.rules import RULES, RULES_BY_ID, Rule
 
 Verdict = Literal["compliant", "violation", "not_applicable", "unclear"]
@@ -80,10 +81,10 @@ def model_settings() -> dict:
     return settings
 
 
-def make_agent(toolset: MCPToolset, model=None) -> Agent[None, Finding]:
+def make_agent(toolset: MCPToolset, model=None, output_type=Finding) -> Agent:
     return Agent(
         model or reviewer_model(),
-        output_type=Finding,
+        output_type=output_type,
         instructions=INSTRUCTIONS,
         toolsets=[toolset],
         retries=2,
@@ -100,33 +101,54 @@ def rule_prompt(doc_id: str, rule: Rule) -> str:
     )
 
 
-async def review(agent: Agent[None, Finding], doc_id: str, rule: Rule) -> dict:
-    result = await agent.run(rule_prompt(doc_id, rule))
-    finding = result.output.model_copy(update={"rule": rule.id})
+def extract_prompt(doc_id: str, rule: Rule) -> str:
+    return (
+        f"Contrato: {doc_id}\n"
+        f"Extraia do contrato os fatos necessários para a regra `{rule.id}` ({rule.article}). "
+        "Não julgue a regra: apenas extraia os valores como estão escritos, com citação literal."
+    )
+
+
+async def review(agent: Agent, doc_id: str, rule: Rule, extractor: Agent | None = None) -> dict:
+    """With an extractor (limit rules, --decide code), the model extracts facts and code decides."""
+    if extractor is not None:
+        result = await extractor.run(extract_prompt(doc_id, rule))
+        facts = result.output
+        verdict, reason = EXTRACTORS[rule.id][1](facts)
+        finding = Finding(rule=rule.id, verdict=verdict, section_id=facts.section_id, evidence=facts.evidence,
+                          confidence=facts.confidence, reason=reason)
+        extra = {"facts": facts.model_dump()}
+    else:
+        result = await agent.run(rule_prompt(doc_id, rule))
+        finding = result.output.model_copy(update={"rule": rule.id})
+        extra = {}
     usage = result.usage
     return {
         "doc": doc_id,
         **finding.model_dump(),
         "tool_calls": usage.tool_calls,
         "tokens": (usage.input_tokens or 0) + (usage.output_tokens or 0),
+        **extra,
     }
 
 
 async def amain(args) -> None:
     toolset = mcp_toolset(args.data)
     agent = make_agent(toolset)
+    extractors = {rid: make_agent(toolset, output_type=facts) for rid, (facts, _) in EXTRACTORS.items()} if args.decide == "code" else {}
     rules = [RULES_BY_ID[r] for r in args.rules] if args.rules else list(RULES)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    async with agent:
+    async with toolset:
         with args.out.open("a") as f:
             for doc_id in args.docs:
                 for rule in rules:
                     for sample in range(args.samples):
                         try:
-                            row = await review(agent, doc_id, rule)
+                            row = await review(agent, doc_id, rule, extractors.get(rule.id))
                         except Exception as e:  # a failed run is data too: record it
                             row = {"doc": doc_id, "rule": rule.id, "error": f"{type(e).__name__}: {e}"[:500]}
                         row["sample"] = sample
+                        row["decide"] = args.decide
                         f.write(json.dumps(row, ensure_ascii=False) + "\n")
                         f.flush()
                         print(f"{doc_id} {rule.id:>16} #{sample} {row.get('verdict', 'ERROR'):>14} {row.get('confidence', '')}")
@@ -139,6 +161,8 @@ def main() -> None:
     ap.add_argument("--samples", type=int, default=1, help="runs per (doc, rule); >1 feeds the uncertainty profile")
     ap.add_argument("--data", type=Path, default=Path("data/pncp"))
     ap.add_argument("--out", type=Path, default=Path("runs/review.jsonl"))
+    ap.add_argument("--decide", choices=["llm", "code"], default="llm",
+                    help="code: for limit rules, the model extracts values and code applies the law")
     asyncio.run(amain(ap.parse_args()))
 
 
