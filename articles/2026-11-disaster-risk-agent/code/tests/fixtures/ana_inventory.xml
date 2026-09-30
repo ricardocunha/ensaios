@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<DataSet xmlns="http://MRCS/">
+  <diffgr:diffgram xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:diffgr="urn:schemas-microsoft-com:xml-diffgram-v1">
+    <Estacoes xmlns="">
+      <Table diffgr:id="Table1" msdata:rowOrder="0">
+        <NomeEstacao>MUÇUM</NomeEstacao>
+        <CodEstacao>86510000</CodEstacao>
+        <Bacia>8</Bacia>
+        <SubBacia>86</SubBacia>
+        <Municipio-UF>MUÇUM-RS</Municipio-UF>
+        <Latitude>-29.16720</Latitude>
+        <Longitude>-51.86860</Longitude>
+        <NomeRio>RIO TAQUARI</NomeRio>
+        <Origem>RHN</Origem>
+        <StatusEstacao>Ativo</StatusEstacao>
+      </Table>
+    </Estacoes>
+  </diffgr:diffgram>
+</DataSet>

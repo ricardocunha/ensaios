@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<DataSet xmlns="http://MRCS/">
+  <diffgr:diffgram xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:diffgr="urn:schemas-microsoft-com:xml-diffgram-v1">
+    <DocumentElement xmlns="">
+      <DadosHidrometereologicos diffgr:id="DadosHidrometereologicos1" msdata:rowOrder="0">
+        <CodEstacao>86879300</CodEstacao>
+        <DataHora>2024-05-06 12:00:00 </DataHora>
+        <Vazao />
+        <Nivel />
+        <Chuva />
+      </DadosHidrometereologicos>
+      <DadosHidrometereologicos diffgr:id="DadosHidrometereologicos2" msdata:rowOrder="1">
+        <CodEstacao>86510000</CodEstacao>
+        <DataHora>2024-05-02 07:30:00 </DataHora>
+        <Vazao>1103.80</Vazao>
+        <Nivel>2557.00</Nivel>
+        <Chuva>0.00</Chuva>
+      </DadosHidrometereologicos>
+      <DadosHidrometereologicos diffgr:id="DadosHidrometereologicos3" msdata:rowOrder="2">
+        <CodEstacao>86510000</CodEstacao>
+        <DataHora>2024-04-20 00:00:00 </DataHora>
+        <Vazao>375.60</Vazao>
+        <Nivel>294.00</Nivel>
+        <Chuva>0.00</Chuva>
+      </DadosHidrometereologicos>
+    </DocumentElement>
+  </diffgr:diffgram>
+</DataSet>

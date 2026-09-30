@@ -8,7 +8,7 @@ When rain gauges, river levels, satellite imagery and history disagree, how shou
 
 ## Brazilian angle
 
-Flooding instead of earthquakes: **Rio Grande do Sul, April–May 2024**, replayed as a backtest. [[VERIFY: data availability and licenses — CEMADEN rain gauges, ANA river levels (Hidroweb), INMET weather, Sentinel-1/2 flood extent via Copernicus, historical S2iD disaster records]]
+Flooding instead of earthquakes: **Rio Grande do Sul, April–May 2024**, replayed as a backtest. Data availability and licenses: audited on 2026-09-30, see "Data audit result" below.
 
 ## Architecture
 
@@ -32,10 +32,26 @@ Flooding instead of earthquakes: **Rio Grande do Sul, April–May 2024**, replay
 4. Agents + explanations.
 5. Drafts.
 
+## Data audit result (2026-09-30)
+
+Details, endpoints and samples: [code/docs/DATA.md](code/docs/DATA.md).
+
+- **Works without a key:** ANA telemetry (15-min level, flow and rain; legacy `ServiceANA.asmx`), INMET hourly stations (2024 bulk zip), Copernicus EMS **EMSR720** precomputed flood polygons (5 AOIs, all in the Taquari valley), UFRGS municipal flood-impact table for the Guaíba region (Zenodo, CC-BY-4.0).
+- **Blocked:** CEMADEN history (CAPTCHA per monthly download; API needs a token) and S2iD history (open CC-BY CSV, but the server rejects scripted downloads). Both can be added by a manual browser download; the code says where to save them.
+- **Needs an account (skipped):** ANA HidroWebService, INMET API, Copernicus Data Space downloads for raw Sentinel scenes.
+
+**Feasible scope:** the **Taquari valley** (Muçum → Encantado → Roca Sales → Estrela/Lajeado → Taquari) as the main backtest, with the Guaíba at Porto Alegre as a secondary, downstream case. Signals: rainfall (INMET + ANA gauge rain), river level (ANA), satellite (EMSR720), history (S2iD, once downloaded by hand). Ground truth for "who flooded": UFRGS table (2024-05-06) + EMSR720 extents.
+
+**What changed:**
+1. Satellite is precomputed (EMSR720), not computed. No Sentinel-1 scene over the Taquari before 05-08 and Sentinel-2 was clouded on 05-01, so the satellite signal arrives on 05-04/05, after the Taquari peak (05-02). It can confirm, not warn; the article should say so.
+2. CEMADEN is optional, not core: rainfall comes from INMET and ANA gauges.
+3. Missing data is part of the story: key gauges (Cais Mauá, Estrela, Encantado) go quiet or sparse right at the peak. Fusion must treat "no reading" as information with its own cost.
+4. Still open: a source of official alert times per municipality for the "would it have warned in time" comparison. [[VERIFY: official alert timeline source]]
+
 ## Open questions
 
-- Satellite: precomputed flood masks vs. computing them (keep it precomputed if one exists).
-- Scope: one river basin (Guaíba / Taquari) rather than the whole state.
+- ~~Satellite: precomputed flood masks vs. computing them~~ Precomputed: EMSR720 exists (see audit).
+- ~~Scope: one river basin (Guaíba / Taquari) rather than the whole state.~~ Taquari valley, Guaíba secondary (see audit).
 
 ## Common rules (all five articles)
 
