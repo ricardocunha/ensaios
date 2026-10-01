@@ -6,15 +6,19 @@
 
 Does retrieving similar labeled eye images (with their reports) help a vision model classify retinal disease, compared with the model alone, and are its explanations faithful to what it retrieved?
 
-## Brazilian angle
+## Dataset decision (2026-10-01)
 
-**BRSET**, the Brazilian Multilabel Ophthalmological Dataset (retinal fundus photos with labels). [[VERIFY: BRSET access is via PhysioNet credentialed access (CITI training + data use agreement); timeline and whether publishing derived results/code is allowed]]. Fallback: public datasets such as APTOS / ODIR / IDRiD [[VERIFY: licenses]].
+**Public fallback first, BRSET later if access is granted.** The pipeline runs on **RFMiD 1.0** (3,200 fundus photos, 45 conditions, multi-label, official 1,920 / 640 / 640 split, CC BY 4.0), downloaded from a CC BY mirror on Hugging Face with no account. RFMiD 2.0 (860 images, Zenodo, CC BY 4.0) is kept for an out-of-distribution check. The audit of 12 candidates and the reasons are in [code/docs/DATA.md](code/docs/DATA.md).
 
-**This is last in the queue because of that access process. Start the application now.**
+**BRSET: optional, "replicate later if access is granted".** No application is being made now (no sign-ups in this project). If credentialed access is ever granted, Milestone 3 swaps the index to BRSET and reruns the same evaluation.
+
+## Brazilian angle (short framing section)
+
+Brazil has a well-documented ophthalmology dataset, **BRSET** (Brazilian Multilabel Ophthalmological Dataset; Nakayama et al., *PLOS Digital Health*, 2024): 16,266 fundus photos of 8,524 patients from three ophthalmology centres in São Paulo, 2010–2020, with multi-label disease, image-quality and demographic labels (PhysioNet, v1.0.2). But "open" means **credentialed** access on PhysioNet: an account, CITI "Data or Specimens Only Research" training, and a signed data use agreement (PhysioNet Credentialed Health Data License 1.5.0). That's a reasonable protection for patient data, and it's also a real barrier for a reader who wants to rerun an article in an afternoon. The point for the article: a Brazilian dataset exists and is well documented, and the access model decides who can actually use it. Its DUA also asks anyone who publishes results to publish their code, which this repo does anyway. [[VERIFY: whether the article should mention mBRSET (smartphone fundus photos), also on PhysioNet]]
 
 ## Architecture
 
-1. **Embeddings:** BiomedCLIP image embeddings + text embeddings of labels/reports.
+1. **Embeddings:** BiomedCLIP image embeddings + text embeddings of labels/reports. RFMiD has labels but no free-text reports, so a retrieved case's "report" will be text generated from its labels and the label descriptions in `eye_rag.labels`.
 2. **Index:** Qdrant with hybrid search (dense image vectors + sparse text).
 3. **Diagnosis:** a vision-language model gets the query image + top-k retrieved cases → labels.
 4. **Explanation agent:** must cite the retrieved cases it relied on; a check verifies the citations.
@@ -27,14 +31,26 @@ Does retrieving similar labeled eye images (with their reports) help a vision mo
 
 ## Guardrails
 
-Not a medical device; a research demo only. No clinical claims. The article says so up front.
+- **Not a medical device; a research demo only. No clinical claims.** The article and the code README say so up front.
+- Numbers are about agreement with dataset labels on one public dataset (RFMiD, three cameras, India), not about diagnostic accuracy on patients.
+- BiomedCLIP's own model card rules out "any deployed use case"; we use it for research only.
+- No retinal images in git; at most a few attributed thumbnails in the article.
 
 ## Milestones
 
-1. **Now:** PhysioNet credentialing for BRSET.
-2. Pipeline on a public fallback dataset.
-3. Swap in BRSET when access is approved.
+1. **Done (2026-10-01):** dataset choice (RFMiD) + BiomedCLIP embedding index (Qdrant, local) + kNN and zero-shot baselines.
+2. VLM + retrieval (top-k cases in the prompt), explanation agent with citation check, faithfulness test (shuffled labels).
+3. Optional: rerun on BRSET if credentialed access is ever granted; RFMiD 2.0 as an out-of-distribution check.
 4. Evaluation + drafts.
+
+## Milestone 1 result (2026-10-01)
+
+- **Dataset:** RFMiD 1.0 (CC BY 4.0, no account, via a pinned HF mirror with SHA-256 checks). 7.99 GB downloaded, 228 MB kept (1,024 px JPEGs). Twelve candidates audited in `code/docs/DATA.md`; BRSET deferred (credentialed access).
+- **Index:** BiomedCLIP image embeddings of all 3,200 images in 34.9 s on MPS; Qdrant local mode, payload = labels; a second collection holds label-text embeddings for hybrid search later.
+- **Baselines (test split, macro-F1 over the 16 conditions with ≥ 20 training images):** kNN weighted (k = 20, chosen on val) **0.339**; kNN majority (k = 5) 0.264; BiomedCLIP zero-shot 0.141 (0.183 with val-tuned thresholds); all-positive floor 0.108. Normal-vs-abnormal F1: kNN 0.931, zero-shot 0.793 (floor 0.883).
+- **Retrieval:** 49.6% of top-10 neighbours share a label with the query (15.0% at random).
+- **Surprises:** zero-shot is barely above the floor and badly calibrated (val-tuned thresholds 0.03–0.999); small findings (drusen, laser scars, disc pallor) are invisible to a global 224-px embedding; at least two test images have a near-identical training photo of the same eye with a different label.
+- Details: `code/docs/RESULTS.md`. 19 offline tests.
 
 ## Common rules (all five articles)
 
