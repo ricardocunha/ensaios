@@ -417,3 +417,52 @@ Ran with `scripts/run_after_queue.sh` (waited for the other job's `QUEUE_DONE`, 
 **Reading.** Memory could not change the decision because the decision never moved from its default. With no cost on an inspection and no explicit base rate, "inspect" is always the safe-looking answer for this model. That is the problem the v2 prompt addresses (see PLAN.md, "Milestone 3, v2").
 
 Seconds are measured on a shared server, so compare arms on tokens, not seconds.
+
+### Full run, m3 (v2) (2026-10-01): one round of fixes
+
+`make replay-v2` = `python -m maintenance_agents.replay --model local --prompt v2 --tag m3v2 --resume`, all three arms in sequence on the shared server. Output: `runs/m3v2_{none,ungated,gated}.jsonl`, `runs/m3v2_summary.json`, `logs/m3v2_replay.log`. Wall time 1,108.7 + 1,401.5 + 731.0 s (about 54 min). The fixes were written into PLAN.md ("Milestone 3, v2") before this run and were not changed after it:
+
+1. **Track record first.** Before the individual memories, the prompt counts what followed similar past alarms, using only outcomes known at decision time (`memory.track_record`). Pool: the arm's gate rules without the k cap (gated: similarity ≥ 0.5, ≤ 365 days, same turbine or top group; ungated: every past alarm on the farm). The `none` arm gets no record.
+2. **Justification against the record.** New output field `differs_from_record`. When the record has ≥ 2 known outcomes and more than half were followed by nothing, an "inspect" answer with an empty / "n/a" field is sent back with `ModelRetry`.
+3. **Costs and actions in the instructions.** Inspect ≈ one crew-day (cost 1); a failure a timely inspection would have caught ≈ 10; monitor costs nothing now and the detector keeps watching; ignore = explained by something else. An assumption from the domain, not fitted to this data.
+
+A 2-episode plumbing check (episodes 0 and 23, arms none and gated, `runs/m3v2_plumb_*`) ran first: 0 errors; nothing was changed after it.
+
+**v1 vs v2, per arm** (77 episodes each, 0 errors in all six runs):
+
+| Arm | Prompt | Component (of 22) | Inspect on pre-incident (of 22) | Not inspect on false alarm (of 29) | Appropriate (of 51) | Input tokens / episode (mean) | Requests / tool calls | Median s / episode |
+|---|---|---|---|---|---|---|---|---|
+| none | v1 | 1 / 22 | 22 / 22 | 0 / 29 | 22 / 51 | 6,718 | 305 / 244 | 12.1 |
+| none | v2 | 1 / 22 | 22 / 22 | 0 / 29 | 22 / 51 | 8,144 | 325 / 231 | 14.2 |
+| ungated | v1 | 2 / 22 | 22 / 22 | 0 / 29 | 22 / 51 | 9,342 | 331 / 239 | 13.0 |
+| ungated | v2 | 2 / 22 | 22 / 22 | 0 / 29 | 22 / 51 | 10,738 | 321 / 243 | 16.5 |
+| gated | v1 | 1 / 22 | 22 / 22 | 0 / 29 | 22 / 51 | 7,674 | 322 / 230 | 8.1 |
+| gated | v2 | 1 / 22 | 22 / 22 | 0 / 29 | 22 / 51 | 7,819 | 282 / 193 | 8.7 |
+
+Total input / output tokens, v2: none 627,075 / 17,954; ungated 826,792 / 21,516; gated 602,023 / 18,165.
+
+**What changed, and what didn't.**
+
+- **Actions: 1 change in 231 decisions.** v2 answered "inspect" in 230 of 231 runs. The only other answer is gated episode 73 (near incident), "monitor". Every pre-incident and false-alarm episode was inspected in every arm, as in v1.
+- **Prompt effect (v1 none → v2 none): none on the decisions.** Same 77 / 77 "inspect", same components (the detector's first-day top group in 77 / 77). Urgency moved from 64 medium / 13 high to 56 / 21; confidence 0.80-0.90 (median 0.85).
+- **Memory effect (v2 none → v2 ungated / gated): one action, the same two component swaps as v1.** The component differs between arms in 7 episodes (v1: 9). The ungated hit on episode 45 is still there, with the same three low-similarity T07 memories (0.45 / 0.37 / 0.34, 245-274 days old).
+- **Components stay the detector's.** The component equals the detector's first-day top group in 77 (none), 73 (ungated) and 73 (gated) of 77 episodes. Component hits: episode 66 in every arm, plus episode 45 in ungated.
+- **The record rarely said "mostly nothing", and was overridden when it did.**
+  - Gated: the pool had a known outcome in 39 of 77 prompts and included a failure in 25. "Mostly nothing" held in 15 prompts (1 pre-incident, 7 false alarms, 7 near incidents); the agent inspected in 14 of them, each time with a `differs_from_record` text.
+  - Ungated: the farm-wide record said "mostly nothing" in 41 prompts (9 pre-incident, 15 false alarms, 17 near incidents); the agent inspected in all 41. Once at least 10 outcomes were known, the farm-wide share of alarms followed by a logbook failure within 30 days ranged from 0.34 to 0.62 (last prompt: 27 of 73).
+  - Validator retries were not logged separately; every inspect-against-record answer in the output has a filled justification.
+- **Urgency rose in the ungated arm**: "high" in 62 of 77 (v1: 8 of 77), across all classes (17 / 22 pre-incident, 22 / 29 false alarms, 23 / 26 near incidents). Gated: 5 high, 71 medium, 1 low.
+- **Cost:** the v2 instructions add about 1.4k input tokens per episode (none 6,718 → 8,144; ungated 9,342 → 10,738). Gated v2 used fewer requests and tool calls than gated v1 (282 / 193 vs 322 / 230), 7,819 input tokens per episode.
+
+**Per-month cumulative curve (v2).** Identical in shape to v1. Cumulative appropriate = cumulative pre-incident episodes in all three arms: 5, 7, 11, 13, 13, 13, 13, 13, 15, 16, 16, 16, 17, 18, 21, 22, 22 (2016-04 → 2017-09; cumulative scored episodes 8, 14, 20, 24, 24, 27, 27, 27, 31, 36, 37, 38, 40, 44, 50, 51, 51). Cumulative component hits: none and gated 0 until 2017-06, 1 from 2017-07; ungated 1 from 2016-12, 2 from 2017-07. The curves do not separate, by arm or by prompt version.
+
+**Episodes (v2).**
+
+- **Episode 73 (T01, 2017-08-25, near incident): the one decision memory changed.** Gated record: 3 similar past transformer alarms (T11 2016-12-23, T01 2017-05-08, T01 2016-08-31; similarity 0.61-0.69), 0 followed by a failure. The gated agent chose monitor / transformer / low urgency: "Similar past alarms … did not result in logbook failures. The residuals suggest a temporary deviation …". The none arm inspected, citing the 2017-08-11 "transformer fan damaged" logbook row 14 days earlier. The ungated arm (farm-wide record) inspected too. Two weeks after a transformer repair, monitor is the defensible call; this episode is not scored as pre-incident or false alarm.
+- **Episode 50 (T11, 2017-01-27, false alarm): a justification that contradicts itself.** Gated record: 2 similar past alarms on T11, both followed by nothing. The agent inspected and wrote in `differs_from_record`: "a higher detector score (2.9) compared to past alarms (2.6 and 2.9), and the residual in generator_bearing is higher (+3.1 vs. +3.3 and +3.8)". Both comparisons are false by its own numbers. The validator checks that the field is filled, not that it is true.
+- **Episode 17 (T07, 2016-06-13, pre-incident, transformer): the record pointed the wrong way.** Gated record: 2 similar alarms (T11, T09), both followed by nothing. The agent inspected ("more pronounced residuals and a broader thermal anomaly"), named the generator, and a transformer incident followed. Inspect was right here; an agent that obeyed the record would have missed it. This is the 1 pre-incident episode where the gated record said "mostly nothing".
+- **Episode 45 (T09, 2016-12-30, pre-incident, generator bearing): unchanged from v1.** The ungated arm still names the generator bearing because of three dissimilar T07 memories that ended in a bearing failure; the gated and none arms still say generator.
+
+**Reading.** On this model and farm, the three fixes did not move the decision. The track record was shown, read and cited, and in 14 of 15 gated "mostly nothing" cases it was overruled with a justification of uneven quality (episode 50). The farm-wide record also undercuts the cost argument: with 34-62 % of alarms followed by a logbook failure within 30 days and a 1 : 10 cost ratio, inspecting every alarm is close to the expected-cost answer, so "inspect" is not obviously wrong for this farm. The memory's outcome agrees with the scoring classes: of the 77 episodes, 27 are followed by a logbook row within 30 days (all 22 pre-incident and 5 near-incident ones) and 50 are not (all 29 false alarms and 21 near-incident ones). That is 35 % overall, and more in the early months, which held most pre-incident episodes (5 of the 8 in April 2016).
+
+**What ~20 incidents can support.** Nothing statistical. 22 pre-incident episodes (9 incidents) and 29 false alarms; the arms differ by at most one component hit and one action, in either version. This is a case study: it shows what memory put in front of the agent and what the agent did with it.
