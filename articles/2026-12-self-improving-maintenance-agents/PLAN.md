@@ -100,6 +100,24 @@ Details and every number: `code/docs/RESULTS.md` ("Milestone 3"). The full run i
 - **Smoke** (6 runs, 30 requests, shared server): tools and typed output worked every time. Median 18.8 s and about 11k input tokens per episode. All 6 answers were "inspect", including one false alarm; too few to call it a bias.
 - **Queued full run:** `code/scripts/run_after_queue.sh`, 231 agent runs. It starts when the compliance queue writes `QUEUE_DONE` and shares the server with another queued article job. Expected: about 1.2 h at the smoke pace (231 × 18.8 s); allow up to 2 h, because memory prompts are longer and the other job shares the server.
 
+## Milestone 3, v1 full run (2026-09-30)
+
+Every number: `code/docs/RESULTS.md` ("Full run, m3 (v1)"). The agent answered "inspect" on all 77 episodes in all three arms. Component: 1 / 22 (none), 2 / 22 (ungated), 1 / 22 (gated). Not inspect on false alarms: 0 / 29 everywhere. The component was the detector's first-day top group in 77 / 71 / 72 of 77 episodes. Memory changed nothing measurable, because the decision never left its default. Kept as a result.
+
+## Milestone 3, v2: one round of fixes (decided 2026-10-01, before any v2 run)
+
+User-approved: **one** round of fixes, then a full re-run, then the write-up. No second round, whatever v2 shows.
+
+**Diagnosis of v1.** The prompt gave the agent no reason to say anything but "inspect": inspecting had no cost, monitor/ignore were barely explained, and memory came as a list of individual stories, where one past failure reads louder than five past alarms that led to nothing. The fixes target those three things and nothing else. They do not change the detector, the episodes, the outcome rule, the similarity, the gate values or the scoring.
+
+1. **Track record (memory shown as counts, then the individual memories).** `memory.track_record(candidates, query, policy)`: the pool is every visible past episode that passes the arm's gate rules **without** the k cap (gated: similarity ≥ 0.5, ≤ 365 days old, same turbine or same first-day top group; ungated: every past episode on the farm). It counts only outcomes known at decision time (`MemoryStore.visible(now)`): N known, k followed by a logbook failure on that turbine within 30 days (with the components), N − k followed by nothing, plus how many are still pending. Rendered as e.g. "7 similar past alarms with a known outcome: 2 were followed by a logbook failure within 30 days (generator_bearing 1, hydraulic_group 1); 5 were followed by nothing. 1 more is still pending." The top-3 memories follow as before. The `none` arm gets neither.
+2. **Justification against the record.** The output gets one more field, `differs_from_record`. "The record says mostly nothing" = N ≥ 2 known outcomes and more than half followed by nothing. In that case an "inspect" answer must say, in that field, what in this episode differs from those alarms; an empty / "n/a" value is sent back once more with `ModelRetry` (an output validator, mechanical, no judgement on the content). Otherwise the field may be "n/a".
+3. **Costs and the three actions in the instructions.** Stated as an assumption for the exercise, not measured on this farm: an inspection costs about one crew-day plus a few hours of stop (1 unit); a failure that a timely inspection would have caught costs about ten times that (unplanned downtime, crane and parts, secondary damage). Monitor = no work order, costs nothing now; the detector keeps scoring every day and a new alarm brings the turbine back. Ignore = explained by something else (farm-wide weather or grid event, sensor artefact, normal behaviour after a repair). No probability threshold is given; the 1 : 10 ratio comes from the domain, not from this data. If this farm's base rate of failures after an alarm is high, inspecting often is the rational answer under these costs; we report that rather than change the costs.
+
+**Runs.** Tag `m3v2`, prompt `v2`, all three arms (77 episodes each) on the same local server and model, sequentially, `--resume`. The `none` arm with the v2 prompt separates the prompt effect (v1 none → v2 none) from the memory effect (v2 none → v2 ungated / gated). A 2-episode plumbing check runs first; the prompt is changed after it only for a technical failure (schema, tool errors), never for its answers.
+
+**Guard rails.** Prompts were designed without per-episode labels (the v1 tables above were already written). No-look-ahead tests must pass for the v2 prompt in all arms; new tests check that the track record counts only outcomes known at decision time and does not move when the future changes.
+
 ## Open questions
 
 - ~~How to score the agent on clustered logbook rows~~: score on incidents (milestone 2 rule). Keep the per-row remarks in the agent's view.

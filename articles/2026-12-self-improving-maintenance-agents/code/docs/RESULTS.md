@@ -379,17 +379,41 @@ Gate rejections (candidate-episode pairs, first failing rule): low similarity 2,
 - Median 18.8 s per episode (14.7-34.7), mean 11,075 input and 240 output tokens.
 - All 6 answers were "inspect", including the false alarm. Six runs are far too few to call this a bias; watch for it in the full run.
 
-### Full run
+### Full run, m3 (v1) (2026-09-30)
 
-Queued with `scripts/run_after_queue.sh` (waits for the other job's `QUEUE_DONE`, then `python -m maintenance_agents.replay --model local --arms none,ungated,gated --tag m3 --resume`). Output: `runs/m3_{none,ungated,gated}.jsonl`, `runs/m3_summary.json`, `logs/m3_replay.log`.
+Ran with `scripts/run_after_queue.sh` (waited for the other job's `QUEUE_DONE`, then `python -m maintenance_agents.replay --model local --arms none,ungated,gated --tag m3 --resume`), 21:27-22:13, 2,725 s for 231 agent runs. Output: `runs/m3_{none,ungated,gated}.jsonl`, `runs/m3_summary.json`, `logs/m3_replay.log`. This is the v1 prompt (`agent.INSTRUCTIONS`, `Diagnosis` without a justification field, memories as a plain list). It is a result, kept as is.
 
-| Arm | Component (of 22) | Inspect on pre-incident (of 22) | Ignore on false alarm (of 29) | Not inspect on false alarm (of 29) | Appropriate (of 51) | Errors | Input / output tokens | Median s / episode |
-|---|---|---|---|---|---|---|---|---|
-| none | [[RESULT: m3 none component]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] |
-| ungated | [[RESULT: m3 ungated component]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] |
-| gated | [[RESULT: m3 gated component]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] | [[RESULT]] |
-| detector only | 3 / 22 (whole episode), 1 / 22 (first day) | – | – | – | – | – | 0 | – |
+| Arm | Component (of 22) | Inspect on pre-incident (of 22) | Ignore on false alarm (of 29) | Not inspect on false alarm (of 29) | Appropriate (of 51) | Errors | Input / output tokens (mean input per episode) | Requests / tool calls | Median s / episode |
+|---|---|---|---|---|---|---|---|---|---|
+| none | 1 / 22 | 22 / 22 | 0 / 29 | 0 / 29 | 22 / 51 | 0 | 517,273 / 17,094 (6,718) | 305 / 244 | 12.1 |
+| ungated | 2 / 22 | 22 / 22 | 0 / 29 | 0 / 29 | 22 / 51 | 0 | 719,362 / 16,379 (9,342) | 331 / 239 | 13.0 |
+| gated | 1 / 22 | 22 / 22 | 0 / 29 | 0 / 29 | 22 / 51 | 0 | 590,892 / 16,417 (7,674) | 322 / 230 | 8.1 |
+| detector only | 3 / 22 (whole episode), 1 / 22 (first day) | – | – | – | – | – | 0 | – | – |
 
-Per-month curve: [[RESULT: m3 monthly, from runs/m3_summary.json arms.*.monthly]]. Episodes where the arms disagree, and what memory showed: [[RESULT: m3 per-episode diff]].
+**The agent answered "inspect" on all 77 episodes in all three arms** (22 pre-incident, 29 false alarms, 26 near incidents). Urgency was "medium" or "high" every time (none: 64 / 13; ungated: 69 / 8; gated: 70 / 7), confidence 0.75-0.92 (median 0.85 in every arm). "Appropriate" is therefore exactly the 22 pre-incident episodes, in every arm.
 
-Seconds are measured on a shared server (another article's job is queued on the same `QUEUE_DONE`), so compare arms on tokens, not seconds.
+**The component was the detector's first-day top group** in 77 / 77 episodes (none), 71 / 77 (ungated) and 72 / 77 (gated). The one episode right in all three arms is episode 66 (T01, transformer), where the detector's top group was already right. So in v1 the agent is the detector plus "inspect"; memory changed nothing that the metrics can see.
+
+**Per-month cumulative curve (v1).** Cumulative appropriate = cumulative pre-incident episodes in every arm (5, 7, 11, 13, 13, 13, 13, 13, 15, 16, 16, 16, 17, 18, 21, 22, 22 from 2016-04 to 2017-09). Cumulative component hits: none and gated 0 until 2017-06, 1 from 2017-07; ungated 1 from 2016-12, 2 from 2017-07. No curve separates.
+
+**Episodes where the arms disagree (v1).** Only the component differs, in 9 episodes (action is "inspect" everywhere):
+
+| Episode | Class | Incident component | none | ungated | gated |
+|---|---|---|---|---|---|
+| 15 (T09, 2016-06-07) | near incident | – | hydraulic_group | hydraulic_group | generator_bearing |
+| 19 (T07, 2016-06-22) | pre-incident | transformer | generator | generator_bearing | generator |
+| 25 (T09, 2016-07-16) | false alarm | – | generator | generator_bearing | generator |
+| 28 (T06, 2016-08-02) | near incident | – | generator | generator | generator_bearing |
+| 33 (T07, 2016-08-31) | near incident | – | generator | generator | generator_bearing |
+| 36 (T11, 2016-10-23) | near incident | – | hydraulic_group | generator_bearing | generator_bearing |
+| 45 (T09, 2016-12-30) | pre-incident | generator_bearing | generator | **generator_bearing** | generator |
+| 52 (T09, 2017-02-17) | near incident | – | hydraulic_group | generator_bearing | generator_bearing |
+| 76 (T07, 2017-09-12) | near incident | – | hydraulic_group | generator_bearing | hydraulic_group |
+
+- **Episode 45, the ungated arm's extra hit, is right for a weak reason.** Its three memories were T07 episodes from April 2016 (similarity 0.45, 0.37, 0.34; 245-274 days old), all followed by a T07 generator-bearing failure. The gate would have rejected all three (similarity < 0.5, other turbine and group). The agent wrote "the similarity to past episodes with generator_bearing failures supports this diagnosis".
+- **Episode 19 shows the same pull going the wrong way.** The ungated prompt showed episode 15 (similarity 0.77, T09), whose outcome was a generator-bearing failure logged the same day; the agent switched from generator to generator_bearing. The incident was a transformer.
+- In all 9 disagreements, the arm that differs from `none` switched to `generator_bearing`: the agent copies the component of a past failure it was shown. Generator bearings dominate the failures memory shows: 44 of 70 failure memories in the ungated prompts, 14 of 28 in the gated prompts.
+
+**Reading.** Memory could not change the decision because the decision never moved from its default. With no cost on an inspection and no explicit base rate, "inspect" is always the safe-looking answer for this model. That is the problem the v2 prompt addresses (see PLAN.md, "Milestone 3, v2").
+
+Seconds are measured on a shared server, so compare arms on tokens, not seconds.
