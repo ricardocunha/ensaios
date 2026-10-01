@@ -105,9 +105,9 @@ Numbers from `code/docs/RESULTS.md` ("Milestone 3", "Full evaluation with Qwen3-
 ## Open questions
 
 - **Edges vs. segments.** Resolved in milestone 2 (sections). Open: dual carriageways are two sections, and OSM name variants of one road are not merged.
-- **Condition vs. reporting.** Requests are a proxy; residential streets dominate. Should the agent see the bias explicitly (e.g. class-normalized condition)? Who maintains the Anel pavement? [[VERIFY]]
-- **Floods.** Reuse flood extents from the disaster article (Porto Alegre) or find flood-prone areas for Belo Horizonte? [[VERIFY: open flood-risk layer for BH]]
-- **Pothole data.** Still open: the meaning of "Integração entre Sistemas" and the CC-BY version (both [[VERIFY]] in `code/docs/DATA.md`).
+- **Condition vs. reporting.** Requests are a proxy; residential streets dominate. Should the agent see the bias explicitly (e.g. class-normalized condition)? Who maintains the Anel pavement: resolved in `code/docs/DATA.md` (DNIT during our data window; 22.4 km municipalized on 2025-06-03, 4.1 km still DNIT).
+- **Floods.** Reuse flood extents from the disaster article (Porto Alegre) or find flood-prone areas for Belo Horizonte? Not done for this article (no open flood-risk layer for BH checked).
+- **Pothole data.** Still open, re-checked 2026-10-01: the meaning of "Integração entre Sistemas" and the CC-BY version. No published source answers either (the portal uses CKAN's unversioned `cc-by`); both stay as VERIFY notes in `code/docs/DATA.md` for a Fala BH / LAI request. The article does not depend on either.
 - **Hospitals.** OSM `amenity=hospital` includes private hospitals and misses UPAs/clinics; decide whether to add `amenity=clinic` / `healthcare=*` or an official list (CNES).
 - **Travel times** are free-flow (OSMnx imputed speeds), so closure delays are lower bounds on real congestion effects.
 - **Major works only.** Milestone 3 sequences the 15 highest-criticality works; the other ~430–1,980 plan sections are assumed to run under partial closure or off-peak. Worth saying in the article.
@@ -120,5 +120,5 @@ Numbers from `code/docs/RESULTS.md` ("Milestone 3", "Full evaluation with Qwen3-
 - **Angle:** each article is a field report with runnable code, in the style of `2026-10-cnh-ocr-smithtune`: build it, measure it, show what broke.
 - **Budget:** local first (M4 Pro 48 GB, mlx / Ollama). The cap for paid APIs is **US$10 per article**, set with `--max-cost` in the code; ask before any paid run.
 - **Data:** public or synthetic only. No personal data. Record every dataset's license in `code/docs/DATA.md` before using it.
-- **Numbers:** every number in the drafts comes from `code/docs/RESULTS.md`. Mark gaps with `[[RESULT: …]]` / `[[VERIFY: …]]`.
+- **Numbers:** every number in the drafts comes from `code/docs/RESULTS.md`. Mark gaps with RESULT / VERIFY placeholders in double square brackets.
 - **Deliverables:** EN long version + Medium short version, PT-BR, LinkedIn EN / PT-BR, code with tests + Makefile, `CONTEXT.md` glossary, ADRs for the hard decisions.

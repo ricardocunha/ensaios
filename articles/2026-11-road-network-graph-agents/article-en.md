@@ -2,7 +2,7 @@
 title: "Graph agents that plan road maintenance"
 subtitle: "Belo Horizonte's road network, 198,991 pothole requests, a knapsack solver and three Pydantic AI agents: what the LLM adds when tools do the graph math"
 platforms: Medium, dev.to, Hashnode
-status: DRAFT — replace every [[RESULT: …]] / [[VERIFY: …]] before publishing
+status: DRAFT — ready for review (numbers checked against code/docs/RESULTS.md)
 repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2026-11-road-network-graph-agents
 ---
 
@@ -63,7 +63,7 @@ Belo Horizonte publishes its citizens' service requests (BH Digital) as open dat
 
 It's tempting to call this "road condition". It isn't. It measures **who reports**:
 
-- Residential streets get **21.0** request locations per km; the Anel motorway gets **0.10**. Nobody files a pothole request from a motorway, and the Anel's pavement may not even be the city's job [[VERIFY: who maintains the Anel Rodoviário pavement]].
+- Residential streets get **21.0** request locations per km; the Anel motorway gets **0.10**. Few people file a pothole request from a motorway, and in this window the Anel wasn't the city's road anyway: it was a federal highway maintained by DNIT until the city took over 22.4 km of it in June 2025.
 - Condition and criticality are nearly unrelated (Spearman **−0.09**). The streets people complain about and the roads the network depends on are different streets.
 
 So the **condition** score is a percentile of smoothed request density, and the **value** of fixing a section is condition × criticality × km. The **repair cost** is synthetic: pavement area, scaled by condition. I don't have the city's real costs, so cost is in "m² of resurfacing" units, not reais. That's a stated assumption, not a finding.
@@ -121,7 +121,7 @@ That's a real preference: fix what citizens report. But you could put it in the 
 
 The agent also gave different answers on reruns. The mean pairwise Jaccard of its deviations was **0.137** at 5%, **0.000** at 10% and **0.867** at 20%. At 10%, the two successful runs didn't share a single deviation. The final plans still stay close to each other (Jaccard 0.951–0.997), because the solver refills the budget around whatever the agent forces.
 
-It also ignored a limit it was given. The instructions say at most 6 deviations. 4 of the 8 accepted proposals had 10–12, and in 5 of 9 runs the schema rejected a proposal with 15–20. Its one failure was two such rejections in a row.
+It also ignored a limit it was given. The instructions say at most 6 deviations. 4 of the 8 accepted proposals had 10–12, and in 6 of 9 runs the schema rejected a proposal with 15–20. Its one failure was two such rejections in a row.
 
 ### The closure agent: 1 of 9
 
@@ -177,7 +177,7 @@ So "every number is traceable to a tool" is reachable with an 8B model and a str
 | Same answer on rerun | yes | deviation overlap 0.0–0.87 |
 | Numbers traceable to tools | n/a | 89.7% strict, 98.8% with notation/derived |
 
-On this problem the LLM adds **explanation and small shifts in request coverage, not better plans**. The knapsack already optimises the stated objective, so the agent can only trade value for some other goal, and it does that inconsistently. Scheduling is better done by the heuristic: it finished every time, never cut access, and its worst month was lower.
+On this problem the LLM adds **explanation and small shifts in request coverage, not better plans**. The knapsack already optimises the stated objective, so the agent can only trade value for some other goal, and it does that inconsistently. Scheduling is better done by the heuristic: it finished every time, never had a violation, and its worst month was lower.
 
 That doesn't make the agent layer useless. A plan whose trade-offs are written out in plain language is something a city engineer can read and argue with, and the coordinator's numbers were traceable. But the decision itself belongs to the solver.
 

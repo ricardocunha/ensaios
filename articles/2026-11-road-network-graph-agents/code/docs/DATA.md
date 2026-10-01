@@ -3,7 +3,7 @@
 Every dataset used by this code, with its license and how we get it. Nothing
 under `data/` is committed; the code downloads and caches it.
 
-Checked on 2026-09-30.
+Checked on 2026-09-30; licence, Anel and channel questions re-checked on 2026-10-01.
 
 ## In use
 
@@ -43,8 +43,24 @@ Checked on 2026-09-30.
   `opendefinition.org/licenses/cc-by`, and the Open Definition badge. **No
   version number and no required attribution text** appear on the page or in
   the dictionary. We attribute as "Prefeitura de Belo Horizonte, BH Digital
-  (SMPOG/SUMOG), dados.pbh.gov.br, CC-BY". [[VERIFY: CC-BY version, only
-  answerable by asking PBH; the portal does not state it]]
+  (SMPOG/SUMOG), dados.pbh.gov.br, CC-BY".
+  **Version (checked 2026-10-01, not stated anywhere we could find):** the
+  CKAN API (`dados.pbh.gov.br/api/3/action/package_show?id=solicitacoes-dos-cidadaos-por-meio-dos-canais-de-atendimento-da-pbh`,
+  which answered with a browser user agent this time) returns
+  `license_id: "cc-by"`, `license_title: "Creative Commons Attribution"`,
+  `license_url: http://www.opendefinition.org/licenses/cc-by`: CKAN's
+  generic, unversioned CC-BY entry. The portal's "Sobre" page
+  (<https://dados.pbh.gov.br/about>) says only that conditions are "definidas
+  em documento específico disponível em conjunto com os dados" and may
+  change. Decreto 17.072/2019
+  (<https://prefeitura.pbh.gov.br/sites/default/files/estrutura-de-governo/controladoria/2019/Decretos/Decreto_17072__.pdf>)
+  requires an "licença aberta" and gives the Comitê Gestor the job to
+  "definir termos de licenciamento de dados abertos" (art. 11, XIII), without
+  naming a licence. Lei municipal 11.417/2022 (open-data policy,
+  <https://www.cmbh.mg.gov.br/comunica%C3%A7%C3%A3o/not%C3%ADcias/2022/10/pol%C3%ADtica-de-dados-abertos-dos-poderes-p%C3%BAblicos-j%C3%A1-entrou-em-vigor-em-bh>)
+  also says only "licença aberta". So the article says "CC-BY" with no
+  version. [[VERIFY: CC-BY version; only PBH can answer (Fala BH / LAI);
+  no published document states it]]
 - **Access:** yearly (2020 May–Dec, 2021, 2022) and monthly (2023 Jan–Jul)
   CSVs, no account. The CKAN API at `dados.pbh.gov.br/api/3/...` returned
   HTTP 403 ("Acesso Bloqueado") to `curl`; the dataset HTML page and the
@@ -81,8 +97,14 @@ Checked on 2026-09-30.
   "Telefônico", while 71,490 requests of other services did. That pattern
   suggests pothole requests from another system (plausibly the 156 phone
   line or an internal SMOBI/SUDECAP system) are imported into BH Digital
-  under this label, but nothing published says so. [[VERIFY: meaning of
-  "Integração entre Sistemas"; ask PBH via Fala BH / LAI]]
+  under this label, but nothing published says so. Searched again
+  2026-10-01 (web search for the exact phrase with PBH / BH Digital /
+  Tapa-Buraco / "canal de captação"): the only hits are the CSVs themselves
+  (rows with this channel, service Tapa-Buraco, unit PMBH/SMOBI) and PBH
+  pages about BH Digital as a "captador" and "tramitador" for urban-policy
+  services, none of which defines the value. The article does not rely on
+  it. [[VERIFY: meaning of "Integração entre Sistemas"; ask PBH via Fala BH
+  / LAI]]
 - **Personal data:** no requester fields. Coordinates (SIRGAS 2000,
   lat/lon) are occurrence addresses, which can sit in front of a home. We
   snap them in memory to road sections and keep only per-section counts;
@@ -92,10 +114,35 @@ Checked on 2026-09-30.
   measure *reporting*, not pavement state: they depend on who uses the app
   or the 156 line, on traffic past the hole and on the city's own
   inspections. Measured bias in our window: 21.0 request locations per km on
-  residential sections vs. 0.10 on motorway sections (Anel Rodoviário), whose
-  maintenance may not go through this municipal service.
-  [[VERIFY: who maintains the Anel Rodoviário pavement (federal/DNIT or
-  PBH) in 2022–2023]]
+  residential sections vs. 0.10 on motorway sections (Anel Rodoviário).
+- **Who maintains the Anel Rodoviário (resolved 2026-10-01).** During our
+  data window (Aug 2022 – Jul 2023) the Anel was a federal highway (the
+  2026 tender lists stretches of BR-381 and BR-040) managed by DNIT, so its pavement
+  was not the city's job and Tapa-Buraco requests would not cover it. On
+  **3 June 2025** the Prefeitura took over: a "Termo de Transferência para a
+  Municipalização de 22,4 quilômetros do Novo Anel", from Olhos D'Água
+  (Barreiro) to Avenida Cristiano Machado; "Um trecho de 4,1 quilômetros
+  continuará sob responsabilidade do Dnit" until the BR-381 works between
+  Belo Horizonte and Caeté finish. Since then "caberá à Prefeitura de Belo
+  Horizonte a gestão, manutenção, operação viária ... da rodovia", with
+  maintenance under SMOBI (Sudecap, Suzurb). Sources:
+  PBH, 2025-06-03 (updated 2025-10-09),
+  <https://prefeitura.pbh.gov.br/noticias/pbh-assume-novo-anel-e-garante-mais-seguranca-melhorias-e-reducao-de-acidentes>;
+  PBH, 2025-04-29, <https://prefeitura.pbh.gov.br/noticias/municipalizacao-do-anel-rodoviario>
+  (the city "se prepara para assumir a operação e manutenção do Anel
+  Rodoviário, atualmente sob responsabilidade do DNIT");
+  O Tempo, 2025-06-03, <https://www.otempo.com.br/politica/2025/6/3/pbh-assume-anel-rodoviario-e-anuncia-tratamento-especial-da-via>
+  (federal resurfacing money as part of the hand-over). In July 2026 PBH
+  reopened a tender for pavement restoration on "o trecho municipalizado do
+  Anel": O Tempo, 2026-07-02,
+  <https://www.otempo.com.br/cidades/2026/7/2/pbh-reabre-edital-para-obras-acima-de-r-100-milhoes-no-anel-rodoviario>.
+  The BR-040 concession auctioned in 2024 "vai do entroncamento com
+  Cristalina (GO) até o Anel Rodoviário de Belo Horizonte" (Estado de
+  Minas, 2024-09,
+  <https://www.em.com.br/politica/2024/09/6948597-leilao-da-br-040-quatro-empresas-disputarao-trecho-de-bh-a-goias.html>);
+  we found no source that puts the Anel itself in a concession. A 2025+
+  request window could therefore start to include Anel requests; ours
+  cannot.
 
 ### Belo Horizonte: "Trecho Logradouro"
 
