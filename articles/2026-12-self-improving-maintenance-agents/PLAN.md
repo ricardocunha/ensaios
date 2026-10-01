@@ -88,7 +88,7 @@ Details and every number: `code/docs/RESULTS.md` ("Milestone 2").
 
 ## Milestone 3 result (2026-09-30): agent + memory + replay harness
 
-Details and every number: `code/docs/RESULTS.md` ("Milestone 3"). The full run is queued; its numbers are `[[RESULT: …]]` there.
+Details and every number: `code/docs/RESULTS.md` ("Milestone 3"). Full-run results: see the v1 and v2 sections below.
 
 - **Agent.** Pydantic AI, typed `Diagnosis` {component, action inspect/monitor/ignore, urgency, evidence, confidence}. Three tools: residual series of any signal group, context (converter/nacelle residuals, other turbines' scores that day), maintenance log. Qwen3-8B 4-bit on the local mlx-lm server, thinking off, temperature 0.
 - **Decision time = end of the first alarm day.** The m2 episode summary used the whole episode, which is later information, so the agent's view is rebuilt from day one. Detector-only component baseline at that time: 1 / 22 (3 / 22 over the whole episode).
@@ -117,6 +117,10 @@ User-approved: **one** round of fixes, then a full re-run, then the write-up. No
 **Runs.** Tag `m3v2`, prompt `v2`, all three arms (77 episodes each) on the same local server and model, sequentially, `--resume`. The `none` arm with the v2 prompt separates the prompt effect (v1 none → v2 none) from the memory effect (v2 none → v2 ungated / gated). A 2-episode plumbing check runs first; the prompt is changed after it only for a technical failure (schema, tool errors), never for its answers.
 
 **Guard rails.** Prompts were designed without per-episode labels (the v1 tables above were already written). No-look-ahead tests must pass for the v2 prompt in all arms; new tests check that the track record counts only outcomes known at decision time and does not move when the future changes.
+
+## Milestone 3, v2 result (2026-10-01)
+
+Every number: `code/docs/RESULTS.md` ("Full run, m3 (v2)"). The fixes did not move the decision: "inspect" in 230 of 231 runs; component 1 / 2 / 1 of 22 (none / ungated / gated), as in v1; not inspect on false alarms 0 / 29 everywhere. The only changed action is gated episode 73 (near incident, monitor after a transformer repair). The gated record said "mostly nothing" in 15 prompts and was overridden in 14, once with a self-contradicting justification (episode 50). Under the stated 1 : 10 costs and a farm where 27 of 77 alarms precede a logbook failure, "inspect" is close to the expected-cost answer. No second round (as decided). Draft: `article-en.md`.
 
 ## Open questions
 

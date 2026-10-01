@@ -342,7 +342,7 @@ Code: `episodes.py`, `memory.py`, `agent.py`, `replay.py`; tests in `tests/test_
 
 `test_replay_before_a_date_does_not_depend_on_anything_after_it` (one per arm) replays a synthetic farm three times: the base data; the same with the future changed after a split date (a logbook row changes component, a new row appears, residuals are scrambled, an episode is added); and the data cut at the split. A recording `FunctionModel` calls every tool and derives its diagnosis from a hash of everything it read. For every episode decided before the split, the prompt, every tool result, the memories, the gate decisions and the diagnosis are identical in all three runs. The test also checks that the change is visible after the split, and that pre-split prompts hold known outcomes (and, in `ungated`, pending ones). Breaking the store (outcomes always visible) fails 3 tests; letting tools read the first alarm day's next day fails all 3 replay tests.
 
-Test count: 67 (22 new in milestone 3), all offline.
+Test count: 67 (22 new in milestone 3), all offline. With v2 (track record, justification, v2 no-look-ahead variants): 75.
 
 ### What the gate lets through (model-independent)
 
