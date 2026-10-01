@@ -20,7 +20,16 @@ from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.test import TestModel
 
-from maintenance_agents.agent import Deps, build_agent, memory_block, render_prompt
+from maintenance_agents.agent import (
+    INSTRUCTIONS,
+    INSTRUCTIONS_V2,
+    DiagnosisV2,
+    Deps,
+    build_agent,
+    memory_block,
+    needs_justification,
+    render_prompt,
+)
 from maintenance_agents.episodes import DAY, SCORE_COL, VECTOR_SIGNALS, ReplayData, cosine, signal_vector
 from maintenance_agents.memory import (
     GATED,
@@ -31,8 +40,10 @@ from maintenance_agents.memory import (
     MemoryView,
     Outcome,
     gate,
+    TrackRecord,
     lesson,
     resolve_outcome,
+    track_record,
 )
 from maintenance_agents.replay import ARMS, labels_from_eval, replay, score
 
@@ -316,19 +327,22 @@ def recording_model(transcripts: dict[int, str]) -> FunctionModel:
             "evidence": f"h{h % 1000}",
             "confidence": (h % 100) / 100,
         }
+        if "differs_from_record" in str(info.output_tools[0].parameters_json_schema):
+            out["differs_from_record"] = f"pattern h{h % 997}"
         return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, out)])
 
     return FunctionModel(fn)
 
 
-def run_arm(data: ReplayData, arm: str) -> tuple[list[dict], dict[int, str]]:
+def run_arm(data: ReplayData, arm: str, prompt: str = "v1") -> tuple[list[dict], dict[int, str]]:
     transcripts: dict[int, str] = {}
-    rows = asyncio.run(replay(data, build_agent(recording_model(transcripts)), ARMS[arm], arm=arm))
+    rows = asyncio.run(replay(data, build_agent(recording_model(transcripts), prompt=prompt), ARMS[arm], arm=arm, prompt_version=prompt))
     return rows, transcripts
 
 
+@pytest.mark.parametrize("prompt", ["v1", "v2"])
 @pytest.mark.parametrize("arm", ["none", "ungated", "gated"])
-def test_replay_before_a_date_does_not_depend_on_anything_after_it(arm):
+def test_replay_before_a_date_does_not_depend_on_anything_after_it(arm, prompt):
     """Change the future, the past must not move.
 
     Three worlds: (a) the base data; (b) after SPLIT, a logbook row changes
@@ -353,9 +367,9 @@ def test_replay_before_a_date_does_not_depend_on_anything_after_it(arm):
     faults_c = [f for f in FAULTS if pd.Timestamp(f[1]) < SPLIT]
     truncated = make_data(daily=daily_c, episodes=eps_c, faults=faults_c)
 
-    ra, ta = run_arm(base, arm)
-    rb, tb = run_arm(changed, arm)
-    rc, tc = run_arm(truncated, arm)
+    ra, ta = run_arm(base, arm, prompt)
+    rb, tb = run_arm(changed, arm, prompt)
+    rc, tc = run_arm(truncated, arm, prompt)
 
     past = [r["episode_id"] for r in ra if pd.Timestamp(r["decision_time"]) < SPLIT]
     assert past == [0, 1, 2, 3, 4, 5, 6] and [r["episode_id"] for r in rc] == past
@@ -363,7 +377,7 @@ def test_replay_before_a_date_does_not_depend_on_anything_after_it(arm):
     a, b, c = by(ra), by(rb), by(rc)
     for eid in past:
         assert ta[eid] == tb[eid] == tc[eid], f"episode {eid} saw something different"
-        for key in ("prompt", "diagnosis", "memories", "gate_rejections"):
+        for key in ("prompt", "diagnosis", "memories", "gate_rejections", "track_record"):
             assert a[eid][key] == b[eid][key] == c[eid][key], (eid, key)
 
     # teeth: the future change is visible after the split
@@ -378,6 +392,11 @@ def test_replay_before_a_date_does_not_depend_on_anything_after_it(arm):
         assert any("Outcome: not known yet." in a[e]["prompt"] for e in past)
     if arm == "gated":
         assert "Outcome: not known yet." not in "".join(r["prompt"] for r in ra)
+    if prompt == "v2" and arm != "none":
+        assert all("Track record of" in a[e]["prompt"] for e in past)
+        assert any(a[e]["track_record"]["known"] > 0 for e in past)
+    else:
+        assert all("Track record of" not in a[e]["prompt"] for e in past)
 
 
 def test_memory_arms_differ_only_in_what_enters_the_prompt():
@@ -430,3 +449,85 @@ def test_resume_reuses_only_the_unbroken_prefix():
     rows = asyncio.run(replay(d, build_agent(recording_model(transcripts)), ARMS["gated"], arm="gated", done=done))
     assert sorted(transcripts) == [3, 4, 5, 6, 7, 8, 9]  # recomputed from the gap on
     assert [r["prompt"] for r in rows] == [r["prompt"] for r in first]
+
+
+# ------------------------------------------------------------------ track record (v2)
+
+
+def _store(d: ReplayData, ids) -> MemoryStore:
+    store = MemoryStore()
+    for i in ids:
+        s = d.situation(i)
+        store.add(MemoryRecord(s, diag(), s.decision_time, resolve_outcome(s, d.faults)))
+    return store
+
+
+def test_track_record_counts_only_outcomes_known_at_decision_time():
+    d = make_data()
+    store = _store(d, (0, 2, 4))  # TA bearing pattern; ep 0 -> failure known 02-10 10:00, ep 2 and 4 -> nothing
+    q = d.situation(6)
+    pol = GATED.with_(max_age_days=None)
+    # ep 0 decided 02-02, its failure is logged 02-10 10:00: pending just before, a failure from then on
+    before, at = pd.Timestamp("2016-02-10 09:59"), pd.Timestamp("2016-02-10 10:00")
+    tb = track_record(store.candidates(q, before), q, pol)
+    assert (tb.known, tb.failures, tb.pending) == (0, 0, 1)
+    ta = track_record(store.candidates(q, at), q, pol)
+    assert (ta.known, ta.failures, ta.pending, ta.failure_components) == (1, 1, 0, {"generator_bearing": 1})
+    # at the query's decision time: ep 2 (no failure, known 03-22) counts, ep 4 (known 04-20) is still pending
+    tq = track_record(store.candidates(q, q.decision_time), q, pol)
+    assert (tq.known, tq.failures, tq.nothing, tq.pending) == (2, 1, 1, 1)
+    assert not tq.mostly_nothing  # 1 of 2 is not more than half
+
+
+def test_track_record_uses_the_gate_rules_without_the_k_cap():
+    d = make_data()
+    store = _store(d, (0, 1, 2, 3, 4, 5))
+    q = d.situation(8)  # TA bearing, decided 04-26
+    cands = store.candidates(q, q.decision_time)
+    g = track_record(cands, q, GATED.with_(max_k=1))
+    # TB hydraulic episodes 1, 3, 5 fail the similarity / scope rules; TA episodes 0, 2, 4 all count despite k=1
+    assert g.known + g.pending == 3 and g.scope.startswith("similar past alarms")
+    u = track_record(cands, q, UNGATED)
+    assert u.known + u.pending == 6 and u.scope == "all past alarms on this farm"
+
+
+def test_track_record_text_and_majority_rule():
+    t = TrackRecord("x", known=5, failures=1, failure_components={"gearbox": 1}, pending=2)
+    assert t.nothing == 4 and t.mostly_nothing
+    txt = t.text()
+    assert "5 with a known outcome" in txt and "1 of them" in txt and "(gearbox 1)" in txt and "4 were followed by nothing" in txt
+    assert "2 more are still pending" in txt
+    assert not TrackRecord("x", 1, 0, {}, 0).mostly_nothing  # one alarm is not a record
+    assert not TrackRecord("x", 4, 2, {"gearbox": 2}, 0).mostly_nothing  # half is not most
+    assert "no past alarm with a known outcome yet" in TrackRecord("x", 0, 0, {}, 0).text()
+
+
+def test_inspect_against_a_mostly_nothing_record_must_say_why():
+    d = make_data()
+    s = d.situation(6)
+    record = TrackRecord("x", known=4, failures=1, failure_components={"gearbox": 1}, pending=0)
+    calls = []
+
+    def fn(messages, info: AgentInfo) -> ModelResponse:
+        calls.append(len(messages))
+        why = "n/a" if len(calls) == 1 else "bearing NDE trend rising for 5 days, unlike the past alarms"
+        args = diag("generator_bearing", "inspect") | {"differs_from_record": why}
+        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, args)])
+
+    agent = build_agent(FunctionModel(fn), prompt="v2", tools=False)
+    r = agent.run_sync(render_prompt(s, [], gated=True, track=record), deps=Deps(d, s, record))
+    assert len(calls) == 2 and "unlike the past alarms" in r.output.differs_from_record
+    # no retry when the record is not "mostly nothing", or the action is not inspect, or there is no record
+    calls.clear()
+    agent.run_sync("x", deps=Deps(d, s, TrackRecord("x", 2, 2, {"gearbox": 2}, 0)))
+    assert len(calls) == 1
+    assert not needs_justification(DiagnosisV2(**diag(action="monitor"), differs_from_record="n/a"), record)
+    assert not needs_justification(DiagnosisV2(**diag(action="inspect"), differs_from_record="n/a"), None)
+    assert needs_justification(DiagnosisV2(**diag(action="inspect"), differs_from_record=" N/A. "), record)
+
+
+def test_v2_prompt_has_costs_and_the_none_arm_gets_no_record():
+    d = make_data()
+    rows, _ = run_arm(d, "none", "v2")
+    assert all(r["track_record"] is None and "Track record" not in r["prompt"] for r in rows)
+    assert "Cost 1" in INSTRUCTIONS_V2 and "costs about 10" in INSTRUCTIONS_V2 and "Cost 1" not in INSTRUCTIONS

@@ -224,3 +224,77 @@ def gate(candidates: Iterable[Candidate], query: Situation, policy: GatePolicy) 
         else:
             res.rejected.append((c, why))
     return res
+
+
+# ---------------------------------------------------------------- track record (v2 prompt)
+
+
+@dataclass(frozen=True)
+class TrackRecord:
+    """What happened after similar past alarms, counted at decision time.
+
+    ``pool`` = every visible memory that passes the arm's gate rules except the
+    k cap and the outcome requirement. Only outcomes known at ``now`` count;
+    the others are ``pending``.
+    """
+
+    scope: str
+    known: int
+    failures: int
+    failure_components: dict[str, int]
+    pending: int
+
+    @property
+    def nothing(self) -> int:
+        return self.known - self.failures
+
+    @property
+    def mostly_nothing(self) -> bool:
+        """At least 2 known outcomes and more than half of them followed by nothing."""
+        return self.known >= 2 and self.nothing * 2 > self.known
+
+    def text(self, horizon_days: int = HORIZON_DAYS) -> str:
+        head = f"Track record of {self.scope}:"
+        if self.known == 0:
+            body = "no past alarm with a known outcome yet."
+        else:
+            comps = ", ".join(f"{c} {n}" for c, n in sorted(self.failure_components.items(), key=lambda x: (-x[1], x[0])))
+            body = (
+                f"{self.known} with a known outcome. {self.failures} of them were followed by a logbook failure on that turbine "
+                f"within {horizon_days} days" + (f" ({comps})" if comps else "") + f"; {self.nothing} were followed by nothing."
+            )
+        if self.pending:
+            body += f" {self.pending} more {'is' if self.pending == 1 else 'are'} still pending (outcome not known yet)."
+        return f"{head} {body}"
+
+
+def track_record_scope(policy: GatePolicy) -> str:
+    if policy.scope == "any" and policy.min_similarity <= -1 and policy.max_age_days is None:
+        return "all past alarms on this farm"
+    parts = [f"similarity >= {policy.min_similarity:.2f}"]
+    if policy.max_age_days is not None:
+        parts.append(f"<= {policy.max_age_days:.0f} days old")
+    if policy.scope == "same_turbine":
+        parts.append("same turbine")
+    elif policy.scope == "same_turbine_or_group":
+        parts.append("same turbine or same top signal group")
+    return "similar past alarms (" + ", ".join(parts) + ")"
+
+
+def track_record(candidates: Iterable[Candidate], query: Situation, policy: GatePolicy) -> TrackRecord:
+    """Count outcomes over the arm's pool (gate rules without the k cap; pending ones counted apart)."""
+    pool_policy = policy.with_(require_outcome=False)
+    known = failures = pending = 0
+    comps: dict[str, int] = {}
+    for c in candidates:
+        if rejection_reason(c, query, pool_policy) is not None:
+            continue
+        o = c.view.outcome  # None while the outcome is not known at c.view.now
+        if o is None:
+            pending += 1
+            continue
+        known += 1
+        if o.kind == "failure":
+            failures += 1
+            comps[o.component] = comps.get(o.component, 0) + 1
+    return TrackRecord(track_record_scope(policy), known, failures, comps, pending)

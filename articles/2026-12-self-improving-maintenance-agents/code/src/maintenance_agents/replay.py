@@ -3,6 +3,7 @@
     uv run python -m maintenance_agents.replay --model rule            # offline dry run, no server
     uv run python -m maintenance_agents.replay --model local --limit 3 # smoke calls to the local server
     uv run python -m maintenance_agents.replay --model local           # the full run (77 episodes x 3 arms)
+    uv run python -m maintenance_agents.replay --model local --prompt v2 --tag m3v2   # the v2 prompt (PLAN.md)
 
 Arms:
 
@@ -33,7 +34,7 @@ import pandas as pd
 from pydantic_ai.usage import UsageLimits
 
 from .episodes import ReplayData, Situation
-from .memory import GATED, HORIZON_DAYS, UNGATED, GatePolicy, MemoryRecord, MemoryStore, gate, resolve_outcome
+from .memory import GATED, HORIZON_DAYS, UNGATED, GatePolicy, MemoryRecord, MemoryStore, gate, resolve_outcome, track_record
 
 RUNS_DIR = Path(__file__).resolve().parents[2] / "runs"
 ARMS: dict[str, GatePolicy | None] = {"none": None, "ungated": UNGATED, "gated": GATED}
@@ -71,6 +72,7 @@ async def replay(
     prefetch: bool = False,
     log_path: Path | None = None,
     done: dict[int, dict] | None = None,
+    prompt_version: str = "v1",
 ) -> list[dict]:
     """Replay episodes in time order with one memory store. ``done`` reuses recorded diagnoses (resume)."""
     from .agent import Deps, prefetch_context, render_prompt
@@ -83,13 +85,17 @@ async def replay(
     resuming = bool(done)
     for s in situations:
         now = s.decision_time
-        selected, reasons, n_visible = None, {}, 0
+        selected, reasons, n_visible, track = None, {}, 0, None
         if policy is not None:
             cands = store.candidates(s, now)
             n_visible = len(cands)
             g = gate(cands, s, policy)
             selected, reasons = g.selected, g.reasons()
-        prompt = render_prompt(s, selected, gated=policy is not None and policy.require_outcome, prefetch=prefetch_context(data, s) if prefetch else None)
+            if prompt_version == "v2":
+                track = track_record(cands, s, policy)
+        prompt = render_prompt(
+            s, selected, gated=policy is not None and policy.require_outcome, prefetch=prefetch_context(data, s) if prefetch else None, track=track
+        )
         t0 = time.perf_counter()
         # resume: reuse recorded diagnoses only for an unbroken prefix whose prompts are unchanged;
         # from the first missing/failed episode on, everything is recomputed (memory depends on it)
@@ -98,7 +104,7 @@ async def replay(
             diag, usage, err, seconds = prev["diagnosis"], prev["usage"], prev.get("error"), prev["seconds"]
         else:
             resuming = False
-            diag, usage, err = await diagnose(agent, prompt, Deps(data, s))
+            diag, usage, err = await diagnose(agent, prompt, Deps(data, s, track))
             seconds = round(time.perf_counter() - t0, 2)
         outcome = resolve_outcome(s, data.faults, horizon_days)
         if diag is not None:
@@ -118,6 +124,9 @@ async def replay(
                 for c in (selected or [])
             ],
             "memories_visible": n_visible,
+            "track_record": None
+            if track is None
+            else {"known": track.known, "failures": track.failures, "pending": track.pending, "components": track.failure_components, "mostly_nothing": track.mostly_nothing},
             "gate_rejections": reasons,
             "usage": usage,
             "seconds": seconds,
@@ -178,6 +187,7 @@ def score(rows: list[dict], labels: pd.DataFrame) -> dict:
                 "not_inspect_on_fa": lb["klass"] == "false_alarm" and action in ("ignore", "monitor"),
                 "error": r["error"] is not None,
                 "n_memories": len(r["memories"]),
+                "mostly_nothing": bool((r.get("track_record") or {}).get("mostly_nothing", False)),
                 "n_memories_outcome_known": sum(m["outcome_known"] for m in r["memories"]),
                 "input_tokens": r["usage"]["input_tokens"],
                 "output_tokens": r["usage"]["output_tokens"],
@@ -219,6 +229,10 @@ def score(rows: list[dict], labels: pd.DataFrame) -> dict:
         "actions_near_incident": actions(near),
         "components_pre_incident": pre["component"].fillna("error").value_counts().to_dict(),
         "pre_incident_with_memory": int((pre["n_memories"] > 0).sum()),
+        "record_mostly_nothing": {k: int(df["mostly_nothing"].sum()) for k, df in (("pre_incident", pre), ("false_alarm", fa), ("near_incident", near))},
+        "inspect_against_record": {
+            k: int(((df["action"] == "inspect") & df["mostly_nothing"]).sum()) for k, df in (("pre_incident", pre), ("false_alarm", fa), ("near_incident", near))
+        },
         "mean_memories_in_prompt": round(float(p["n_memories"].mean()), 2),
         "mean_memories_with_known_outcome": round(float(p["n_memories_outcome_known"].mean()), 2),
         "cost": {
@@ -254,6 +268,7 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--output-mode", choices=["tool", "prompted"], default="tool")
     ap.add_argument("--context", choices=["tools", "prefetch"], default="tools")
     ap.add_argument("--tag", default="m3")
+    ap.add_argument("--prompt", choices=["v1", "v2"], default="v1", help="v2: costs, track record, justification (PLAN.md)")
     ap.add_argument("--resume", action="store_true", help="reuse diagnoses already in runs/<tag>_<arm>.jsonl")
     args = ap.parse_args(argv)
 
@@ -267,11 +282,12 @@ def main(argv: list[str] | None = None) -> None:
     if args.limit:
         sits = sits[: args.limit]
     model = rule_model() if args.model == "rule" else None
-    agent = build_agent(model, output_mode=args.output_mode, tools=args.context == "tools")
+    agent = build_agent(model, output_mode=args.output_mode, tools=args.context == "tools", prompt=args.prompt)
     labels = episode_labels()
     RUNS_DIR.mkdir(exist_ok=True)
     summary = {
         "model": args.model,
+        "prompt": args.prompt,
         "output_mode": args.output_mode,
         "context": args.context,
         "episodes": [s.episode_id for s in sits],
@@ -285,7 +301,7 @@ def main(argv: list[str] | None = None) -> None:
         path.unlink(missing_ok=True)  # rewritten row by row; resumed rows are re-emitted from ``done``
         t0 = time.time()
         rows = asyncio.run(
-            replay(data, agent, ARMS[arm], arm=arm, situations=sits, prefetch=args.context == "prefetch", log_path=path, done=done)
+            replay(data, agent, ARMS[arm], arm=arm, situations=sits, prefetch=args.context == "prefetch", log_path=path, done=done, prompt_version=args.prompt)
         )
         s = score(rows, labels)
         s["wall_seconds"] = round(time.time() - t0, 1)

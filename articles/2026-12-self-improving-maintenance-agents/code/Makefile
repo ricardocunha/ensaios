@@ -1,4 +1,4 @@
-.PHONY: sync data audit baseline detect detect-operating replay-dry replay replay-queued test
+.PHONY: sync data audit baseline detect detect-operating replay-dry replay replay-v2 replay-queued test
 
 sync:
 	uv sync
@@ -29,6 +29,10 @@ replay-dry:
 # milestone 3: full replay, 77 episodes x 3 arms, on the local OpenAI-compatible server ($$AGENT_BASE_URL)
 replay:
 	PYDANTIC_AI_NO_BANNER=1 nice uv run python -m maintenance_agents.replay --model local --tag m3 --resume
+
+# milestone 3, v2 prompt (costs, track record, justification; PLAN.md), all three arms
+replay-v2:
+	PYDANTIC_AI_NO_BANNER=1 nice uv run python -m maintenance_agents.replay --model local --prompt v2 --tag m3v2 --resume
 
 # the same, queued behind another job's QUEUE_DONE file (survives logout)
 replay-queued:

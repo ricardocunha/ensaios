@@ -5,6 +5,13 @@ past episodes from memory, and answers with a ``Diagnosis``. Tools fetch the
 residual time series of any component group, the context signals and the
 turbine's maintenance log, all limited to what was known at decision time.
 
+Two prompt versions (``PROMPTS``). ``v1`` (milestone 3's first full run):
+plain instructions, memories as a list. ``v2`` (the one round of fixes, see
+PLAN.md): the cost of each action in the instructions, memory shown first as a
+track record (``memory.TrackRecord``), and an extra output field,
+``differs_from_record``, that an "inspect" answer must fill when most similar
+past alarms led to nothing (checked by an output validator).
+
 Model: ``$AGENT_BASE_URL`` / ``$AGENT_MODEL`` (any OpenAI-compatible server),
 by default the local mlx-lm server at http://localhost:8088/v1 serving
 Qwen3-8B (4-bit) as ``default_model``. Qwen3 thinking is switched off with
@@ -19,12 +26,12 @@ from dataclasses import dataclass
 from typing import Literal
 
 from pydantic import BaseModel, Field
-from pydantic_ai import Agent, PromptedOutput, RunContext, ToolOutput
+from pydantic_ai import Agent, ModelRetry, PromptedOutput, RunContext, ToolOutput
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from .episodes import ReplayData, Situation
-from .memory import Candidate
+from .memory import Candidate, TrackRecord
 
 Component = Literal["generator", "generator_bearing", "gearbox", "hydraulic_group", "transformer", "none"]
 Group = Literal["generator", "generator_bearing", "gearbox", "hydraulic", "hub", "transformer", "converter", "nacelle"]
@@ -67,11 +74,54 @@ Rules:
 - Answer in English.
 """
 
+INSTRUCTIONS_V2 = INSTRUCTIONS.replace(
+    "Rules:\n",
+    """\
+What each action means and costs (an assumption for this exercise, not measured on this farm):
+- inspect: open a work order; a crew climbs the turbine. About one crew-day plus a few hours of stop. Cost 1.
+- monitor: no work order. Costs nothing now. The detector keeps scoring this turbine every day, and a new alarm brings it back to you.
+- ignore: the alarm is explained by something else (a farm-wide weather or grid event, a sensor artefact, normal behaviour after a repair). Costs nothing.
+- A failure that a timely inspection would have caught costs about 10 (unplanned downtime, crane and parts, secondary damage).
+Choose the action with the lowest expected cost given the evidence. Most residual alarms are not followed by a failure.
+
+Rules:
+""",
+).replace(
+    "- Past episodes, if shown, come from this farm's history with what the logbook recorded afterwards. They are evidence, not rules: use them only if they really resemble this case.\n",
+    """\
+- Past episodes, if shown, come from this farm's history with what the logbook recorded afterwards. They are evidence, not rules: use them only if they really resemble this case.
+- If a track record of past alarms is shown, start from it: it says how often such alarms were followed by a failure.
+  If most of those alarms were followed by nothing and you still choose inspect, say in differs_from_record what in this episode is different
+  (a specific signal, a trend in the series, a logbook entry). Otherwise write "n/a" there.
+""",
+)
+assert INSTRUCTIONS_V2 != INSTRUCTIONS and "Cost 1" in INSTRUCTIONS_V2 and "differs_from_record" in INSTRUCTIONS_V2
+
+
+class DiagnosisV2(Diagnosis):
+    differs_from_record: str = Field(
+        description="If a track record is shown, most of those alarms led to nothing and you choose inspect: what in this episode is "
+        "different from them. Otherwise 'n/a'."
+    )
+
+
+PROMPTS = {"v1": (INSTRUCTIONS, Diagnosis), "v2": (INSTRUCTIONS_V2, DiagnosisV2)}
+_EMPTY = {"", "n/a", "na", "none", "-", "no", "nothing"}
+
+
+def needs_justification(d: Diagnosis, track: TrackRecord | None) -> bool:
+    """True when an inspect answer goes against a 'mostly nothing' record without saying why."""
+    if track is None or not track.mostly_nothing or d.action != "inspect":
+        return False
+    why = getattr(d, "differs_from_record", None)
+    return why is None or why.strip().strip(".").lower() in _EMPTY
+
 
 @dataclass
 class Deps:
     data: ReplayData
     situation: Situation
+    track: TrackRecord | None = None
 
 
 def residual_series(ctx: RunContext[Deps], group: Group, days: int = 14) -> str:
@@ -113,17 +163,33 @@ def model_settings() -> dict:
     }
 
 
-def build_agent(model=None, *, output_mode: Literal["tool", "prompted"] = "tool", tools: bool = True) -> Agent[Deps, Diagnosis]:
-    output = ToolOutput(Diagnosis, name="final_diagnosis") if output_mode == "tool" else PromptedOutput(Diagnosis)
-    return Agent(
+def build_agent(
+    model=None, *, output_mode: Literal["tool", "prompted"] = "tool", tools: bool = True, prompt: Literal["v1", "v2"] = "v1"
+) -> Agent[Deps, Diagnosis]:
+    instructions, schema = PROMPTS[prompt]
+    output = ToolOutput(schema, name="final_diagnosis") if output_mode == "tool" else PromptedOutput(schema)
+    agent = Agent(
         model if model is not None else local_model(),
         deps_type=Deps,
         output_type=output,
-        instructions=INSTRUCTIONS,
+        instructions=instructions,
         tools=list(TOOLS) if tools else [],
         retries=3,
         model_settings=model_settings(),
     )
+    if prompt == "v2":
+
+        @agent.output_validator
+        def justify_against_record(ctx: RunContext[Deps], d: Diagnosis) -> Diagnosis:
+            t = ctx.deps.track
+            if needs_justification(d, t):
+                raise ModelRetry(
+                    f"The track record shows {t.nothing} of {t.known} similar past alarms followed by nothing. "
+                    "Either say in differs_from_record what in this episode is different from them, or choose monitor or ignore."
+                )
+            return d
+
+    return agent
 
 
 # ---------------------------------------------------------------- prompt
@@ -148,7 +214,14 @@ def memory_block(selected: list[Candidate], gated: bool) -> str:
     return "\n".join(lines)
 
 
-def render_prompt(s: Situation, memories: list[Candidate] | None, *, gated: bool = False, prefetch: str | None = None) -> str:
+def render_prompt(
+    s: Situation,
+    memories: list[Candidate] | None,
+    *,
+    gated: bool = False,
+    prefetch: str | None = None,
+    track: TrackRecord | None = None,
+) -> str:
     parts = [
         (
             f"Anomaly episode #{s.episode_id} on turbine {s.turbine_id}. First alarm day: {s.start.date()}. "
@@ -161,6 +234,8 @@ def render_prompt(s: Situation, memories: list[Candidate] | None, *, gated: bool
     ]
     if prefetch:
         parts.append(prefetch)
+    if track is not None:
+        parts.append(track.text())
     if memories is not None:
         parts.append(memory_block(memories, gated))
     parts.append("Give your diagnosis.")
@@ -199,6 +274,8 @@ def rule_function(messages: list[ModelMessage], info: AgentInfo) -> ModelRespons
     else:
         comp = top.group(1) if top and top.group(1) != "None" else "none"
         args = {"component": comp, "action": "monitor", "urgency": "low", "evidence": "detector top group", "confidence": 0.3}
+    if "differs_from_record" in prompt or any("differs_from_record" in str(t.parameters_json_schema) for t in info.output_tools):
+        args["differs_from_record"] = "a similar past episode ended in a failure" if mem else "n/a"
     if info.output_tools:
         return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, args)])
     import json
