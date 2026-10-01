@@ -59,31 +59,55 @@ Self-reported confidence: baseline 88% of findings ≥ 0.95 with 80.7% accuracy 
 
 Runs: `runs/review_text_baseline.jsonl`, `runs/review_text_v2.jsonl` (git-ignored; regenerate with `make review`).
 
-## 4. Escalation on text PDFs (20 synthetic contracts × 8 rules × 3 samples, v2 reviewer, majority vote)
+## 4. Escalation (20 synthetic contracts × 8 rules × 3 samples, v2 reviewer, majority vote; final, after re-running connection errors)
 
-160 decisions. "Escalated" always includes decisions with no valid answer. 20 of 480 runs failed with a connection error to the local server (one burst); they will be re-run (`--redo-errors`), so this table is provisional.
+160 decisions per condition. "Escalated" always includes decisions with no valid answer. Remaining failures are model failures only (invalid output after 3 retries): 9/480 on text, 25/480 on heavy scans.
+
+### Text PDFs
 
 | Escalate when | Escalated | Accuracy on kept | Errors caught | Violations missed and not escalated |
 |---|---|---|---|---|
-| never escalate | 4% | 97.4% | 60% | 1 |
-| self-confidence < 0.9 | 11% | 97.2% | 60% | 1 |
-| samples disagree | 16% | 99.3% | 90% | 1 |
-| quote not verbatim | 6% | 97.3% | 60% | 1 |
-| page quality < 0.9 | 4% | 97.4% | 60% | 1 |
-| disagree OR not verbatim | 16% | 99.3% | 90% | 1 |
-| disagree OR not verbatim OR quality < 0.9 | 16% | 99.3% | 90% | 1 |
-| auditor disputes | 18% | 99.2% | 90% | 1 |
-| all of the above | 22% | 99.2% | 90% | 1 |
+| never escalate | 0% | 97.5% | 0% | 1 |
+| self-confidence < 0.9 | 7% | 97.3% | 0% | 1 |
+| samples disagree | 11% | 99.3% | 75% | 1 |
+| quote not verbatim | 2% | 97.4% | 0% | 1 |
+| page quality < 0.9 | 0% | 97.5% | 0% | 1 |
+| disagree OR not verbatim | 12% | 99.3% | 75% | 1 |
+| disagree OR not verbatim OR quality < 0.9 | 12% | 99.3% | 75% | 1 |
+| auditor disputes | 13% | 99.3% | 75% | 1 |
+| all of the above | 18% | 99.2% | 75% | 1 |
 
-- Majority vote of 3 samples alone: 97.4% accuracy on kept decisions (single sample, v2: 95.0%).
-- **Escalating when samples disagree** sends 16% to a human, catches 90% of the wrong decisions, and leaves 99.3% accuracy on the rest.
-- On clean text, OCR quality and quote verification add nothing beyond disagreement.
+- Majority of 3 samples: 97.5% accuracy (single sample: 95.0%).
+- **Samples disagree** escalates 11% and catches 75% of the wrong decisions; 99.3% accuracy on the rest.
+- Self-confidence, quote verification and page quality add nothing on clean text.
 
-**Auditor** (tries to refute each reported violation; a dispute counts only with a verbatim counter-quote): 69 violation findings audited.
+### Heavy scans (110 dpi, 3° skew, faded)
 
-| | Auditor agrees | Auditor disputes |
-|---|---|---|
-| True violation | 36 | 20 |
-| False alarm | 0 | **13** |
+| Escalate when | Escalated | Accuracy on kept | Errors caught | Violations missed and not escalated |
+|---|---|---|---|---|
+| never escalate | 0% | 47.5% | 0% | 4 |
+| self-confidence < 0.9 | 77% | 73.0% | 88% | 1 |
+| samples disagree | 33% | 44.9% | 30% | 3 |
+| quote not verbatim | 8% | 49.0% | 11% | 4 |
+| page quality < 0.9 | 77% | 59.5% | 82% | 0 |
+| disagree OR not verbatim | 37% | 45.5% | 35% | 3 |
+| disagree OR not verbatim OR quality < 0.9 | 87% | 61.9% | 90% | 0 |
+| auditor disputes | 51% | 66.7% | 69% | 3 |
+| all of the above | 93% | 100.0% | 100% | 0 |
 
-It disputed every false alarm, and also 36% of the true violations, with quotes that are real but irrelevant (e.g. quoting "72 (setenta e dois) meses" against a 72-month-term violation). The verbatim check proves a quote exists, not that it supports the claim. Because a dispute escalates and never overturns, nothing wrong is kept; the cost is human review time.
+- The reviewer collapses: 47.5% accuracy. Of 137 compliant checks it called 80 violations: it can't find the clause in garbled OCR and reports it missing, **consistently**, so the samples agree and disagreement catches only 30% of the errors.
+- **OCR page quality** is the signal that works here (median page `ocr_score` 0.836): < 0.9 escalates 77% and catches 82% of errors. Self-confidence < 0.9 also works on scans (88% caught): the model does notice garbled text.
+- All signals together escalate 93% and keep 100% accuracy on the remaining 7%: on a heavy scan, the right behaviour is to send almost everything to a human, and the signals do that.
+
+**No single escalation signal works everywhere**: disagreement catches errors on clean text and misses them on bad scans; OCR quality is the opposite. Use both.
+
+### Auditor
+
+Tries to refute each reported violation (per sample); a dispute counts only with a verbatim counter-quote.
+
+| | Text: agrees | Text: disputes | Heavy: agrees | Heavy: disputes |
+|---|---|---|---|---|
+| True violation | 40 | 19 | 31 | 19 |
+| False alarm | 0 | **13** | 89 | **132** |
+
+(Heavy: 8 more audits failed with invalid output.) On text it disputed every false alarm, and also a third of the true violations, with quotes that are real but irrelevant (e.g. quoting "72 (setenta e dois) meses" against a 72-month-term violation). The verbatim check proves a quote exists, not that it supports the claim. On heavy scans it disputed 60% of the false alarms. A dispute escalates and never overturns, so the cost is human review time, not wrong answers.

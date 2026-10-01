@@ -71,7 +71,7 @@ Together, the two fixes took accuracy from **74.4% to 95.0%** and cut false alar
 
 ## Part 3: when should the agent escalate?
 
-The model's **self-reported confidence** carries almost no information. In the baseline, 88% of findings had confidence ≥ 0.95, and accuracy on those was 80.7% against 74.4% overall. Three runs of the same wrong answer also **agreed 3 out of 3**, so agreement alone can't catch a mistake the model makes every time.
+On clean text, the model's **self-reported confidence** carries almost no information. In the baseline, 88% of findings had confidence ≥ 0.95, and accuracy on those was 80.7% against 74.4% overall. Three runs of the same wrong answer also **agreed 3 out of 3**, so agreement alone can't catch a mistake the model makes every time.
 
 So escalation uses signals the model can't talk its way around:
 
@@ -80,9 +80,24 @@ So escalation uses signals the model can't talk its way around:
 - a **low OCR score** on the pages the evidence comes from;
 - an **auditor** that tries to refute each violation with its own search, and whose objection counts only if it comes with a verbatim counter-quote.
 
-[[RESULT: escalation table: policy × escalated % × accuracy on kept × errors caught, on text and on heavy scans]]
+I ran every contract and rule 3 times and took the majority, on the text PDFs and on the same contracts as heavy scans:
 
-[[RESULT: the curve, accuracy on what is kept vs. share escalated]]
+| Escalate when… | Text: escalated | Text: accuracy on kept | Text: errors caught | Heavy scans: escalated | Heavy: accuracy on kept | Heavy: errors caught |
+|---|---|---|---|---|---|---|
+| never | 0% | 97.5% | — | 0% | **47.5%** | — |
+| samples disagree | 11% | **99.3%** | **75%** | 33% | 44.9% | 30% |
+| OCR score < 0.9 | 0% | 97.5% | 0% | 77% | 59.5% | **82%** |
+| self-confidence < 0.9 | 7% | 97.3% | 0% | 77% | 73.0% | 88% |
+| auditor disputes | 13% | 99.3% | 75% | 51% | 66.7% | 69% |
+| any of the above | 18% | 99.2% | 75% | 93% | **100%** | **100%** |
+
+**On clean text, disagreement is the signal.** It escalates 11% of decisions, catches three quarters of the mistakes, and leaves 99.3% accuracy on the rest.
+
+**On heavy scans the reviewer collapses, and disagreement misses it.** Accuracy falls to 47.5%. Of 137 compliant checks it called 80 violations: it can't find the clause in garbled text and reports it missing, *every time*, so the samples agree. The signals that work here are the **OCR score** and, notably, the model's own confidence, because it does notice garbled text. Combined, the policy sends 93% of heavy-scan decisions to a human and keeps the remaining 7% right. For a document that bad, that's the correct behaviour.
+
+**The auditor catches false alarms, and argues too much.** On text it disputed all 13 false alarms, and also 19 of 59 real violations, with quotes that exist in the document but don't support its objection (it "refuted" a 72-month-term violation by quoting "72 (setenta e dois) meses"). The verbatim check proves a quote is real, not that it's relevant. Because a dispute only escalates and never overturns, that costs review time, not correctness.
+
+**No single escalation signal works everywhere.** Disagreement catches errors on clean text and misses them on bad scans; OCR quality does the opposite. Use both.
 
 ## Part 4: real contracts
 
@@ -93,7 +108,7 @@ So escalation uses signals the model can't talk its way around:
 1. **Measure OCR on your own documents, with ground truth.** It was fine up to medium degradation and collapsed on heavy scans. Docling's confidence is a trustworthy flag when it's low, and says little when it's high.
 2. **Fix tools before prompts.** Both of the reviewer's systematic errors were information problems: a missing preamble and a search that couldn't match a verb form. More instructions didn't fix either one.
 3. **Don't let an 8B model do arithmetic on legal limits.** Have it extract the values and decide in code.
-4. **Don't trust the model's confidence.** Build escalation from checks outside the model: disagreement, verbatim quotes, OCR quality, and an adversarial second agent.
+4. **Don't rely on one escalation signal.** Disagreement catches errors on clean text and misses them on bad scans; OCR quality does the opposite. Combine checks the model can't talk its way around: disagreement, verbatim quotes, OCR quality, and an adversarial second agent.
 
 ---
 
