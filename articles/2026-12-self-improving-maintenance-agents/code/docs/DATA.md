@@ -29,7 +29,25 @@ Why:
 
 Why not the rest of CARE: Farms B and C have anonymised, normalised features and no external logbook to cross-check against, and Farm C alone is 4.95 GB compressed (above the 3 GB budget). Farm B (400 MB, 6 anomaly events: 3 rotor/main bearing, 3 transformer) is a possible second farm later. The downloader supports `--farms A B`.
 
-Brazilian angle: the farm is in Portugal. We found no public Brazilian turbine-level SCADA with fault labels. [[VERIFY: ONS/ANEEL publish plant-level generation, not turbine SCADA with failures]]
+Brazilian angle: the farm is in Portugal. We found no public Brazilian turbine-level SCADA with fault labels. See "Brazil: what is public" below.
+
+## Brazil: what is public (checked 2026-10-01)
+
+**Plant-level data exists; turbine-level failure data does not, as far as we could find.**
+
+- **ONS, generation per plant, hourly.** "Geração por Usina em Base Horária": verified generation of plants, groups of plants and small-plant groups. Per plant, not per turbine. <https://dados.ons.org.br/dataset/geracao-usina-2>
+- **ONS, wind farms, half-hourly, since 2022-12-07.** Published because of ANEEL Normative Resolution 1,030 (constrained-off): verified generation, verified wind speed, a wind-data quality flag and estimated generation, **per wind farm (usina)**, semi-hourly. News: <https://www.ons.org.br/Paginas/Noticias/20221202-ONS-divulgar%C3%A1-novos-dados-de-usinas-e%C3%B3licas-no-Portal-de-Dados-Abertos-.aspx>. Dataset (2021 onwards, CC-BY): <https://dados.ons.org.br/dataset/restricao_coff_eolica_detail>. Its data dictionary lists `nom_usina`, `id_ons`, `ceg`, `din_instante`, `val_ventoverificado`, `val_geracaoestimada`, `val_geracaoverificada`, quality flags, and no turbine or component field: <https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/restricao_coff_eolica_detail_tm/DicionarioDados_RestricaoContrainedoff_UsiEolicas_DetalhamentoPorUsina.pdf>
+- **ONS, unavailability rates (TEIFa / TEIP).** Monthly forced and scheduled unavailability per plant for centrally dispatched plants (Type I and II-A), last 60 months. The CSV (downloaded 2026-10-01, 29,822 rows) has only `Hidroelétrica`, `Térmica` and `Nuclear` plants, no wind, and no failure cause or component. <https://dados.ons.org.br/dataset/taxa_teif_teip>
+- **ANEEL, SIGA.** A registry of generation projects "em diversas fases: desde etapas anteriores à outorgas até a revogação" (dataset description) (stage, capacity, location). No operational time series and no failures. <https://dadosabertos.aneel.gov.br/dataset/siga-sistema-de-informacoes-de-geracao-da-aneel>
+- **EPE, Sistema AMA.** Anemometric and climatological measurements from the met masts of wind projects that won federal auctions (650+ towers), with an open-data release. Met-mast data, not turbine SCADA or failures. <https://www.epe.gov.br/pt/imprensa/noticias/boletim-interativo-da-energia-eolica-e-atualizacao-dos-dados-abertos-do-sistema-ama>
+- **The one public turbine-level SCADA from the Northeast we found:** Passos et al., *Costal operating wind farms: two datasets with concurrent SCADA, LiDAR and turbulent fluxes*, Zenodo 1475197 (2017, CC BY-SA 4.0). Pedra do Sal (20 × Enercon E-44, 18 MW) and Beberibe (32 × Enercon E-48), "10min SCADA data for all wind turbines", August 2013 to July 2014, plus 100 m met masts and lidar. The description mentions no failure or maintenance log; we did not open the NetCDF files. <https://zenodo.org/records/1475197>
+- Also public, not relevant here: a 1.8 kW Skystream 3.7 on a São Paulo rooftop, 1-minute data 2017-2022, with status codes (Zenodo 7348454, CC BY 4.0). <https://zenodo.org/records/7348454>
+- **Operators.** We searched for a Brazilian operator that publishes turbine SCADA or failure logs and found none. This is a negative search result, not proof that none exists.
+
+**Wind in Brazil and the Northeast (for the article's framing):**
+
+- **Brazil, 2024:** wind generation 107,654 GWh (107.7 TWh, +12.4 % on 2023), **14.1 % of the domestic electricity supply** (oferta interna de energia elétrica, 762.9 TWh; 13.2 % in 2023). Installed wind capacity 29,550 MW. Wind + solar: 23.7 % of total generation. Source: EPE / MME, *Balanço Energético Nacional 2025, Relatório Síntese, ano base 2024*, p. 37 (share chart), p. 41 (generation table), p. 43 (wind + solar): <https://www.epe.gov.br/sites-pt/publicacoes-dados-abertos/publicacoes/PublicacoesArquivos/publicacao-885/topico-767/BEN_S%C3%ADntese_2025_PT.pdf>
+- **Northeast, 2024:** the Northeast subsystem produced **95.25 of 103.28 TWh of wind generation (92.2 %)**. Record day 2024-08-22: wind generation of 17,697 MWmed equalled **129.41 % of the Northeast subsystem's consumption** (100 % supplied plus 29.41 % exported to the other subsystems). Wind was 16.7 % of all generation injected into the SIN in 2024 on average, 22.6 % in August. Source: ABEEólica, *Boletim Anual 2024* (2025), pp. 4-5, citing ONS: <https://abeeolica.org.br/wp-content/uploads/2025/05/424_ABEEOLICA_BOLETIM-ANUAL-2025_PT_Final-Aprovado.pdf>. ABEEólica is the industry association; the figures are ONS data. Its 103.28 TWh (ONS, at the connection point) differs from EPE's 107.7 TWh (national balance, includes distributed generation), so the article quotes each with its own source and does not mix them.
 
 ## How Farm A maps to EDP (checked in `audit.py`)
 

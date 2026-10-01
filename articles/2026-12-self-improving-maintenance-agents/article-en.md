@@ -2,7 +2,7 @@
 title: "Maintenance agents that learn from their own mistakes"
 subtitle: "An LLM agent with episodic memory on a real wind farm's alarms and failure logbook: what memory changed, what it couldn't, and why 21 incidents can't prove it either way"
 platforms: Medium, dev.to, Hashnode
-status: DRAFT — replace every [[RESULT: …]] / [[VERIFY: …]] before publishing
+status: DRAFT — numbers final (code/docs/RESULTS.md), Brazil facts sourced in code/docs/DATA.md
 repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2026-12-self-improving-maintenance-agents
 ---
 
@@ -14,11 +14,13 @@ I wanted to know whether that works on real data, and how you would even tell. S
 
 The short version: the first run showed that memory can't fix an agent whose decision never moves. The agent said "inspect" to every one of 77 alarms, with and without memory. I then made one round of changes, decided before re-running, and re-ran everything. It still said "inspect" in 230 of 231 decisions. Memory changed one decision, on one episode, and that's the most honest thing I can report: on this farm, with this model, memory didn't make the agent better, and 21 incidents couldn't have proved it if it had.
 
-Every number below comes from the repo's `docs/RESULTS.md`.
+Every number from the experiment comes from the repo's `docs/RESULTS.md`; the Brazil figures are sourced in `docs/DATA.md`.
 
 ## Why this matters for Brazil's Northeast
 
-Wind is a large part of the Northeast's grid, and the farms there produce exactly the two things this agent needs: 10-minute SCADA from every turbine and a maintenance log. I looked for a public Brazilian dataset with both, turbine by turbine, and found none. [[VERIFY: ONS/ANEEL publish plant-level generation, not turbine SCADA with failures]] So the data here is Portuguese. The question it answers is what an operator in Ceará or Rio Grande do Norte would need to build this on their own data, and what they should expect from it.
+In 2024, wind produced 107.7 TWh, 14.1 % of Brazil's domestic electricity supply (EPE, *Balanço Energético Nacional 2025*). The Northeast subsystem produced 92.2 % of the country's wind generation that year, and on 22 August 2024, a record day, the region's wind farms produced 129 % of what the Northeast consumed (ONS data, compiled in ABEEólica's 2024 annual bulletin). The farms there produce exactly the two things this agent needs: 10-minute SCADA from every turbine and a maintenance log.
+
+What is public is one level up. ONS publishes generation per plant every hour, and, since December 2022, verified generation and wind speed per wind farm every half hour. ANEEL's SIGA is a registry of plants. ONS's forced-unavailability rates cover hydro, thermal and nuclear plants, not wind. None of it is per turbine, and none of it says which component failed. The one public turbine-level SCADA I found from the Northeast is a research dataset from two coastal farms, Pedra do Sal and Beberibe (August 2013 to July 2014); its description lists SCADA, met-mast and lidar data, and no failure log. So the data here is Portuguese. The question it answers is what an operator in Ceará or Rio Grande do Norte would need to build this on their own data, and what they should expect from it.
 
 ## The setup
 
@@ -141,7 +143,7 @@ None of the differences above is a statistical result. There are 22 pre-incident
 2. **Count the base rate before arguing about costs.** On this farm about a third of the detector's alarms (27 of 77) preceded a logbook failure. At a 1 : 10 cost ratio that makes "inspect" rational. Memory that teaches "most alarms are noise" only helps where most alarms *are* noise, which means a noisier detector, or a farm with a cheaper, better-tuned one.
 3. **A required justification is a field, not a check.** The agent filled it every time, once with numbers that contradicted the claim. If the reason matters, verify it in code (compare the scores, the residuals), the same way you'd verify a quote.
 4. **Gating made memory relevant and the prompt shorter, not the answers better.** It cut memories per prompt from 2.92 to 0.97 and removed the low-similarity cases. On this farm, those low-similarity cases also produced the only memory-driven component hit.
-5. **Ask for the data that would make this testable.** For operators in Brazil's Northeast, the pieces are SCADA at 10 minutes and a failure log with component, timestamp and remark, kept per turbine for years. With a few hundred incidents instead of 21, the same harness, the no-look-ahead tests and the three arms would give an answer instead of a case study. [[VERIFY: whether ANEEL/ONS or any operator publishes turbine-level failure logs]]
+5. **Ask for the data that would make this testable.** For operators in Brazil's Northeast, the pieces are SCADA at 10 minutes and a failure log with component, timestamp and remark, kept per turbine for years. With a few hundred incidents instead of 21, the same harness, the no-look-ahead tests and the three arms would give an answer instead of a case study. I found no Brazilian source, public agency or operator, that publishes them.
 
 ---
 
