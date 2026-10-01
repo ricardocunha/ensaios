@@ -8,7 +8,7 @@ Can a document-review agent over scanned contracts say *"I'm not sure, a human s
 
 ## Brazilian angle
 
-Public procurement contracts and bid notices (*editais*, *contratos administrativos*) published on public portals, checked against a small rule set inspired by Lei 14.133/2021 (for example: deadline clauses, guarantee limits, required annexes). Public documents, so no personal-data issue. [[VERIFY: portal source (PNCP API?) and terms of use]]
+Public procurement contracts and bid notices (*editais*, *contratos administrativos*) published on public portals, checked against a small rule set inspired by Lei 14.133/2021 (for example: deadline clauses, guarantee limits, required annexes). Public documents, so no personal-data issue. Source: the PNCP public API (no key); its licence statement is still open in `code/docs/DATA.md`.
 
 ## Architecture
 
