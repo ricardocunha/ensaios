@@ -3,6 +3,12 @@
 Every number in the drafts must come from this file. Each section says which command produced it.
 Times are UTC unless marked "local" (UTC-3).
 
+## Context figures used in the drafts (verified 2026-10-01; sources in DATA.md, "Verification of 2026-10-01")
+
+- Defesa Civil RS, last balance (data of 2025-04-24, published 2025-04-25): 184 confirmed deaths, 25 missing, 478 municipalities affected.
+- Defesa Civil RS, peak displaced ("desalojados"): 581,643, bulletin of 2024-05-23 18:07.
+- Cais Mauá C6 (SEMA-RS, the operator): alert level 2.55 m, flood level 3.00 m.
+
 ## Milestone 2: dataset, signals, replay (2026-09-30)
 
 ### Hourly dataset (`make dataset` → `data/cache/hourly.csv`)
@@ -38,8 +44,8 @@ Every INMET station reported through the peak; three of five river gauges with a
 | Estrela | 105,534 | 2020-07-09 | 1293 | 1329 | 1703 | 2218 | 2765 (2020-07-09 04:00, first reading) | 1900 |
 | Taquari | 80,193 | 2021-11-26 | 258 | 430 | 778 | 1243 | 1295 (2023-11-20 04:00) | 850 |
 | CatSul Guaíba | 56,813 | 2020-05-04 | 85 | 160 | 236 | 257 | 275 (2023-11-22 08:30) | none found |
-| Cais Mauá C6 | 172,729 | 2019-01-01 | 88 | 154 | 259 | 327 | 346 (2023-11-21 08:15) | 300 [[VERIFY]] |
-| Gasômetro | 0 | — | — | — | — | — | — | none confirmed |
+| Cais Mauá C6 | 172,729 | 2019-01-01 | 88 | 154 | 259 | 327 | 346 (2023-11-21 08:15) | 300 (SEMA-RS; see DATA.md) |
+| Gasômetro | 0 | — | — | — | — | — | — | none used (the 3.60 m level of 2024-05-28 is for the emergency gauge, on another datum; see DATA.md) |
 
 All values in cm. Telemetry misses real crests: Muçum's September 2023 record (26.11 m nivelled by SGB) is absent because the gauge's last level before a 3.8-day gap was 2179 cm at 2023-09-04 19:30 local.
 
@@ -66,7 +72,7 @@ First bulletin: data time 2024-04-30 06:00, uploaded 07:54.
 | Encantado | 1200 | 04-30 14:15 | 05-12 13:00 / 05-12 14:51 (no reading printed during the first wave) | 1873 at 05-12 22:00 (second wave; the first-wave crest of 23.14 m was not recorded) | 64.8 h |
 | Estrela | 1900 | 04-30 08:15 | 04-30 10:00 / 04-30 11:49 | 3366 at 05-02 13:30 | 7.8 h |
 | Taquari | 850 | 05-01 04:15 | 05-01 06:00 / 05-01 07:39 | 1376 at 05-02 08:45 | 43.5 h |
-| Cais Mauá C6 | 300 [[VERIFY]] | 05-02 13:15 | — (no SACE for the Guaíba in 2024) | 369 at 05-02 23:15 (last reading; SGB crest 5.37 m on 05-05) | 62.0 h |
+| Cais Mauá C6 | 300 | 05-02 13:15 | — (no SACE for the Guaíba in 2024) | 369 at 05-02 23:15 (last reading; SGB crest 5.37 m on 05-05) | 62.0 h |
 
 ### Replay (`make backtest`, 744 hourly steps, 18,184 signals)
 
@@ -324,7 +330,7 @@ Full run over the 9 key hours × 3 modes (`scripts/run_after_queue.sh`, after th
   pass, 1 request each; the prompted text now says "The gauge at Encantado (86720000) has been silent for 22.5 hours".
   One run per mode, so this shows the fixed input can pass, not that the bug caused the failure.
 
-Example texts (as generated; the agent's instructions ask for English, so the texts are in English):
+Example texts of the English run (as generated; the milestone 3 instructions asked for English, so the texts are in English; the pt-BR run is below):
 
 1. Encantado, own gauge silent, 05-01 01:00 (fused p = 98.8 %, emergency), tool mode, **audit pass** (6 numbers):
    > **Encantado: EMERGENCY risk, 98.8% probability.** The risk estimate was primarily driven by the stale river
@@ -353,6 +359,76 @@ Example texts (as generated; the agent's instructions ask for English, so the te
 
    It passes because 86950000 is named by code (the audit accepts a code anywhere in the text), although the
    sentence does not say that gauge is silent: the code rule is looser than the place rule.
+
+### Alert agent in Portuguese (pt-BR) (2026-10-01)
+
+Command: `make alerts-pt` (`scripts/run_alerts_pt.sh`: `python -m disaster_risk.alerts --lang pt`, the same 9 key hours ×
+3 modes, run sequentially on the same local server, temperature 0). Output `runs/m3/alerts_pt.jsonl`, summary
+`runs/m3/alerts_pt_summary.json`. 27 runs, 0 errors. The English results above are kept; `--lang en` reproduces them.
+
+What changed for pt-BR (`alerts.py`, `lang="pt"`, now the default): the input block is rendered in Portuguese with
+decimal commas ("1355 cm (13,55 m)", "efeito +4,52; sem ele 19,1%", "nível de risco: EMERGÊNCIA"), the instructions
+(`INSTRUCTIONS_PT`) ask for Brazilian Portuguese with a decimal comma, and the prompt is "Escreva o alerta para esta
+situação." The output schema (`AlertDraft`) and the fusion are unchanged. The citation audit now reads every number
+in both formats (a token with one separator is a decimal, "3,66" = "3.66" = 3.66; a thousands-grouped token such as
+"1.355" or "1,355" may be 1355 or 1.355, and passes if either reading is grounded; "1.355,5" = 1355.5), the pt-BR
+level phrases ("risco de emergência", "nível de risco: ALERTA", "nível de atenção"; in the headline "EMERGÊNCIA" and
+"NORMAL" count, "Alerta"/"Atenção" alone do not, since they are also generic words), and pt-BR silence words
+("silenciosa", "sem leitura", "desatualizada", "parou de transmitir", "não está reportando", …). 22 new tests in
+`tests/test_alerts.py` (11 → 33; the suite has 126). Re-auditing the 27 English texts with the new audit gives the same verdict on every one.
+
+| Mode | Language | Audit pass | Model requests | Seconds (total / per alert) | Numbers checked | Failure kinds |
+|---|---|---|---|---|---|---|
+| tool output | EN | 9 / 9 | 9 | 104.8 / 11.6 | 69 | — |
+| tool output | **pt-BR** | **9 / 9** | 9 | 94.5 / 10.5 | 75 | — |
+| tool output + audit retry | EN | 9 / 9 | 10 (one retry) | 172.2 / 19.1 | 68 | — |
+| tool output + audit retry | **pt-BR** | **9 / 9** | 9 (no retry) | 72.7 / 8.1 | 75 | — |
+| prompted output (JSON in text) | EN | 7 / 9 | 9 | 149.4 / 16.6 | 55 | silent gauge not mentioned: 2 |
+| prompted output (JSON in text) | **pt-BR** | **9 / 9** | 9 | 85.1 / 9.5 | 69 | — |
+
+- At temperature 0 the tool and tool + audit retry runs produced identical texts at all 9 hours (no retry was needed).
+- The two hours where the English prompted mode failed (Estrela 05-01 20:00, Porto Alegre 05-03 03:00) pass in pt-BR.
+  One run per mode and hour, and the input wording differs between languages, so this does not show that Portuguese
+  is more reliable; it shows the audit and the agent work in Portuguese. The server was not shared with another job
+  during this run, so the seconds are not comparable with the English run.
+- **What the audit passed but a reader would not** (hand reading of all 27 texts plus the scratch pairing check):
+  1. Estrela 05-01 20:00, tool (both tool runs, same text): "As estações de chuva em Encantado (86879300) e Encantado
+     (86720000) estão desatualizadas" — 86879300 is the Estrela gauge, not Encantado, and both are silent *river*
+     gauges, not rain stations. The scratch pairing check flags it as a place/code mismatch (2 of 27 texts; 0 of 27 in
+     the English run).
+  2. Porto Alegre 05-03 03:00, tool (both runs): "As réguas silenciosas 87450020 e 86950000 não foram usadas devido à
+     ausência de leituras recentes" — 86950000 *was* used (reliability 0,12, effect +0,38), and the third silent gauge,
+     87450004, is cited only as a contributor (+4,52), never as silent. It passes because a code anywhere in the text
+     counts as a mention (the same loose code rule noted for the English example 3).
+  3. Taquari 04-30 08:00, prompted: calls the upstream Estrela and Encantado *river-level* signals (+2,46 each)
+     "leituras de chuva", and says the probability went "de 0,0% para 70,3%" (0,0% is the prior, rounded).
+  None of these is an invented number, code or place, so the grounding audit cannot catch them: in both languages it
+  checks grounding, not pairing or meaning.
+
+Example texts (pt-BR, as generated):
+
+1. Encantado, own gauge silent, 05-01 01:00 (fused p = 98,8 %, emergency), tool mode, **audit pass** (7 numbers):
+   > **Encantado: Nível de risco EMERGÊNCIA com probabilidade de 98,8%**
+   > A probabilidade combinada de 98,8% foi calculada com base nos sinais mais relevantes. O nível do rio em Encantado
+   > (86720000) teve efeito +4,66, elevando a probabilidade de 44,6% para 98,8%. A régua de Encantado está
+   > desatualizada, com leitura de 3,5 h atrás, o que reduz sua confiabilidade. A régua de Muçum (86510000) teve
+   > efeito +2,12, contribuindo significativamente. As estações de chuva em Bento Gonçalves (A840) e Muçum (86510000)
+   > também contribuíram com efeitos positivos. A régua 86720000 em Encantado está silenciosa, mas sua última leitura
+   > é usada com confiabilidade reduzida.
+2. Porto Alegre, three silent gauges, 05-03 03:00 (p = 95,6 %, emergency), prompted mode, **audit pass** (7 numbers):
+   > **Porto Alegre: EMERGÊNCIA com 95,6% de probabilidade**
+   > A probabilidade combinada de 95,6% foi calculada com base no nível do rio em Porto Alegre (87450004) com efeito
+   > +4,52, que sem ele seria 19,1%. O nível do rio em Guaíba (87242000) contribuiu com efeito +2,12, reduzindo para
+   > 72,5% sem ele. Chuvas em Canela (A879) e Porto Alegre (A801) também elevaram a probabilidade. A régua 87450020 em
+   > Porto Alegre está silenciosa há 72 h e não contribuiu. Réguas 86950000 e 87450004 também estão desatualizadas e
+   > com menor peso.
+3. Same hour, tool mode, **audit pass** (8 numbers), with the problem described in item 2 above:
+   > **Porto Alegre: Nível de risco EMERGÊNCIA com probabilidade de 95,6%**
+   > A probabilidade combinada de 95,6% foi calculada com base nos sinais mais relevantes. O nível do rio em Porto
+   > Alegre (87450004) contribuiu com +4,52, elevando a probabilidade de 19,1% para 95,6%. A estação de chuva A879 em
+   > Canela também teve efeito +1,04, aumentando a probabilidade de 88,5% para 95,6%. As estações de chuva A801 e A882
+   > também contribuíram com efeitos positivos. As réguas silenciosas 87450020 e 86950000 não foram usadas devido à
+   > ausência de leituras recentes.
 
 ## Milestone 4: LLM-only fusion vs Bayesian fusion (2026-10-01)
 

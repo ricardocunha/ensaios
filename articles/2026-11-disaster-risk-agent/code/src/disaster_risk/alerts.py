@@ -18,6 +18,13 @@ Model: ``$ALERT_BASE_URL`` / ``$ALERT_MODEL``, by default the local mlx-lm
 server at http://localhost:8088/v1 serving Qwen3-8B as ``default_model``,
 with Qwen3 thinking off (``chat_template_kwargs.enable_thinking = false``).
 
+Language: the alerts are written for Brazilian civil defence, so the default is
+Portuguese (``lang="pt"``): the input block is rendered in pt-BR with decimal
+commas, and the agent is told to answer in pt-BR. ``lang="en"`` reproduces the
+milestone 3 English run. The audit reads numbers in both formats ("3,66 m",
+"3.66 m", "1.355 cm" as a thousands group) and level and silence words in both
+languages.
+
 ``uv run python -m disaster_risk.alerts --limit N`` runs the agent on the key
 hours of ``runs/m3/key_hours.json`` (written by ``evaluate``) and appends one
 JSON line per alert to ``runs/m3/alerts.jsonl``.
@@ -45,6 +52,16 @@ from .fusion import LEVELS, FusedState, sigmoid
 OUT_DIR = RUNS_DIR / "m3"
 LEVEL_NAMES = tuple(name for name, _ in LEVELS)
 SOURCE_LABEL = {"ana_level": "river level (ANA)", "ana_rain": "rain gauge (ANA)", "inmet_rain": "rain station (INMET)"}
+Lang = Literal["en", "pt"]
+DEFAULT_LANG: Lang = "pt"
+
+# pt-BR labels for the input block (the model copies its wording and number format).
+PT = {
+    "source": {"ana_level": "nível do rio (ANA)", "ana_rain": "pluviômetro (ANA)", "inmet_rain": "estação de chuva (INMET)"},
+    "role": {"gauge": "régua do local", "upstream": "montante/vizinha", "rain": "chuva"},
+    "status": {"fresh": "atual", "stale": "desatualizada", "missing": "ausente"},
+    "level": {"normal": "NORMAL", "attention": "ATENÇÃO", "alert": "ALERTA", "emergency": "EMERGÊNCIA"},
+}
 
 
 # --- input block ---------------------------------------------------------------------
@@ -62,21 +79,26 @@ class AlertInput:
     stations: frozenset[str]  # station codes in the input
     places: frozenset[str]  # place names in the input
     silent: dict[str, str] = field(default_factory=dict)  # station code -> its place name
+    lang: Lang = "en"
 
 
-def _pct(p: float) -> str:
-    return f"{100 * p:.1f}%"
+def _pct(p: float, lang: Lang = "en") -> str:
+    out = f"{100 * p:.1f}%"
+    return out.replace(".", ",") if lang == "pt" else out
 
 
-def _num(x: float | None, nd: int = 1) -> str:
+def _num(x: float | None, nd: int = 1, lang: Lang = "en") -> str:
     if x is None:
         return "n/a"
-    return f"{x:.{nd}f}".rstrip("0").rstrip(".") if nd else f"{x:.0f}"
+    out = f"{x:.{nd}f}".rstrip("0").rstrip(".") if nd else f"{x:.0f}"
+    return out.replace(".", ",") if lang == "pt" else out
 
 
-def build_input(state: FusedState | dict) -> AlertInput:
+def build_input(state: FusedState | dict, lang: Lang = DEFAULT_LANG) -> AlertInput:
     """Render a fused state (object or ``evaluate.state_json`` dict) into the model's input block."""
     s = state if isinstance(state, dict) else _state_dict(state)
+    if lang == "pt":
+        return _build_input_pt(s)
     contribs = sorted(s["contributions"], key=lambda c: -abs(c["log_odds"]))
     total = s["log_odds"]
     t_local = s.get("t_local") or s["t"]
@@ -122,7 +144,61 @@ def build_input(state: FusedState | dict) -> AlertInput:
     else:
         lines += ["", "Silent river gauges: none."]
     return AlertInput(s["place"], t_local, s["probability"], s["level"], "\n".join(lines),
-                      frozenset(stations), frozenset(places), silent)
+                      frozenset(stations), frozenset(places), silent, "en")
+
+
+def _build_input_pt(s: dict) -> AlertInput:
+    """The same input block in pt-BR (decimal commas), for the Portuguese alert agent."""
+    contribs = sorted(s["contributions"], key=lambda c: -abs(c["log_odds"]))
+    total = s["log_odds"]
+    t_local = s.get("t_local") or s["t"]
+    lines = [
+        f"Local: {s['place']}",
+        f"Hora: {t_local} (hora local, UTC-3)",
+        f"Hipótese: a régua de {s['place']} atinge a cota de inundação oficial nas próximas 24 horas.",
+        f"Probabilidade a priori (histórico 2019-2022): {_pct(s['prior'], 'pt')}",
+        f"Probabilidade combinada: {_pct(s['probability'], 'pt')} -> nível de risco: {PT['level'][s['level']]}",
+        "Níveis de risco: normal < 10% <= atenção < 50% <= alerta < 90% <= emergência.",
+        "",
+        ("Sinais, do maior efeito para o menor. 'efeito' é a variação em log-odds; 'sem ele' é a probabilidade "
+         "se este sinal fosse removido:"),
+    ]
+    stations, places = set(), {s["place"]}
+    for c in contribs:
+        stations.add(c["station"])
+        if c["station_place"]:
+            places.add(c["station_place"])
+        without = sigmoid(total - c["log_odds"])
+        if c["value"] is None:
+            val = "sem leitura"
+        elif c["unit"] == "cm":
+            val = f"{_num(c['value'], 0, 'pt')} cm ({_num(c['value'] / 100, 2, 'pt')} m)"
+        else:
+            val = f"{_num(c['value'], 1, 'pt')} {c['unit']}"
+        age = ("sem leitura em 72 h" if c["freshness_h"] is None
+               else f"leitura de {_num(c['freshness_h'], 1, 'pt')} h atrás")
+        effect = f"{c['log_odds']:+.2f}".replace(".", ",")
+        lines.append(
+            f"- {PT['source'].get(c['source'], c['source'])} {c['station']} em {c['station_place']} "
+            f"[{PT['role'].get(c['role'], c['role'])}]: {val}; {PT['status'].get(c['status'], c['status'])}, {age}; "
+            f"RV {_num(c['likelihood_ratio'], 2, 'pt')}, confiabilidade {_num(c['reliability'], 2, 'pt')}; "
+            f"efeito {effect}; sem ele {_pct(without, 'pt')}"
+        )
+    silent = {}
+    code_place = {c["station"]: c["station_place"] for c in contribs}
+    if s["silent_gauges"]:
+        lines += ["", ("Réguas silenciosas (sem leitura recente; o último valor é usado com confiabilidade "
+                       "reduzida, ou não é usado):")]
+        for code in s["silent_gauges"]:
+            c = next(c for c in contribs if c["station"] == code and c["source"] == "ana_level")
+            silent[code] = code_place.get(code, "")
+            last = "nenhuma em 72 h" if c["value"] is None else f"{_num(c['value'], 0, 'pt')} cm"
+            age = "mais de 72 h" if c["freshness_h"] is None else f"{_num(c['freshness_h'], 1, 'pt')} h"
+            lines.append(f"- {code} em {code_place.get(code, '')}: última leitura {last}, há {age}")
+    else:
+        lines += ["", "Réguas silenciosas: nenhuma."]
+    return AlertInput(s["place"], t_local, s["probability"], s["level"], "\n".join(lines),
+                      frozenset(stations), frozenset(places), silent, "pt")
 
 
 def _state_dict(f: FusedState) -> dict:
@@ -177,8 +253,14 @@ class Alert(BaseModel):
 # --- citation audit ----------------------------------------------------------------------
 
 _CODE_RE = re.compile(r"\b(?:\d{8}|A\d{3})\b")
-_NUM_RE = re.compile(r"(?<![\w.])[-+]?\d+(?:[.,]\d+)?")
+# A number is either thousands-grouped ("1.355", "1,355", "1.355,5") or plain with at most one separator
+# ("3,66", "3.66", "1355"). Which separator is decimal is decided per token in _candidates.
+_NUM_RE = re.compile(r"(?<![\w.,])[-+]?(?:\d{1,3}(?:[.,]\d{3})+(?:[.,]\d+)?(?![\d])|\d+(?:[.,]\d+)?)")
 _LEVEL_RE = re.compile(r"\b(normal|attention|alert|emergency)\b[\s-]*(?:level|risk)|(?:level|risk)(?: level)?(?: is| of|:)?\s+(normal|attention|alert|emergency)\b", re.I)
+# pt-BR: "nível de risco: EMERGÊNCIA", "risco de emergência", "nível de alerta", "risco ALERTA".
+_LEVEL_PT_RE = re.compile(r"\b(?:n[ií]vel|risco)(?:\s+de\s+risco)?(?:\s+(?:é|de|em))?\s*:?\s*"
+                          r"(normal|aten[cç][aã]o|alerta|emerg[eê]ncia)\b", re.I)
+_LEVEL_PT = {"normal": "normal", "atencao": "attention", "alerta": "alert", "emergencia": "emergency"}
 
 
 def known_places() -> set[str]:
@@ -195,27 +277,63 @@ _WATER_RE = re.compile(r"\b(?:rio|river|valley|vale|lake|lago|basin|bacia)\s+(?:
 
 
 _SENTENCE_RE = re.compile(r"(?<=[.!?;])\s+|\n")
-_SILENT_RE = re.compile(r"silent|stale|no (?:fresh |new |recent )?(?:reading|data)|not reporting|stopped reporting|offline|gone quiet", re.I)
+_SILENT_RE = re.compile(r"silent|stale|no (?:fresh |new |recent )?(?:reading|data)|not reporting|stopped reporting|offline|gone quiet"
+                        # pt-BR
+                        r"|silenci|em sil[eê]ncio|sem (?:nova |novas |nenhuma )?(?:leitura|dado|transmiss|medi)"
+                        r"|desatualizad|n[aã]o (?:est[aá] )?(?:reporta|envia|transmit|registra)"
+                        r"|parou de (?:reportar|enviar|transmitir|medir|registrar)|fora do ar|sem comunica", re.I)
 
 
 def _numbers(text: str) -> list[str]:
     return _NUM_RE.findall(_CODE_RE.sub(" ", text))
 
 
-def _decimals(tok: str) -> int:
-    tok = tok.replace(",", ".")
-    return len(tok.split(".")[1]) if "." in tok else 0
+def _candidates(tok: str) -> list[tuple[float, int]]:
+    """Every reading of a number token as (value, decimals), in English or Brazilian format.
+
+    "3,66" and "3.66" are 3.66; "1.355" and "1,355" are 1.355 *or* 1355 (a thousands group); "1.355,5" is 1355.5.
+    The audit accepts a token if any reading is grounded.
+    """
+    t = tok.lstrip("+-")
+    out = []
+    m = re.fullmatch(r"(\d{1,3}(?:([.,])\d{3})+)(?:([.,])(\d+))?", t)
+    if m and m.group(3) != m.group(2):  # thousands group, optionally with the other separator as decimal
+        whole = m.group(1).replace(m.group(2), "")
+        dec = m.group(4) or ""
+        out.append((float(f"{whole}.{dec}" if dec else whole), len(dec)))
+    if t.count(".") + t.count(",") <= 1:
+        dec = re.split(r"[.,]", t)[1] if re.search(r"[.,]", t) else ""
+        out.append((float(t.replace(",", ".")), len(dec)))
+    return out
+
+
+def _value(tok: str) -> list[float]:
+    return [abs(v) for v, _ in _candidates(tok)]
 
 
 def _grounded(tok: str, allowed: list[float]) -> bool:
-    x = abs(float(tok.replace(",", ".").lstrip("+")))
-    tol = 0.5 * 10 ** -_decimals(tok) + 1e-9
-    return any(abs(x - a) <= tol for a in allowed)
+    return any(abs(x - a) <= 0.5 * 10 ** -d + 1e-9 for x, d in _candidates(tok) for a in allowed)
+
+
+def _strip_accents(w: str) -> str:
+    return w.lower().translate(str.maketrans("áâãàéêíóôõúç", "aaaaeeiooouc"))
+
+
+def stated_levels(headline: str, explanation: str) -> set[str]:
+    """Risk levels the text states, as internal names (EN and pt-BR wording)."""
+    text = f"{headline}\n{explanation}"
+    levels = {(a or b).lower() for a, b in _LEVEL_RE.findall(text)}
+    levels |= {_LEVEL_PT[_strip_accents(w)] for w in _LEVEL_PT_RE.findall(text)}
+    # In the headline any level word but the generic "alert"/"alerta" counts as the stated level. pt "Atenção" is
+    # left out too: it is also an interjection ("Atenção: ..."); "nível de atenção" is caught above.
+    levels |= {w.lower() for w in re.findall(r"\b(normal|attention|emergency)\b", headline, re.I)}
+    levels |= {_LEVEL_PT[_strip_accents(w)] for w in re.findall(r"\b(emerg[eê]ncia)\b", headline, re.I)}
+    return levels
 
 
 def citation_audit(inp: AlertInput, draft: AlertDraft) -> Audit:
     text = f"{draft.headline}\n{draft.explanation}"
-    allowed = [abs(float(t.replace(",", ".").lstrip("+"))) for t in _numbers(inp.text)]
+    allowed = [v for t in _numbers(inp.text) for v in _value(t)]
     nums = _numbers(text)
     ungrounded = [t for t in nums if not _grounded(t, allowed)]
     codes = set(_CODE_RE.findall(text)) | {d.station for d in draft.drivers}
@@ -227,10 +345,7 @@ def citation_audit(inp: AlertInput, draft: AlertDraft) -> Audit:
     missing_silent = [c for c, pl in inp.silent.items() if c not in text and not any(
         pl and pl.lower() in x and _SILENT_RE.search(x) for x in sentences)]
     field_mismatch = sorted(set(draft.silent_gauges) ^ set(inp.silent))
-    levels = {(a or b).lower() for a, b in _LEVEL_RE.findall(text)}
-    # In the headline any level word but the generic "alert" counts as the stated level.
-    levels |= {w.lower() for w in re.findall(r"\b(normal|attention|emergency)\b", draft.headline, re.I)}
-    wrong = sorted(lv for lv in levels if lv != inp.level)
+    wrong = sorted(lv for lv in stated_levels(draft.headline, draft.explanation) if lv != inp.level)
     ok = not (ungrounded or unknown_codes or unknown_places or missing_silent or field_mismatch or wrong)
     return Audit(ok=ok, numbers_checked=len(nums), ungrounded_numbers=ungrounded, unknown_stations=unknown_codes,
                  unknown_places=unknown_places, silent_not_mentioned=missing_silent,
@@ -255,6 +370,26 @@ Write:
 
 Rules: use only numbers, station codes and place names that appear in the input. Do not add forecasts, river heights,
 times or places that are not in the input. Answer in English.
+"""
+
+# The pt-BR agent (default): same content, for Brazilian civil defence. Field names stay in English (schema).
+INSTRUCTIONS_PT = """\
+Você escreve alertas de cheia para equipes da Defesa Civil no Vale do Taquari e em Porto Alegre (Rio Grande do Sul).
+Um modelo de fusão já calculou a probabilidade de cheia e o nível de risco a partir de réguas de rio e estações de chuva.
+Esses números são finais: repita-os exatamente, sem recalcular, arredondar de outro jeito ou alterá-los.
+
+Escreva:
+- headline: o local, o nível de risco e a probabilidade.
+- explanation: de 2 a 5 frases. Diga quais sinais mais moveram a estimativa e quanto, usando apenas os números de
+  'efeito' e 'sem ele' e as leituras que estão na entrada. Mencione sinais que reduzem o risco, se forem relevantes.
+  Se alguma régua estiver silenciosa, diga isso explicitamente, com o código da estação e há quanto tempo está sem
+  leitura, e diga que a última leitura dela recebe menos peso (ou nenhum).
+- drivers: os 1 a 4 sinais de maior efeito.
+- silent_gauges: os códigos de todas as réguas silenciosas da entrada (lista vazia se não houver).
+
+Regras: use apenas números, códigos de estação e nomes de lugares que aparecem na entrada. Não acrescente previsões,
+alturas do rio, horários ou lugares que não estejam na entrada. Escreva em português do Brasil, com vírgula decimal
+(por exemplo, 95,6%).
 """
 
 
@@ -284,13 +419,13 @@ def model_settings() -> dict:
 
 
 def build_agent(model=None, *, output_mode: Literal["tool", "prompted"] = "tool",
-                audit_retry: bool = False, retries: int = 2) -> Agent[Deps, AlertDraft]:
+                audit_retry: bool = False, retries: int = 2, lang: Lang = DEFAULT_LANG) -> Agent[Deps, AlertDraft]:
     output = ToolOutput(AlertDraft, name="final_alert") if output_mode == "tool" else PromptedOutput(AlertDraft)
     agent = Agent(
         model if model is not None else local_model(),
         deps_type=Deps,
         output_type=output,
-        instructions=INSTRUCTIONS,
+        instructions=INSTRUCTIONS_PT if lang == "pt" else INSTRUCTIONS,
         retries=retries,
         model_settings=model_settings(),
     )
@@ -299,7 +434,7 @@ def build_agent(model=None, *, output_mode: Literal["tool", "prompted"] = "tool"
         def _audit(ctx: RunContext[Deps], draft: AlertDraft) -> AlertDraft:
             a = citation_audit(ctx.deps.inp, draft)
             if not a.ok:
-                raise ModelRetry("The citation audit failed; fix the text: " + audit_complaints(a))
+                raise ModelRetry("The citation audit failed; fix the text (keep its language): " + audit_complaints(a))
             return draft
 
     return agent
@@ -323,11 +458,13 @@ def audit_complaints(a: Audit) -> str:
 
 
 def prompt(inp: AlertInput) -> str:
+    if inp.lang == "pt":
+        return f"Escreva o alerta para esta situação.\n\n{inp.text}"
     return f"Write the alert for this situation.\n\n{inp.text}"
 
 
-def write_alert(state: FusedState | dict, agent: Agent[Deps, AlertDraft]) -> tuple[Alert, dict]:
-    inp = build_input(state)
+def write_alert(state: FusedState | dict, agent: Agent[Deps, AlertDraft], lang: Lang = DEFAULT_LANG) -> tuple[Alert, dict]:
+    inp = build_input(state, lang)
     t0 = time.monotonic()
     res = agent.run_sync(prompt(inp), deps=Deps(inp))
     draft = res.output
@@ -370,6 +507,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--limit", type=int, default=0, help="0 = all key hours")
     ap.add_argument("--output-mode", choices=["tool", "prompted"], default="tool")
     ap.add_argument("--audit-retry", action="store_true", help="let the agent retry when the citation audit fails")
+    ap.add_argument("--lang", choices=["pt", "en"], default=DEFAULT_LANG, help="language of the input block and the alert")
     ap.add_argument("--summary", action="store_true", help="only summarize --out, no model calls")
     args = ap.parse_args(argv)
     if args.summary:
@@ -378,14 +516,14 @@ def main(argv: list[str] | None = None) -> int:
     hours = json.loads(args.key_hours.read_text())
     if args.limit:
         hours = hours[: args.limit]
-    agent = build_agent(output_mode=args.output_mode, audit_retry=args.audit_retry)
+    agent = build_agent(output_mode=args.output_mode, audit_retry=args.audit_retry, lang=args.lang)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     n_ok = n_err = 0
     for kh in hours:
         rec = {"place": kh["place"], "kind": kh["kind"], "time_local": kh["state"]["t_local"],
-               "output_mode": args.output_mode, "audit_retry": args.audit_retry}
+               "output_mode": args.output_mode, "audit_retry": args.audit_retry, "lang": args.lang}
         try:
-            alert, meta = write_alert(kh["state"], agent)
+            alert, meta = write_alert(kh["state"], agent, args.lang)
             rec |= {"alert": alert.model_dump(), **meta}
             n_ok += alert.audit.ok
             print(f"{kh['place']:12} {kh['kind']:17} audit_ok={alert.audit.ok} {meta['seconds']} s  {alert.headline}", flush=True)

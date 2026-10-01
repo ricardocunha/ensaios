@@ -83,6 +83,12 @@ Numbers: [code/docs/RESULTS.md](code/docs/RESULTS.md) ("Milestone 4"). Command: 
 - **Also fixed:** an input bug in `alerts.build_input` (silent gauge's last reading taken from the ANA rain signal with the same code); the affected key hour passes in all 3 modes after the fix.
 - **Next (milestone 5):** drafts (EN draft written: `article-en.md`), PT-BR and LinkedIn; ADRs for calibrated LRs, the "silent ≠ unknown" decay finding, the audit, and the LLM-only comparison.
 
+## Milestone 5 result (2026-10-01): pt-BR alerts, verification, drafts
+
+- **Alert agent in Portuguese** (`alerts.py`, `--lang pt`, now the default): pt-BR input block with decimal commas, pt-BR instructions; the audit reads numbers in both formats ("3,66 m", "1.355 cm") and pt-BR level and silence words (22 new tests). Re-run of the 9 key hours × 3 modes (`make alerts-pt`, 27 runs, 0 errors): 9/9 audit pass in every mode (English: 9/9, 9/9, 7/9). Hand reading still found texts that pass but are wrong (a gauge code given to the wrong town; a silent gauge said to be "not used"). Details in RESULTS.md.
+- **Verification:** see DATA.md ("Verification of 2026-10-01") for the death toll, licences and the Cais Mauá flood level.
+- **Drafts:** `article-en.md`, `article-en-medium.md`, `article-pt-br.md`, `linkedin-en.md`, `linkedin-pt-br.md`. Still open: ADRs and `CONTEXT.md`.
+
 ## Open questions
 
 - ~~Satellite: precomputed flood masks vs. computing them~~ Precomputed: EMSR720 exists (see audit).
@@ -94,5 +100,5 @@ Numbers: [code/docs/RESULTS.md](code/docs/RESULTS.md) ("Milestone 4"). Command: 
 - **Angle:** each article is a field report with runnable code, in the style of `2026-10-cnh-ocr-smithtune`: build it, measure it, show what broke.
 - **Budget:** local first (M4 Pro 48 GB, mlx / Ollama). The cap for paid APIs is **US$10 per article**, set with `--max-cost` in the code; ask before any paid run.
 - **Data:** public or synthetic only. No personal data. Record every dataset's license in `code/docs/DATA.md` before using it.
-- **Numbers:** every number in the drafts comes from `code/docs/RESULTS.md`. Mark gaps with `[[RESULT: …]]` / `[[VERIFY: …]]`.
+- **Numbers:** every number in the drafts comes from `code/docs/RESULTS.md`. Mark gaps with RESULT / VERIFY placeholders in double square brackets.
 - **Deliverables:** EN long version + Medium short version, PT-BR, LinkedIn EN / PT-BR, code with tests + Makefile, `CONTEXT.md` glossary, ADRs for the hard decisions.

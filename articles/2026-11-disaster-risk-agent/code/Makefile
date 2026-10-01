@@ -1,4 +1,4 @@
-.PHONY: test fetch dataset thresholds reference backtest evaluate alerts alerts-queued llm-fusion llm-fusion-score
+.PHONY: test fetch dataset thresholds reference backtest evaluate alerts alerts-queued alerts-pt llm-fusion llm-fusion-score
 
 test:
 	uv run pytest -q
@@ -26,6 +26,10 @@ alerts:
 
 alerts-queued:
 	nohup scripts/run_after_queue.sh > logs/run_after_queue.log 2>&1 &
+
+# pt-BR alert texts (the default language), 9 key hours x 3 modes, sequential on the local server.
+alerts-pt:
+	scripts/run_alerts_pt.sh 2>&1 | tee logs/alerts_pt.log
 
 # LLM-only fusion vs Bayesian fusion (milestone 4): pre-registered hour set, 3 samples per hour on the
 # local mlx-lm server (shared: run it alone), then the comparison tables. Resumable.

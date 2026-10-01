@@ -2,13 +2,13 @@
 title: "A disaster-risk agent that fuses signals it can't fully trust"
 subtitle: "Replaying the 2024 Rio Grande do Sul floods hour by hour: calibrated Bayesian fusion of river gauges and rain stations, an LLM that writes the alert but never computes it, and what happens when the gauges go silent at the crest"
 platforms: Medium, dev.to, Hashnode
-status: DRAFT — replace every [[RESULT: …]] and [[VERIFY: …]] before publishing
+status: DRAFT — replace every [[LINK]] before publishing
 repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2026-11-disaster-risk-agent
 ---
 
 # A disaster-risk agent that fuses signals it can't fully trust
 
-In late April and May 2024, rain fell for days over the Taquari and the other rivers that drain into the Guaíba, in Rio Grande do Sul. The Taquari valley flooded, and days later so did Porto Alegre. [[VERIFY: death toll and number of people displaced, from Defesa Civil RS's final bulletin]]. Towns like Muçum, Encantado, Lajeado and Estrela had already been flooded in September and November 2023.
+In late April and May 2024, rain fell for days over the Taquari and the other rivers that drain into the Guaíba, in Rio Grande do Sul. The Taquari valley flooded, and days later so did Porto Alegre. Defesa Civil RS counts 184 deaths and 25 people still missing (its last update, of April 2025); at the height of the crisis, on 23 May 2024, 581,643 people were out of their homes. Towns like Muçum, Encantado, Lajeado and Estrela had already been flooded in September and November 2023.
 
 This article is not about what should have been done in those days. People on the ground did their work under conditions no backtest reproduces. It asks a narrower, technical question that the event makes concrete: **when rain gauges, river gauges, satellite maps and history disagree, and some of them stop reporting, how should an agent combine them into a flood alert it can explain? And would it have warned in time?**
 
@@ -25,12 +25,12 @@ Copernicus EMS flood maps (EMSR720) ───────┘   was available at 
                        │
         Bayesian fusion (plain Python, log-odds, calibrated on 2019-2022)
                        │                       ─► p(flood level within 24 h), risk level
-        Alert agent (Pydantic AI, Qwen3-8B local) ─► headline + explanation, no number fields
+        Alert agent (Pydantic AI, Qwen3-8B local) ─► headline + explanation in Portuguese, no number fields
                        │
         Citation audit (deterministic): numbers, stations, places, silent gauges, level
 ```
 
-- **Scope:** the Taquari valley (Muçum → Encantado → Estrela → Taquari) as the main case, and Porto Alegre's Cais Mauá gauge on the Guaíba downstream (flood level 3.00 m [[VERIFY: primary source for the Cais Mauá flood level]]): five places with a river gauge and an official flood level.
+- **Scope:** the Taquari valley (Muçum → Encantado → Estrela → Taquari) as the main case, and Porto Alegre's Cais Mauá gauge on the Guaíba downstream (flood level 3.00 m, set by SEMA-RS, the state agency that operates the gauge): five places with a river gauge and an official flood level.
 - **Hypothesis per place and hour:** *the place's gauge reaches its official flood level within the next 24 hours.* That's what the probability is about, and what it's scored against.
 - **Model:** Qwen3-8B 4-bit on a local mlx-lm server, thinking off. No paid API.
 
@@ -38,7 +38,7 @@ Copernicus EMS flood maps (EMSR720) ───────┘   was available at 
 
 Before writing any agent, I checked what can actually be downloaded for April–May 2024.
 
-**What works without an account:** ANA's telemetry (river level and rain every 15 minutes), INMET's automatic stations (hourly), the Copernicus Emergency Management Service's precomputed flood polygons for activation EMSR720 (all in the Taquari valley), and SGB's SACE hydrological bulletins for the Taquari. [[VERIFY: licence/terms of use of ANA, INMET and SGB data; public government data, but no licence text found on the endpoints]].
+**What works without an account:** ANA's telemetry (river level and rain every 15 minutes), INMET's automatic stations (hourly), the Copernicus Emergency Management Service's precomputed flood polygons for activation EMSR720 (all in the Taquari valley), and SGB's SACE hydrological bulletins for the Taquari. All of it is public government data. ANA allows reproduction with the source cited; INMET says its data are public and free to access; I found no licence text for SGB's bulletins. The repo cites every source and redistributes none of the data.
 
 **What's blocked:** CEMADEN's rain-gauge history (a CAPTCHA on every download) and the S2iD disaster history (openly licensed, but the server rejects scripted downloads). I left both out rather than work around the protection.
 
@@ -119,23 +119,32 @@ River levels carry the system: with rain alone, nothing reached alert. Upstream 
 
 The alert agent is a Pydantic AI agent with a typed output: `headline`, `explanation`, `drivers`, `silent_gauges`. It gets the fused state as text, including each signal's effect in log-odds and "the probability without it". **It has no field for the probability or the level**: the final alert copies them from the fusion, so the model can't round 88.8 % up to 90 % and turn an alert into an emergency.
 
-A **deterministic citation audit** then checks the text: every number, station code and place must appear in the input, every silent gauge must be named, and any stated risk level must be the fused one.
+The alerts are written in Portuguese, because the people who would read them work for Brazilian civil defence. The input block is in Portuguese too, with decimal commas ("efeito +4,52; sem ele 19,1%"), so the model copies each number in the format it writes it.
 
-I ran it on 9 key hours (each place's first alert, and its first hour at attention or above with its own gauge silent) in three modes:
+A **deterministic citation audit** then checks the text: every number, station code and place must appear in the input, every silent gauge must be named, and any stated risk level must be the fused one. In Portuguese that means reading "3,66 m" and "3.66 m" as the same number, "1.355 cm" as a possible thousands group, and "risco de emergência" as a level.
 
-| Mode | Audit pass | Model requests | Seconds per alert |
+I ran it on 9 key hours (each place's first alert, and its first hour at attention or above with its own gauge silent) in three modes, first with English instructions, then in Portuguese:
+
+| Mode | Audit pass, English | Audit pass, Portuguese | Model requests (EN / PT) |
 |---|---|---|---|
-| tool output | 9 / 9 | 9 | 11.6 |
-| tool output + retry on audit failure | 9 / 9 | 10 | 19.1 |
-| prompted output (JSON in text) | 7 / 9 | 9 | 16.6 |
+| tool output | 9 / 9 | 9 / 9 | 9 / 9 |
+| tool output + retry on audit failure | 9 / 9 | 9 / 9 | 10 / 9 |
+| prompted output (JSON in text) | 7 / 9 | 9 / 9 | 9 / 9 |
 
-Both prompted failures were the same kind: a silent gauge listed in the `silent_gauges` field but never mentioned in the text, at the two hours with two or three silent gauges. Here's one, Porto Alegre at 03:00 on 05-03, fused probability 95.6 % (the agent's instructions ask for English):
+In English, both prompted failures were the same kind: a silent gauge listed in the `silent_gauges` field but never mentioned in the text, at the two hours with two or three silent gauges. In Portuguese, both hours passed. That's one run per hour at temperature 0, with a differently worded input, so I don't read it as "Portuguese is more reliable". It shows that the agent and the audit work in the language the alert would actually be read in.
 
-> **Porto Alegre: EMERGENCY risk with 95.6% flood probability.** The risk estimate was raised by the stale Porto Alegre gauge (87450004) which increased the probability from 19.1% to 95.6%. The Guaíba gauge (87242000) also contributed significantly, raising the probability from 72.5% to 95.6%. The Porto Alegre gauge (87450004) is stale with a 3.8-hour-old reading, and the upstream Porto Alegre gauge (87450020) is missing and silent for 72 hours.
+Here's Porto Alegre at 03:00 on 05-03, fused probability 95.6 %, prompted mode, as generated:
 
-The Taquari outlet gauge (86950000), which tells Porto Alegre what's coming down the river, had been silent for 18.2 hours. The text doesn't say so. With the audit wired in as a retry, the tool-mode agent needed one extra request there and passed.
+> **Porto Alegre: EMERGÊNCIA com 95,6% de probabilidade**
+> A probabilidade combinada de 95,6% foi calculada com base no nível do rio em Porto Alegre (87450004) com efeito +4,52, que sem ele seria 19,1%. O nível do rio em Guaíba (87242000) contribuiu com efeito +2,12, reduzindo para 72,5% sem ele. Chuvas em Canela (A879) e Porto Alegre (A801) também elevaram a probabilidade. A régua 87450020 em Porto Alegre está silenciosa há 72 h e não contribuiu. Réguas 86950000 e 87450004 também estão desatualizadas e com menor peso.
 
-Two limits. The audit checks *grounding*, not *pairing*: a real number attached to the wrong station would pass (a scripted spot check found none in the 27 texts). And the audit is only as good as its input. Reading the texts, I found that at one hour my silent-gauge list showed Encantado's 24-hour *rain* total as its "last reading", because ANA uses the same code for rain and level. No audit against the same input can catch that. It's fixed, with a test; after the fix, that hour passed in all three modes.
+*Gloss: "Porto Alegre: EMERGENCY, 95.6 % probability. The Porto Alegre river level (87450004) has an effect of +4.52; without it, 19.1 %. The Guaíba level (87242000) adds +2.12; without it, 72.5 %. Rain at Canela and Porto Alegre also raised the probability. Gauge 87450020 has been silent for 72 h and did not contribute. Gauges 86950000 and 87450004 are also stale and weigh less."*
+
+That's the sentence the English prompted run left out at this hour: the Taquari outlet gauge (86950000), which tells Porto Alegre what's coming down the river, had been silent for 18.2 hours. Here it's named.
+
+The tool-mode text for the same hour also passed, and it's wrong in a way the audit can't see. It says "As réguas silenciosas 87450020 e 86950000 não foram usadas devido à ausência de leituras recentes" (*the silent gauges 87450020 and 86950000 were not used, for lack of recent readings*). But 86950000 *was* used, at reliability 0.12, and the city's own gauge, 87450004, appears only as the main driver, never as silent. It passes because a station code anywhere in the text counts as a mention.
+
+So, three limits. The audit checks *grounding*, not *pairing* or meaning. In Portuguese, the tool mode gave Estrela's gauge code to Encantado and called two silent river gauges "rain stations" (the same text in both tool runs), and one prompted text called two upstream river levels "rain readings". None of these is an invented number, code or place. A scripted pairing check catches the code given to the wrong place (2 of 27 Portuguese texts, 0 of 27 English ones); the rest took reading. Second, an audit has to speak the model's language: an English-only number parser would have read the "1.355 cm" a Brazilian writes as 1.355. Third, the audit is only as good as its input. Reading the English texts, I found that at one hour my silent-gauge list showed Encantado's 24-hour *rain* total as its "last reading", because ANA uses the same code for rain and level. No audit against the same input can catch that. It's fixed, with a test; after the fix, that hour passed in all three modes, in both languages.
 
 ## Part 6: what if the LLM did the fusion?
 
@@ -171,7 +180,7 @@ So the comparison supports the split. The model reads the evidence in roughly th
 1. **Audit the data before designing the agent.** The scope, the role of the satellite and the hardest design question (what a silent gauge means) all came out of downloading the data and checking its clocks, not out of the architecture.
 2. **Calibrate likelihood ratios on history.** My intuitive round numbers were off by an order of magnitude and missed four of five places. Fit them on years you then leave out, and measure the price in false alarms.
 3. **Silence is information.** The gauges failed exactly at the crests. Report silent gauges in every alert, and test what your fusion does with them. My freshness decay, the obvious design, made calibration worse.
-4. **Let the LLM write, not compute.** Keep the probability out of its output schema, and check what it writes against what it was given, in code.
+4. **Let the LLM write, not compute.** Keep the probability out of its output schema, and check what it writes against what it was given, in code, in the language and number format it writes.
 5. **Compare against the official clock, humbly.** A replay with a fitted table is not a forecasting service. It can show that the signals were there; it can't show that anyone should have acted on them sooner.
 
 ---

@@ -32,8 +32,8 @@ if [ ! -f runs/m3/key_hours.json ]; then
 fi
 
 rm -f "$OUT"
-nice uv run python -m disaster_risk.alerts --out "$OUT" --output-mode tool
-nice uv run python -m disaster_risk.alerts --out "$OUT" --output-mode tool --audit-retry
-nice uv run python -m disaster_risk.alerts --out "$OUT" --output-mode prompted
+nice uv run python -m disaster_risk.alerts --lang en --out "$OUT" --output-mode tool
+nice uv run python -m disaster_risk.alerts --lang en --out "$OUT" --output-mode tool --audit-retry
+nice uv run python -m disaster_risk.alerts --lang en --out "$OUT" --output-mode prompted
 uv run python -m disaster_risk.alerts --out "$OUT" --summary | tee runs/m3/alerts_queued_summary.json
 echo "$(date '+%F %T') finished"
