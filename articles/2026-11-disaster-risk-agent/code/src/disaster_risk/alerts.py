@@ -113,7 +113,8 @@ def build_input(state: FusedState | dict) -> AlertInput:
     if s["silent_gauges"]:
         lines += ["", "Silent river gauges (no fresh reading; their last value is used with reduced reliability, or not at all):"]
         for code in s["silent_gauges"]:
-            c = next(c for c in contribs if c["station"] == code)
+            # ANA rain shares the station code: the silent gauge is the *level* signal.
+            c = next(c for c in contribs if c["station"] == code and c["source"] == "ana_level")
             silent[code] = code_place.get(code, "")
             last = "none in 72 h" if c["value"] is None else f"{_num(c['value'], 0)} cm"
             age = "over 72 h" if c["freshness_h"] is None else f"{_num(c['freshness_h'])} h"

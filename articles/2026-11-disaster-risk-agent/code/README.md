@@ -12,6 +12,8 @@ make backtest    # replay 2024-04-20 -> 05-20 hour by hour, write runs/signals.c
 make evaluate    # milestone 3: fusion, lead times, false alarms, calibration, ablations -> runs/m3/
 make alerts      # alert agent on 2 key hours (needs the local LLM server at localhost:8088)
 make alerts-queued  # scripts/run_after_queue.sh: all key hours, 3 modes, after the shared server's queue
+make llm-fusion  # LLM-only fusion on the pre-registered hours (3 samples each, local LLM server) -> runs/m4/
+make llm-fusion-score  # LLM-only vs Bayesian fusion: leads, quiet-hour alerts, Brier, run-to-run spread
 ```
 
 `make evaluate` also downloads the INMET yearly files 2019-2023 (about 100 MB each) for the historical replay.
@@ -28,7 +30,9 @@ Milestone 2 (signal adapters + cached dataset + replay skeleton) is done: result
 [docs/RESULTS.md](docs/RESULTS.md), clock/unit verification and alert-time sources in DATA.md.
 
 Milestone 3 (fusion + backtest + alert agent) is done: results in [docs/RESULTS.md](docs/RESULTS.md);
-the LLM part has smoke results only until the queued run finishes.
+the queued alert-agent run (9 key hours x 3 modes) is in RESULTS.md.
+
+Milestone 4 (LLM-only fusion vs Bayesian fusion) is done: results in [docs/RESULTS.md](docs/RESULTS.md).
 
 Layout:
 
@@ -44,6 +48,7 @@ Layout:
 - `src/disaster_risk/calibration.py`: empirical LR per signal band, fitted on 2019-2022.
 - `src/disaster_risk/evaluate.py`: lead times vs references and SACE bulletins, false alarms, Brier, ablations.
 - `src/disaster_risk/alerts.py`: the alert agent (Pydantic AI, typed output) and the deterministic citation audit.
+- `src/disaster_risk/llm_fusion.py`: LLM-only fusion baseline (same per-hour signals, fixed prompt, pre-registered hours) and its scoring.
 - `scripts/run_after_queue.sh`: waits for the shared LLM server's queue, then writes alert texts for the key hours.
 - `src/disaster_risk/reference.py`: "in time" references (SACE bulletins, flood-level crossings).
 - `src/disaster_risk/sources/`: one downloader + parser per source (`ana`, `inmet`, `copernicus_ems`, `ufrgs_impact`, `cemaden`, `s2id`, `sgb_sace`).

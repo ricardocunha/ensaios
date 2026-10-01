@@ -136,3 +136,15 @@ def test_river_names_are_not_place_citations(state):
     inp = build_input(state)
     d = GOOD.model_copy(update={"headline": "Encantado", "explanation": "Gauge 86720000 is silent. The Taquari River and Lake Guaíba are not places here."})
     assert citation_audit(inp, d).unknown_places == []
+
+
+def test_silent_gauge_line_uses_the_level_signal_not_the_rain_of_the_same_station():
+    # ANA rain and level share the station code; here the rain signal has the larger effect, so it sorts first.
+    sigs = [
+        _sig("ana_rain", "86720000", "Encantado", 146.0, "mm/24h", 10.0, 0.8),
+        _sig("ana_level", "86720000", "Encantado", 1355.0, "cm", 4.0, 0.08, "stale", 22.5),
+        _sig("ana_level", "86879300", "Estrela", 2756.0, "cm", 10.0, 0.9),
+    ]
+    inp = build_input(fuse(PLACES["Estrela"], T, sigs, 0.01))
+    assert "86720000 at Encantado: last reading 1355 cm, 22.5 h ago" in inp.text
+    assert "last reading 146 cm" not in inp.text

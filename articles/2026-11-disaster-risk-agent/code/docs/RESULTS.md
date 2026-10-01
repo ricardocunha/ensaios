@@ -291,5 +291,153 @@ Smoke run (4 calls, `runs/m3/alerts_smoke.jsonl`, server shared with another job
 | Porto Alegre, 3 silent gauges, 05-03 03:00 | tool | **fail**: `silent_gauges` listed only 87450020, not 86950000 and 87450004 | 16.1 | the text called 87450004 "stale" but did not flag it as silent |
 | same hour | prompted | pass (7 numbers) | 14.0 | lists all three; calls Gasômetro "upstream" (its role label in the input) |
 
-Full run over the 9 key hours × 3 modes (tool, tool + audit retry, prompted): queued behind the shared server (`scripts/run_after_queue.sh`, output `runs/m3/alerts_queued.jsonl` and `alerts_queued_summary.json`).
-[[RESULT: audit pass rate per mode over the 9 key hours, failure kinds, retries used, seconds per alert]]
+Full run over the 9 key hours × 3 modes (`scripts/run_after_queue.sh`, after the shared server's queue; output
+`runs/m3/alerts_queued.jsonl`, summary `runs/m3/alerts_queued_summary.json`; 27 runs, 0 errors):
+
+| Mode | Audit pass | Model requests | Seconds (total / per alert) | Failure kinds |
+|---|---|---|---|---|
+| tool output | **9 / 9** | 9 | 104.8 / 11.6 | — |
+| tool output + audit retry | **9 / 9** | 10 (one retry) | 172.2 / 19.1 | — |
+| prompted output (JSON in text) | 7 / 9 | 9 | 149.4 / 16.6 | silent gauge not mentioned: 2 |
+
+- The two prompted failures: Estrela 05-01 20:00 (did not say that Encantado 86720000 was silent; it listed it in
+  `silent_gauges` but the text only called Estrela stale) and Porto Alegre 05-03 03:00 (did not say that Taquari
+  86950000 was silent, again listed in the field only). Both are the hours with two or three silent gauges.
+- The one retry was at Porto Alegre 05-03 03:00 (three silent gauges), the hour the tool mode failed in the smoke
+  run; with the retry the final text passed. The JSONL keeps only the final draft, so which check failed on the
+  first try is not recorded.
+- Tool mode passed 9/9 without retries here, while it failed the same Porto Alegre hour in the smoke run (same
+  temperature 0, server shared with another job both times): 1 smoke run is not enough to call a mode reliable.
+- The audit checks grounding, not pairing (see above). A scratch pairing check (every number in a sentence that names
+  a station code must appear on that station's input line or on the fused-probability line) found no mismatch in the
+  27 texts; sentences that name a place but no code, and sentences with two codes, are only weakly checked by it. One
+  text is ambiguous: "Encantado (86720000) and Estrela (86879300) also
+  contributed significantly with effects of +2.46 each, increasing the probability from 16.8% to 70.3%" (Taquari
+  04-30 08:00, tool), where 16.8% is the "without it" value of *each* gauge, not of both together.
+- **Input bug found while reading the texts (fixed after the run):** `alerts.build_input` looked up a silent gauge's
+  last reading by station code only, and ANA rain shares the code with ANA level. At Estrela 05-01 20:00 the silent
+  line read "86720000 at Encantado: last reading 146 cm, 0 h ago", which is the 24 h *rain* total of that station; the
+  signal list above it had the right values (1355 cm, 22.5 h old). It affected 1 of the 9 key hours (the only one
+  where a silent gauge's rain signal has a larger effect than its level signal) and is one of the two prompted
+  failures. Fixed in `build_input` (level signal only) with a regression test. Re-run of that hour after the fix
+  (3 modes × 1 run, temperature 0, `runs/m3/alerts_rerun_estrela.jsonl`): tool, tool + audit retry and prompted all
+  pass, 1 request each; the prompted text now says "The gauge at Encantado (86720000) has been silent for 22.5 hours".
+  One run per mode, so this shows the fixed input can pass, not that the bug caused the failure.
+
+Example texts (as generated; the agent's instructions ask for English, so the texts are in English):
+
+1. Encantado, own gauge silent, 05-01 01:00 (fused p = 98.8 %, emergency), tool mode, **audit pass** (6 numbers):
+   > **Encantado: EMERGENCY risk, 98.8% probability.** The risk estimate was primarily driven by the stale river
+   > gauge at Encantado (86720000) with an effect of +4.66, which without it would lower the probability to 44.6%.
+   > The fresh gauge at Muçum (86510000) with an effect of +2.12 also contributed significantly, reducing the
+   > probability to 91.0% without it. Other signals, such as the rain stations at Bento Gonçalves (A840) and
+   > Encantado (86720000), had smaller effects. The gauge at Encantado (86720000) has been silent for 3.5 hours, and
+   > its last reading is being trusted less.
+2. Porto Alegre, three silent gauges, 05-03 03:00 (p = 95.6 %, emergency), prompted mode, **audit fail**
+   (`silent_not_mentioned: 86950000`):
+   > **Porto Alegre: EMERGENCY risk with 95.6% flood probability.** The risk estimate was raised by the stale Porto
+   > Alegre gauge (87450004) which increased the probability from 19.1% to 95.6%. The Guaíba gauge (87242000) also
+   > contributed significantly, raising the probability from 72.5% to 95.6%. The Porto Alegre gauge (87450004) is
+   > stale with a 3.8-hour-old reading, and the upstream Porto Alegre gauge (87450020) is missing and silent for 72
+   > hours.
+
+   The Taquari outlet gauge (86950000, last reading 18.2 h old) is in `silent_gauges` but not in the text.
+3. Same hour, tool mode + audit retry, **audit pass after one retry** (2 requests, 11 numbers):
+   > **Porto Alegre: EMERGENCY risk with 95.6% probability.** The risk estimate was primarily driven by the river
+   > level at Porto Alegre (87450004) which, although stale, had a significant effect of +4.52, raising the
+   > probability from 19.1% to 95.6%. The river level at Guaíba (87242000) also contributed with an effect of +2.12,
+   > increasing the probability from 72.5% to 95.6%. The rain station at Canela (A879) added +1.04, and the rain
+   > station at Porto Alegre (A801) added +0.70. The gauge at Taquari (86950000) had a smaller effect of +0.38. The
+   > gauge at Porto Alegre (87450020) is silent, with no reading in 72 hours, and its absence had no effect on the
+   > estimate.
+
+   It passes because 86950000 is named by code (the audit accepts a code anywhere in the text), although the
+   sentence does not say that gauge is silent: the code rule is looser than the place rule.
+
+## Milestone 4: LLM-only fusion vs Bayesian fusion (2026-10-01)
+
+Command: `make llm-fusion` (`python -m disaster_risk.llm_fusion prepare|run`), then `make llm-fusion-score`.
+Outputs in `runs/m4/`: `llm_fusion_hours.json` (the pre-registered hour set with the exact snapshot text of every
+hour and the prompt; written before the first model call), `llm_fusion_runs.jsonl`, `llm_fusion_summary.json`.
+
+### Design (fixed before any model call)
+
+- **Model:** Qwen3-8B 4-bit, local mlx-lm server (`default_model`), thinking off, **temperature 0.7, 3 samples per
+  hour**, typed output `LLMRisk{probability, level, reason}` via a tool call (Pydantic AI).
+- **Input per (place, hour):** the warning signals the calibrated fusion uses at that replay hour (same replay, so
+  nothing after t): for each signal the value, status, age of the reading, calibrated LR, reliability (with the
+  freshness decay), the band rule, and for level gauges p90 / p99 / official flood level; the silent gauges; the
+  place's prior. **Not given:** the fused probability, log-odds, weights, risk level, labels, EMS products.
+- **Prompt** (`llm_fusion.INSTRUCTIONS`, prompt version `llm-fusion-v1`, SHA `1321cf880a57da53`): the same for every
+  hour; it states the hypothesis (own gauge at flood level within 24 h), what LR and reliability mean, and the level
+  thresholds (0.10 / 0.50 / 0.90). Not tuned on outcomes; `run` refuses to start if the prompt changed after `prepare`.
+- **Hours (147):** *event*: per place, every 3 h from −48 h to +12 h around the 2024 reference crossing, anchored on
+  the replay hour at or before the crossing (21 × 5 = 105); *quiet_fa*: the onset hour of each of the 21 calibrated
+  false-alarm episodes in TEST (Muçum 3, Encantado 7, Estrela 9, Taquari 1, Porto Alegre 1); *quiet_random*: the same
+  number per place, drawn with seed 20240501 from TEST hours with label 0 and no reading ≥ flood level within ±72 h.
+- **Calls:** 147 × 3 = 441 (under the ~600 budget, no grid reduction). 441 ok, 0 errors; model time 2,879.6 s,
+  median 6.4 s per call (server shared with other jobs). 4 of 441 answers had a level inconsistent with their own
+  probability (e.g. 0.42 labelled "alert"); the level the model stated is used for alerts.
+- **Bayesian fusion** on the same hours: the calibrated "full" fusion of milestone 3. Leads below are on the 3-hour
+  grid, so they differ from the hourly leads of milestone 3 (Encantado +15.25 vs +17.25 h: its alert started at 21:00,
+  between grid hours; Taquari +15.25 vs +20.25 h: the fusion was on alert at 08:00 on 04-30 but at attention at the
+  07:00 and 10:00 grid hours).
+
+### Results
+
+Alert lead time (first grid hour at ≥ alert; lead = crossing − that hour; the grid starts at −48 h, so +48.25 h means
+"already on alert at the first grid hour"):
+
+| Place | Crossing (local) | Bayesian fusion | LLM, each of 3 samples | LLM, mean of 3 p |
+|---|---|---|---|---|
+| Muçum | 05-01 12:45 | +24.75 h | +39.75 / +39.75 / +39.75 h | +39.75 h |
+| Encantado | 04-30 14:15 | +15.25 h | +18.25 / +18.25 / +18.25 h | +18.25 h |
+| Estrela | 04-30 08:15 | +12.25 h | +12.25 / +12.25 / +12.25 h | +12.25 h |
+| Taquari | 05-01 04:15 | +15.25 h | +30.25 / +30.25 / +30.25 h | +30.25 h |
+| Porto Alegre | 05-02 13:15 | +6.25 h | +48.25 / +48.25 / +48.25 h (censored) | +48.25 h |
+
+The earlier LLM alerts are mostly alerts on hours whose label is 0 (no flood within 24 h):
+
+| Event hours | n | Bayesian fusion ≥ alert | LLM ≥ alert (per sample) |
+|---|---|---|---|
+| label 0 (flood not within 24 h) | 45 | 1 | 16 / 16 / 15 |
+| label 1 | 57 | 38 | 53 / 53 / 53 |
+| no label (gauge silent) | 3 | — | — |
+
+At Porto Alegre the LLM was on alert at 13:00 on 04-30, 48 h before the crossing, with the Cais Mauá gauge below its
+p90 (it cited the upstream Taquari gauge and rain LRs); the fusion stayed below 0.10 until 05-01 16:00. At Muçum the
+LLM went to alert at 04-29 21:00 (−39 h; fusion 0.127, attention), dropped to attention at −30 h and returned to
+emergency at −27 h.
+
+False alerts on the quiet set (hours at ≥ alert; no flood within 24 h in any of them):
+
+| Quiet hours | n | Bayesian fusion ≥ alert | LLM ≥ alert (per sample) | LLM ≥ alert in any sample | LLM ≥ attention (per sample) |
+|---|---|---|---|---|---|
+| fusion false-alarm onsets (TEST) | 21 | 21 (by construction) | 17 / 17 / 16 | 17 | 21 / 21 / 21 |
+| random quiet (TEST, matched per place) | 21 | 0 (1 at attention) | 0 / 0 / 0 | 0 | 1 / 3 / 2 |
+
+The LLM repeats 16–17 of the fusion's 21 false alarms; the ones it declines are Estrela hours (2023-11-03, 2024-01-19,
+2024-04-14, 2024-04-17, where it answered 0.22–0.32 in every sample; and 2023-07-08 in 1 of 3 samples).
+
+Brier score against the fusion's label (same hours; this set over-samples floods and fusion false alarms, so the
+numbers compare the two methods on these hours and are not comparable with milestone 3's Brier):
+
+| Hours | n (positives) | Bayesian fusion | LLM, mean of 3 p | LLM, per sample |
+|---|---|---|---|---|
+| event | 102 (57) | **0.1195** | 0.1579 | 0.1621 / 0.1543 / 0.1608 |
+| quiet (fa + random) | 42 (0) | **0.2132** | 0.2839 | 0.2849 / 0.2984 / 0.2740 |
+| all | 144 (57) | **0.1469** | 0.1947 | 0.1979 / 0.1964 / 0.1938 |
+
+Run-to-run consistency (3 samples at temperature 0.7, 147 hours): spread (max − min probability) median 0.03, p90
+0.10, max 0.63 (Porto Alegre 04-30 16:00: 0.85 / 0.42 / 0.22); mean per-hour SD 0.017. Stated levels differ between
+samples in 34 of 147 hours; whether the hour is at ≥ alert differs in 2 of 147.
+
+The LLM's answers collapse onto a few values: 36 distinct probabilities in 441 answers; 0.85 (119 times), 0.92 (66),
+0.82 (62) and 0.02 (52) make up 299 of 441. It never answered above 0.98, so at hours where the fusion said
+0.99–1.00 and the river did flood it scored worse; its alert/no-alert decision is stable across samples, its
+probability is a coarse label.
+
+Readings: on the same inputs, the LLM alerts earlier at four of five places but does so by alerting at hours that did
+not flood within 24 h (15–16 of 45 vs 1 of 45 for the fusion), repeats most of the fusion's false alarms, does not
+alert on random quiet hours, and is worse calibrated (Brier 0.1947 vs 0.1469 overall). The 3-sample spread is small
+(median 0.03) but not negligible at the boundary (34 hours with a level change between samples).

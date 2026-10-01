@@ -2,7 +2,7 @@
 
 **Status:** draft · **Branch:** `article/2026-11-disaster-risk-agent` · **Target date:** 2026-11-13
 
-Planning stage. See [PLAN.md](PLAN.md).
+Milestones 1–4 done; EN draft written. See [PLAN.md](PLAN.md).
 
 | | |
 |---|---|
