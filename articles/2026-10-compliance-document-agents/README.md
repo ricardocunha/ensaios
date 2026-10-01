@@ -2,7 +2,7 @@
 
 **Status:** draft · **Branch:** `article/2026-10-compliance-document-agents` · **Target date:** 2026-10-30
 
-Planning stage. See [PLAN.md](PLAN.md).
+Review of Brazilian public-procurement contracts (PNCP, Lei 14.133) with Docling, MCP and Pydantic AI on a local 8B model, measuring when the agent should escalate to a human. See [PLAN.md](PLAN.md) and [code/docs/RESULTS.md](code/docs/RESULTS.md).
 
 | | |
 |---|---|
