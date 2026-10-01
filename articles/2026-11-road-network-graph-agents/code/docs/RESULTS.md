@@ -316,18 +316,206 @@ queued run: `check_schedule` names the conflicting pairs, the instructions
 tell the agent to move one work of each pair and not to re-check a schedule,
 the closure agent gets 3 retries, and failed runs keep a transcript.
 
-### Full evaluation (queued)
+### Full evaluation with Qwen3-8B (3 runs × 5 / 10 / 20%)
 
-`scripts/run_after_queue.sh` (nohup) waits for the compliance article's
-`QUEUE_DONE`, then runs 3 × {5, 10, 20%} with limits 12 / 14 / 4 into
-`runs/m3-eval-local.jsonl` (+ `.summary.json`).
+`runs/m3-eval-local.jsonl` (+ `.summary.json`), started by
+`scripts/run_after_queue.sh` at 2026-09-30 21:28 after the compliance
+article's queue, finished 22:05 (37 min for 9 pipelines plus the solver arm
+and the evaluation). Request limits 12 / 14 / 4 (maintenance / closure /
+coordinator), temperature 0.7, top_p 0.8, thinking off. Every number below
+is from the summary file, the JSONL rows, or the re-score in
+`runs/m3-eval-local.regrade.json` (`scripts/regrade_text_audit.py`).
+No LLM run was added after this one.
 
-- Value captured, agent vs. solver: [[RESULT: m3-eval-local value_share_pct per run vs 54.43 / 70.24 / 83.98%]]
-- Budget use: [[RESULT: budget_used_pct per run]]
-- Deviations proposed and their value cost: [[RESULT: adds / removes, value_vs_solver_pct]]
-- Access-loss violations, agent vs. naive (1/1/1) vs. heuristic (0/0/0): [[RESULT: agent_violations per run]]
-- Worst-month delay, agent vs. heuristic: [[RESULT: agent_peak_delay_s vs heuristic_peak_delay_s]]
-- Closure-scenario audit, stated vs. recomputed month numbers: [[RESULT: phase_fields_ok / phase_fields; flags_ok; flags_missed]]
-- Prose numbers found in the tool ledger: [[RESULT: text_numbers_grounded]]
-- Consistency over 3 runs: [[RESULT: deviation_jaccard_mean, final_plan_jaccard_mean, schedule_co_assignment_mean, value_share_pct_std]]
-- Agent failures and wall time per pipeline: [[RESULT: agents_ok, errors, mean_seconds_per_pipeline]]
+**Agents completed** (of 9 pipelines): maintenance **8/9**, closure
+**1/9**, coordinator **9/9**. Mean agent wall time per pipeline: 231.5 s
+(5%), 266.2 s (10%), 135.8 s (20%).
+
+#### Maintenance agent vs. the solver
+
+The final plan is always rebuilt by the solver with the agent's adds forced
+in and removes excluded, so budget use is 100.0% in all 9 runs. "Value vs.
+solver" = the final plan's value as a share of the solver plan's value.
+When the agent fails, the solver plan stands (10% run 1).
+
+| Budget | Run | Agent ok | Adds / removes | Value captured (solver) | Value vs. solver | Requests covered (solver) | Δ requests, points |
+|---|---:|---|---:|---:|---:|---:|---:|
+| 5% | 0 | yes | 10 / 2 | 51.95% (54.43%) | 95.44% | 6.11% (5.36%) | +0.75 |
+| 5% | 1 | yes | 5 / 0 | 54.29% | 99.74% | 5.33% | −0.03 |
+| 5% | 2 | yes | 9 / 3 | 51.04% | 93.78% | 6.40% | +1.04 |
+| 10% | 0 | yes | 9 / 3 | 68.42% (70.24%) | 97.42% | 10.99% (10.89%) | +0.10 |
+| 10% | 1 | **no** (output retries) | 0 / 0 | 70.24% | 100.00% | 10.89% | 0.00 |
+| 10% | 2 | yes | 10 / 0 | 69.82% | 99.41% | 11.97% | +1.08 |
+| 20% | 0 | yes | 5 / 0 | 83.96% (83.98%) | 99.98% | 21.62% (21.65%) | −0.03 |
+| 20% | 1 | yes | 4 / 0 | 83.97% | 99.99% | 21.61% | −0.04 |
+| 20% | 2 | yes | 5 / 0 | 83.96% | 99.98% | 21.62% | −0.03 |
+
+In requests: 5% run 0 covers 11,546 vs. 10,127 (+1,419), 5% run 2 12,092
+(+1,965), 10% run 2 22,630 vs. 20,596 (+2,034). Of 189,075 snapped requests.
+
+- **Value:** 93.8–100% of the solver's; every deviation costs value, as the
+  objective guarantees. The largest losses (5% runs 0 and 2, −4.6 and −6.2%)
+  are the runs that also removed solver sections (Avenida Cristiano Machado
+  S00611 among them).
+- **Requests:** the agent moves coverage by −0.04 to +1.08 points. The
+  three runs that add the most-requested residential streets (S09924 Rua
+  Joviano Coelho, 509 requests; S16535 Rua das Verbenas, 358; S06308 Rua
+  Desembargador Saraiva, 262; …) gain 0.75–1.08 points for 0.6–6.2% of
+  the value. At 20% the agent adds high-value sections (S03446, S01734,
+  S07363, S12608, S00322), not high-request ones, and coverage drops slightly.
+- **Instruction following:** the instructions say at most 6 deviations. 4 of
+  the 8 successful proposals have 10–12 (the schema maximum is 12); in 6 of
+  9 runs a proposal with 15–20 deviations was rejected by the schema. The one failure (10% run 1) is two such rejections in a row
+  (20 and 19 deviations), then the output-retry limit of 2.
+- **Validator catches:** in 5 of 9 runs a proposal was rejected for
+  removing sections that are not in the solver plan (e.g. 5% run 1 tried to
+  remove S09924, S16535, S06308, S00573, S04034, the residential streets
+  other runs added). In 20% run 1 `try_plan` also got an invalid id,
+  `S012608` for S12608.
+- **Tool use:** 4–7 `rank_sections` calls and 1–2 `try_plan` calls per
+  run, no `get_section` call. In 5% run 0 and 10% run 0 the `try_plan` call
+  tested a different set (with more removals) from the one proposed, so the
+  rationale's numbers describe a plan that was never built (see the audit).
+
+**Consistency of deviations over the 3 runs:**
+
+| Budget | Deviations per run | Mean pairwise Jaccard of deviations | Distinct deviations (union) | In all 3 runs | Final-plan Jaccard (mean) | Value share std |
+|---|---|---:|---:|---|---:|---:|
+| 5% | 12 / 5 / 12 | 0.137 | 22 | none (7 in two runs: adds S09924, S16535, S06308, S00573, S04034; removes S00287, S00611) | 0.951 | 1.37 points |
+| 10% | 12 / 0 / 10 | 0.000 | 22 | none, no overlap at all | 0.955 | 0.78 points |
+| 20% | 5 / 4 / 5 | 0.867 | 5 | adds S03446, S01734, S07363, S00322 (S12608 in two) | 0.997 | 0.005 points |
+
+The final plans stay close to the solver (Jaccard vs. solver 0.937–1.0),
+because the solver refills the budget after the deviations. The
+deviations themselves are not stable at 5% and 10%: the same inputs give
+different reasons to deviate.
+
+#### Closure agent
+
+| Budget | Run | Result | Requests | `check_schedule` calls (distinct) | What happened |
+|---|---:|---|---:|---|---|
+| 5% | 0 | failed: tool retries (3) | 4 | 4 (1) | `S010128` for S10128, same call 4 times |
+| 5% | 1 | **ok** | 3 | 2 (1) | valid schedule, 0 violations; checked the same schedule twice, then returned it |
+| 5% | 2 | failed: request limit 14 | 14 | 14 (7) | VIOLATION (S00102 + S01395) in all 14 returns; the pair never left month 1; from call 6 a work duplicated and another missing; last 8 calls identical |
+| 10% | 0 | failed: request limit 14 | 14 | 14 (6) | all 14 schedules invalid (3–4 of 15 works missing, 2–4 duplicated); moved S00102 out of month 1 at call 6, then a new violation in month 2; last 8 calls identical |
+| 10% | 1 | failed: tool retries | 4 | 4 (2) | `S010128` and `S001750`; fixed the second, never the first |
+| 10% | 2 | failed: tool retries | 4 | 4 (1) | `S010128`, same call 4 times |
+| 20% | 0 | failed: tool retries | 4 | 4 (2) | `S010128`, then `S0128`, then `S010128` again |
+| 20% | 1 | failed: tool retries | 4 | 4 (1) | `S010128`, same call 4 times |
+| 20% | 2 | failed: tool retries | 4 | 4 (1) | `S010128`, same call 4 times |
+
+- **6 of the 8 failures are one malformed id.** S10128 (Rua Juarez Teixeira Pinto,
+  a major work at every budget) is the only work id that does not start
+  with `S0`; the model wrote it `S010128` in the first call of 6 runs. The tool
+  answered `unknown section ids: ['S010128']` each time; in 4 of those 6 runs
+  the model resent the identical arguments until the 3 retries were used up;
+  in the other 2 it fixed a second bad id (`S001750`) or wrote `S0128`, but
+  never produced `S10128`. In the other 3 runs (the 2 loops and the
+  success), S10128 was written correctly.
+- **2 of the 8 failures are loops.** Both runs at the request limit got a VIOLATION that
+  named the conflicting pair, and either never separated it (5% run 2) or
+  separated it and created a new conflict (10% run 0), and both ended
+  re-sending one schedule 8 times, despite the instruction not to re-check a
+  checked schedule. `check_schedule` scores a schedule with duplicated or
+  missing works without complaint (only the output validator checks
+  completeness), so 9 of 14 calls in one run and all 14 in the other
+  scored schedules that could never be accepted.
+- **Only `check_schedule` was used.** None of the 9 runs called
+  `closure_impact`, `accessibility_loss` or `get_section`, although the
+  instructions ask for `closure_impact` per month.
+- **The one success** (5% run 1, works of the agent's final plan):
+
+| Schedule (same 15 works) | Violations | Interaction nodes | Worst-month delay | Sum over months | Hospital nodes lost per month |
+|---|---:|---:|---:|---:|---|
+| Naive (priority order) | 1 (S00102 + S01395) | 2 | 58,766.9 s | 100,340.2 s | 20 / 9 / 14 |
+| Heuristic (no LLM) | 0 | 0 | **51,731.9 s** | 110,996.8 s | 16 / 13 / 13 |
+| Agent | **0** | 0 | 66,627.6 s | 101,523.6 s | 19 / 13 / 10 |
+
+  The agent avoided the violation but put Anel S00102, two Antônio Carlos
+  sections (S01392, S01394), Dom Pedro I S00699 and Av. Quatro Mil Cento e
+  Setenta e Dois S01500 (the 389 s-mean closure from milestone 2) in month 1. Its worst month is
+  28.8% above the heuristic's and 13.4% above the naive schedule's on the
+  same works (the naive schedule of the *solver's* works, 67,089.5 s, is a
+  different set of works). Structured audit: 12/12 month fields and 6/6 flags
+  correct, 0 flags missed: it copied the numbers from `check_schedule`. Its
+  flag notes are "Consider detour plans for hospital/school access" six times.
+- **Schedule consistency over runs:** not measurable (one schedule).
+- The non-LLM heuristic had 0 violations on all 9 runs' works; the naive
+  schedule had 1–2.
+
+#### Number audit of the prose
+
+Strict audit (verbatim ledger lookup, unchanged): **227 of 253** non-trivial
+numbers found (89.7%). Per run: 33/39, 25/30, 29/31 (5%); 36/38, 9/9, 19/28
+(10%); 21/21, 23/25, 32/32 (20%).
+
+**Re-score.** The log keeps every tool call's arguments but not the ledger,
+so `scripts/regrade_text_audit.py` rebuilds the ledger by replaying the
+calls on the same deterministic tools. Check: the rebuilt ledger has the
+logged size in all 9 runs (319–1,051 numbers) and the strict audit
+reproduces the logged counts exactly. Each of the 26 numbers the strict
+audit misses was then classified (`audit.audit_text_lenient`), and each
+classification was checked by hand against the section table and the tool
+outputs:
+
+| Class | Count | Where | Examples |
+|---|---:|---|---|
+| (b) Notation variant, correct value | 20 | maintenance reasons | value/cost "3.789e-6" for S01573 (true 3.789e-06). The strict audit reads 3 decimals from the mantissa and rounds the ledger value to 0.000; an audit bug, not an agent error |
+| (a) Derived from tool numbers, correct | 3 | coordinator | "Value given up: 48.96%" = 100 − 51.04; "does not capture 16.03%" = 100 − 83.97; "does not cover 78.39% of requests" = 100 − 21.61 |
+| (c) From an earlier agent's own text | 0 | | |
+| (d) Unsupported | 3 | maintenance | "207 pothole requests, which is 2.1% of all snapped requests" (true 0.11%); "improves the overall value capture by 3.77 percentage points (from 66.01% to 69.78%)" (`try_plan` returned 66.01%, i.e. a 4.2-point *loss* vs. the solver's 70.24%; 69.78 appears nowhere; the built plan captured 68.42%) |
+
+| | Strict | With notation + derived |
+|---|---:|---:|
+| All agents | 227/253 (89.7%) | **250/253 (98.8%)** |
+| Coordinator | 105/108 | **108/108** |
+| Maintenance | 120/143 | 140/143 |
+| Closure (one run) | 2/2 | 2/2 |
+
+Per run with derived numbers: 38/39, 30/30, 31/31; 36/38, 9/9, 28/28;
+21/21, 25/25, 32/32. The derived check allows only 100 − x for a ledger x,
+or a ± b where a and b are both grounded numbers cited in the same text
+field; arbitrary pairs over the ledger are not allowed (with 300–1,000
+ledger numbers almost any value is some difference of two). Truncation
+instead of rounding was tried and dropped: it credited the wrong "2.1%".
+
+**What the ledger lookup credits but is wrong** (found by reading the
+texts, not counted above; the lookup cannot see these):
+- 5% run 0, maintenance: S09924's 509 requests are "5.36% of all snapped
+  requests" (5.36% is the whole solver plan's coverage; true 0.27%); the next
+  three adds get "3.5%", "2.6%", "2.2%" (true 0.19%, 0.14%, 0.12%), all
+  matched by chance to other ledger numbers. Its rationale says value
+  "increased from 54.43% to 48.36%".
+- 10% run 2, coordinator: "Gave up 1.08% of all snapped requests compared
+  to the unconstrained solver plan": the plan *gained* 1.08 points
+  (11.97% vs. 10.89%).
+- 20% run 2, coordinator: "a 99.98% similarity to the unconstrained solver
+  plan" (99.98% is value vs. solver, not similarity).
+- 5% run 1, coordinator: "Month 1: 19 hospitals and 19 schools lose access"
+  (19 graph *nodes* lose access).
+
+So the coordinator's numbers are all traceable, and its sentences about
+them are sometimes wrong; the maintenance agent's unsupported numbers are
+all in claims about its own effect.
+
+#### Verdict for milestone 3
+
+| Question | Pure solver + heuristic | LLM agents (Qwen3-8B) |
+|---|---|---|
+| Value captured | 54.43 / 70.24 / 83.98% (≤ 1e-5 from optimum) | 93.8–100% of the solver's |
+| Requests covered | 5.36 / 10.89 / 21.65% | −0.04 to +1.08 points |
+| Schedule completed | 9/9 (deterministic) | 1/9 |
+| Access violations | 0 | 0 (1 schedule) |
+| Worst-month delay | 51,731.9 s (same works as the agent's one schedule) | 66,627.6 s (+28.8%) |
+| Numbers traceable to tools | n/a | 89.7% strict, 98.8% with notation/derived |
+| Same answer on rerun | yes | deviations Jaccard 0.0–0.87 |
+
+On this problem the LLM adds explanation and small shifts in request
+coverage, not better plans. The knapsack already optimises the stated
+objective, so every deviation costs value; the coverage gains (up to +1.08
+points) are a different objective that could be weighted in the solver
+directly (not tested here). Scheduling is better done by the heuristic: it
+completed every time, had no violations, and its worst month was lower than
+the agent's one completed schedule. The 8B agent's failures are mechanical
+(one malformed id, repeated tool calls), and the coordinator's prose was
+numerically traceable but not always correct in meaning.

@@ -320,3 +320,27 @@ def test_agent_text_never_grounds_itself(grid):
     final = P.solve_budget(grid, 0.3, [outside])
     assert "98765.4" in fact_sheet(deps, prop, final, None, None)
     assert "98765.4" not in fact_sheet(deps, prop, final, None, None, agent_text=False)
+
+
+def test_lenient_audit_classes():
+    # value/cost 3.7893e-06 printed as 3.789e-6; final value share 51.04 -> "48.96% given up";
+    # 66.01 and 62.11 cited together -> their difference 3.9 is derived; 69.78 is nowhere
+    ledger = [3.7893e-06, 51.04, 66.01, 62.11, 207.0]
+    texts = {
+        "maintenance.deviation[0].reason": "value per cost of 3.789e-6, 207 requests, which is 2.1% of all requests",
+        "maintenance.rationale": "from 62.11% to 66.01%, a 3.9 point gain; later 69.78%",
+        "coordinator.trade_off[0]": "Value given up: 48.96%. The maintenance agent said 7.77.",
+    }
+    strict = audit.audit_text(texts, ledger)
+    res = audit.audit_text_lenient(texts, ledger, {"coordinator.": [7.77]})
+    assert res["grounded_strict"] == strict["grounded"] == 3  # 207, 62.11, 66.01
+    assert res["counts"] == {"strict": 3, "notation": 1, "derived": 2, "upstream": 1, "unsupported": 2}
+    by_num = {r["number"]: r["class"] for r in res["not_strict"]}
+    assert by_num == {"3.789e-6": "notation", "2.1": "unsupported", "3.9": "derived", "69.78": "unsupported",
+                      "48.96": "derived", "7.77": "upstream"}
+    assert res["grounded_with_derived"] == 6 and res["checked"] == 9
+
+
+def test_effective_decimals():
+    n = audit.extract_numbers("3.789e-6 and 1e-5 and 12.50")
+    assert [audit.effective_decimals(x) for x in n] == [9, 5, 2]

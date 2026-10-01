@@ -2,7 +2,7 @@ CITY ?= belo-horizonte
 K ?= 500
 PAIRS ?= 1000
 
-.PHONY: install test smoke bench bench-exact betweenness sections maps agents-dry agents-smoke agents-eval agents-queue
+.PHONY: install test smoke bench bench-exact betweenness sections maps agents-dry agents-smoke agents-eval agents-queue agents-regrade
 
 install:
 	uv sync
@@ -44,6 +44,10 @@ agents-smoke:
 # Full evaluation: 3 runs x 5/10/20% budgets.
 agents-eval:
 	nice uv run python scripts/evaluate_agents.py --model local --runs 3 --budgets 0.05 0.10 0.20
+
+# Re-score the prose-number audit of the full run (replays the logged tool calls, no LLM).
+agents-regrade:
+	nice uv run python scripts/regrade_text_audit.py runs/m3-eval-local.jsonl
 
 # Same, but waits for the compliance article's queue to finish first (nohup, survives the shell).
 agents-queue:

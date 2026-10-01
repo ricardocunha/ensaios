@@ -246,3 +246,101 @@ def consistency(evals: list[dict], raws: list[dict]) -> dict:
         "schedule_co_assignment_mean": mean(agree) if agree else None,
         "violations": [e.get("agent_schedule", {}).get("violations") for e in evals],
     }
+
+
+# --- lenient re-score: notation and simple derived numbers ------------------------------------
+#
+# The strict audit above stays the headline score. This second pass explains
+# what the strict audit misses, one class per number, in this order:
+#   strict    - found by ``grounded`` (unchanged);
+#   notation  - same value, other notation: scientific notation compared at its
+#               real precision (3.789e-6 has 9 decimals, not 3; the strict
+#               pass rounds the ledger to 3 decimals and finds 0);
+#   derived   - 100 - x for a ledger number x (a complement: "gives up 29.76%"),
+#               or a + b / |a - b| where a and b are both ledger-grounded numbers
+#               cited in the *same* text field (the agent shows its work). Pairs
+#               over the whole ledger are not allowed: with hundreds of ledger
+#               numbers almost any value is some difference of two;
+#   upstream  - not in the ledger, but in an earlier agent's own text that this
+#               agent was shown (e.g. a maintenance reason in the coordinator's
+#               fact sheet): traceable, not grounded;
+#   unsupported - none of the above.
+# Grounded with derived numbers = strict + notation + derived.
+
+LENIENT_CLASSES = ("strict", "notation", "derived", "upstream", "unsupported")
+
+
+def effective_decimals(n: Num) -> int:
+    """Decimal places the printed number actually resolves (3.789e-6 -> 9)."""
+    low = n.raw.replace(",", "").lower()
+    if "e" not in low:
+        return n.decimals
+    return n.decimals - int(low.split("e")[1])
+
+
+def _matches(x: float, y: float, decimals: int) -> bool:
+    return abs(round(y, decimals) - x) < 1e-12 * max(1.0, abs(x)) + 1e-12
+
+
+def notation_grounded(n: Num, ledger: list[float]) -> bool:
+    """Scientific notation at its real precision. (Truncation instead of
+    rounding was tried and dropped: on one-decimal numbers it credited a
+    wrong share, 2.1% for a street with 0.11% of the requests.)"""
+    if "e" not in n.raw.lower():
+        return False
+    x, d = abs(n.value), effective_decimals(n)
+    return any(_matches(x, abs(y) * f, d) for y in ledger for f in CONVERSIONS)
+
+
+def derived_grounded(n: Num, ledger: list[float], siblings: list[float]) -> bool:
+    """100 - x for a ledger x, or a +/- b over grounded numbers of the same text field."""
+    x, d = abs(n.value), effective_decimals(n)
+    if any(_matches(x, 100.0 - abs(y) * f, d) for y in ledger for f in (1.0, 100.0)):
+        return True
+    for a, b in itertools.combinations(siblings, 2):
+        if _matches(x, abs(a - b), d) or _matches(x, a + b, d):
+            return True
+    return False
+
+
+def classify_number(n: Num, ledger: list[float], siblings: list[float], upstream: list[float]) -> str:
+    if grounded(n, ledger):
+        return "strict"
+    if notation_grounded(n, ledger):
+        return "notation"
+    if derived_grounded(n, ledger, siblings):
+        return "derived"
+    if upstream and (grounded(n, upstream) or notation_grounded(n, upstream)):
+        return "upstream"
+    return "unsupported"
+
+
+def audit_text_lenient(texts: dict[str, str], ledger: list[float], upstream: dict[str, list[float]] | None = None) -> dict:
+    """Same numbers as ``audit_text``, each assigned to one of ``LENIENT_CLASSES``.
+
+    ``upstream``: label prefix (e.g. ``"coordinator."``) -> numbers from earlier
+    agents' text that agent was shown. Siblings for the derived check are the
+    strictly or notation-grounded numbers of the same text field."""
+    uniq = sorted(set(ledger))
+    upstream = upstream or {}
+    counts = dict.fromkeys(LENIENT_CLASSES, 0)
+    rows = []
+    n_total = n_trivial = 0
+    for label, text in texts.items():
+        nums = extract_numbers(text)
+        siblings = [abs(m.value) for m in nums if not m.trivial and (grounded(m, uniq) or notation_grounded(m, uniq))]
+        up = next((v for k, v in upstream.items() if label.startswith(k)), [])
+        for n in nums:
+            n_total += 1
+            if n.trivial:
+                n_trivial += 1
+                continue
+            cls = classify_number(n, uniq, siblings, up)
+            counts[cls] += 1
+            if cls != "strict":
+                ctx = text[max(0, n.start - 60): n.start + len(n.raw) + 30].replace("\n", " ")
+                rows.append({"where": label, "number": n.raw, "class": cls, "context": ctx})
+    checked = n_total - n_trivial
+    ok = counts["strict"] + counts["notation"] + counts["derived"]
+    return {"checked": checked, "counts": counts, "grounded_strict": counts["strict"], "grounded_with_derived": ok,
+            "grounded_with_derived_share": (ok / checked) if checked else None, "not_strict": rows}

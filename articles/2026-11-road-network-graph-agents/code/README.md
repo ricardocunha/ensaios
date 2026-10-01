@@ -13,6 +13,7 @@ make maps                          # PNG maps into ../figures
 make agents-dry                    # milestone 3 pipeline with a scripted model (no LLM)
 make agents-smoke                  # one pipeline with Qwen3-8B on the local mlx-lm server
 make agents-eval                   # 3 runs x 5/10/20% budgets (see scripts/run_after_queue.sh)
+make agents-regrade                # re-score the prose audit of runs/m3-eval-local.jsonl (no LLM)
 ```
 
 ## Tools (`src/road_agents/`)
@@ -40,7 +41,7 @@ make agents-eval                   # 3 runs x 5/10/20% budgets (see scripts/run_
 |---|---|
 | `planning.py` | Typed deterministic tools on sections: `rank_sections`, `section_details`, `solve_budget` (knapsack with forced adds/removals), `closure_report` (trips + hospital/school access lost), `accessibility_loss_sections`, `schedule_report`, `naive_schedule`, `heuristic_schedule`, text summaries. |
 | `agents.py` | Pydantic AI agents with typed outputs: maintenance-priority (deviations from the solver, each with a reason), closure-impact (month sequencing + access flags), coordinator (quarterly plan, trade-offs). `run_pipeline` chains them. |
-| `audit.py` | Deterministic evaluation: plan vs. solver, schedule violations, a recomputation of every structured number and a ledger lookup of every number in the prose, consistency across runs. |
+| `audit.py` | Deterministic evaluation: plan vs. solver, schedule violations, a recomputation of every structured number and a ledger lookup of every number in the prose (strict, plus a lenient re-score that classifies misses as notation / derived / upstream / unsupported), consistency across runs. |
 | `scripted.py` | A scripted `FunctionModel` stand-in for tests and dry runs. |
 
 Model: Qwen3-8B (4-bit MLX) behind `mlx_lm.server`, OpenAI-compatible, thinking
