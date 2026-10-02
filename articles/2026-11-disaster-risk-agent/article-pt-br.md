@@ -8,11 +8,11 @@ repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2026-11-disaste
 
 # Um agente de risco de desastre que combina sinais em que não pode confiar totalmente
 
-No fim de abril e em maio de 2024, choveu durante dias sobre o Taquari e os outros rios que deságuam no Guaíba, no Rio Grande do Sul. O Vale do Taquari foi inundado e, dias depois, Porto Alegre também. A Defesa Civil do RS contabiliza 184 mortes e 25 pessoas ainda desaparecidas (última atualização, de abril de 2025); no auge da crise, em 23 de maio de 2024, 581.643 pessoas estavam fora de casa. Cidades como Muçum, Encantado, Lajeado e Estrela já tinham sido inundadas em setembro e novembro de 2023.
+No fim de abril e em maio de 2024, choveu durante dias sobre o Taquari e os outros rios que deságuam no Guaíba, no Rio Grande do Sul. O Vale do Taquari foi inundado e, dias depois, Porto Alegre também. A Defesa Civil do RS contabiliza 184 mortes e 25 pessoas ainda desaparecidas (última atualização, de abril de 2025); no pico, no boletim de 23 de maio de 2024, eram 581.643 pessoas desalojadas, sem contar as que estavam em abrigos públicos. Muçum, Encantado e Estrela já tinham sido inundadas em setembro e novembro de 2023.
 
 Este artigo não trata do que deveria ter sido feito naqueles dias. Quem estava no terreno trabalhou em condições que nenhum backtest reproduz. A pergunta aqui é mais estreita, técnica, e o evento a torna concreta: **quando pluviômetros, réguas de rio, mapas de satélite e o histórico discordam, e alguns deles param de transmitir, como um agente deve combiná-los num alerta de cheia que ele consiga explicar? E ele teria avisado a tempo?**
 
-Construí um agente assim e reproduzi o evento hora a hora, usando em cada hora só os dados que existiam naquela hora. A ideia vem do vídeo *"5 AI Agents Projects to Build in 2026"* (projeto nº 1, inteligência de desastres com múltiplos sinais). A arquitetura, os dados e a avaliação são meus. Todos os números abaixo vêm do `docs/RESULTS.md` do repositório.
+Construí um agente assim e reproduzi o evento hora a hora, usando em cada hora só os dados que existiam naquela hora. A ideia vem do vídeo *"5 AI Agents Projects to Build in 2026"* (projeto nº 1, inteligência de desastres com múltiplos sinais). A arquitetura, os dados e a avaliação são meus. Todos os números abaixo vêm do `code/docs/RESULTS.md` do repositório.
 
 ## A montagem
 
@@ -54,11 +54,11 @@ Três descobertas moldaram todo o resto.
 | Taquari | 108 | 127 h |
 | Porto Alegre, Cais Mauá | 93 | 429 h (até o fim da janela) |
 
-A telemetria nunca registrou o pico da primeira onda em Encantado, que o SGB depois levantou em campo: 23,14 m. O Cais Mauá para às 23h15 de 02/05, três dias antes do pico de 5,37 m do Guaíba. Já tinha acontecido antes: o recorde de 26,11 m de Muçum em setembro de 2023 também não está lá, então os máximos históricos *subestimam* as cheias. Qualquer fusão precisa tratar "sem leitura" como um estado com significado próprio, não como zero.
+A telemetria nunca registrou o pico da primeira onda em Encantado, que o SGB depois levantou em campo: 23,14 m. O Cais Mauá para às 23h15 (hora local) de 02/05, três dias antes do pico de 5,37 m do Guaíba. Já tinha acontecido antes: o recorde de 26,11 m de Muçum em setembro de 2023 também não está lá, então os máximos históricos *subestimam* as cheias. Qualquer fusão precisa tratar "sem leitura" como um estado com significado próprio, não como zero.
 
-**O satélite chega depois do pico.** Não houve passagem do Sentinel-1 sobre o Taquari antes de 08/05, e o Sentinel-2 estava encoberto em 01/05. O primeiro mapa de inundação do Copernicus EMS foi entregue às 19h29 UTC de 04/05, 103,5 horas depois de o nível em Estrela chegar à faixa com razão de verossimilhança 10 ou mais. No replay, um mapa só fica visível na hora da *entrega* e serve como rótulo. O satélite pode confirmar esta cheia; não pode avisar dela.
+**O satélite chega depois do pico.** Não houve imagem do Sentinel-1 sobre Encantado, no Vale do Taquari, antes de 08/05, e o Sentinel-2 estava encoberto em 01/05. O primeiro mapa de inundação do Copernicus EMS foi entregue às 19h29 UTC de 04/05, 103,5 horas depois de o nível em Estrela chegar à faixa com razão de verossimilhança 10 ou mais. No replay, um mapa só fica visível na hora da *entrega* e serve como rótulo. O satélite pode confirmar esta cheia; não pode avisar dela.
 
-**Existe um relógio oficial para comparar.** O arquivo do SACE lista todos os boletins do Taquari de 2024 com a hora de publicação: 43 entre abril e maio, o primeiro publicado às 7h54 de 30/04 (hora local). Os horários dos alertas das Defesas Civis municipais não estão em formato legível por máquina, então a outra referência é física: a primeira leitura da ANA igual ou acima da cota de inundação de cada régua. Acertar esses relógios (a ANA usa hora local; o INMET usa UTC e marca a hora pelo fim do intervalo) deu mais trabalho que qualquer modelo.
+**Existe um relógio oficial para comparar.** O arquivo do SACE lista todos os boletins do Taquari de 2024 com a hora de publicação: 43 entre abril e maio, o primeiro publicado às 7h54 de 30/04 (hora local). Os alertas da Defesa Civil são publicados numa página por aviso, sem um arquivo que eu pudesse consultar, então a outra referência é física: a primeira leitura da ANA igual ou acima da cota de inundação de cada régua. Acertar esses relógios (a ANA usa hora local; o INMET usa UTC e marca a hora pelo fim do intervalo) deu mais trabalho que qualquer modelo.
 
 ## Parte 2: sinais, idade da leitura e um replay que não enxerga o futuro
 
@@ -92,7 +92,7 @@ Com a tabela calibrada, este é o primeiro alerta em cada lugar em 2024, compara
 
 Diante dos boletins oficiais, a comparação justa é com o primeiro boletim do SACE, um aviso para a bacia inteira publicado às 7h54 de 30/04. A fusão colocou Encantado e Estrela em alerta 10,9 e 11,9 horas antes dele. Muçum e Taquari ficaram a cerca de 3 horas dele: o boletim saiu 3,1 h antes do alerta de Muçum e 0,1 h antes do de Taquari. Quero ser cuidadoso aqui. O SGB emitiu um boletim de previsão para uma bacia inteira; minha fusão dá uma probabilidade para uma régua, num replay, com uma tabela ajustada em anos anteriores. Isso mostra que os sinais estavam lá, não que alguém deixou de vê-los.
 
-**Cheias anteriores.** De 2019 a abril de 2024, a fusão calibrada alertou antes de 20 dos 22 inícios de cheia, incluindo todos os 10 nas réguas do Taquari no período fora da amostra (2023 a abril de 2024), e 1 de 2 no Cais Mauá. Em novembro de 2023, porém, o SACE foi mais rápido em Muçum (por 11 h) e em Taquari (por 18 h). A tabela escolhida à mão alertou antes de 4 dos 22.
+**Cheias anteriores.** De 2019 a abril de 2024, a fusão calibrada alertou antes de 20 dos 22 inícios de cheia, incluindo todos os 10 nas réguas do Taquari no período fora da amostra (2023 a abril de 2024), e 1 dos 2 inícios fora da amostra no Cais Mauá (os inícios de 2019–2022 estão dentro da amostra da tabela ajustada). Em novembro de 2023, porém, o SACE foi mais rápido em Muçum (por 11 h) e em Taquari (por 18 h). A tabela escolhida à mão alertou antes de 4 dos 22.
 
 ## Parte 4: falsos alarmes, calibração e ablações
 
@@ -100,9 +100,9 @@ Alertas cedo têm um preço. No período fora da amostra (2023-01 → 2024-04, 6
 
 **Calibração:** Brier score de 0,0074 fora da amostra (skill de 0,44 sobre a climatologia) e 0,1148 em 2024 (skill de 0,66). Fora da amostra, a fusão é confiante demais entre 0,5 e 0,9 (horas com 0,60 tiveram cheia 29% das vezes; o naive Bayes ainda conta duas vezes evidências correlacionadas). Em 2024 ela foi confiante de menos abaixo de 0,9: o evento foi maior que qualquer coisa nos anos de treino.
 
-**Ablações** (antecedência em 2024, em horas; falsos alarmes e Brier fora da amostra):
+**Ablações** (antecedência em 2024, em horas antes de a cota ser atingida, arredondada para a hora exceto no modelo completo; falsos alarmes e Brier fora da amostra):
 
-| Configuração | Muçum | Encantado | Estrela | Taquari | Porto Alegre | Falsos alarmes (por lugar-ano) | Brier TESTE | Brier 2024 |
+| Configuração | Muçum | Encantado | Estrela | Taquari | Porto Alegre | Falsos alarmes (por lugar-ano) | Brier, fora da amostra | Brier, 2024 |
 |---|---|---|---|---|---|---|---|---|
 | completa | +25,75 | +17,25 | +12,25 | +20,25 | +7,25 | 21 (3,23) | 0,0074 | 0,1148 |
 | sem nível de rio (só chuva) | perdeu | perdeu | perdeu | perdeu | perdeu | 0 | 0,0124 | 0,3104 |
@@ -113,7 +113,7 @@ Alertas cedo têm um preço. No período fora da amostra (2023-01 → 2024-04, 6
 
 O nível do rio sustenta o sistema: só com chuva, nada chegou a alerta. As réguas a montante compram a antecedência em Taquari e em Porto Alegre, e causam 14 dos 21 falsos alarmes. Pesos iguais alertam mais cedo, com 2,4 vezes mais falsos alarmes.
 
-**O resultado que eu não esperava: o decaimento por idade piorou as coisas.** Tirá-lo melhorou o Brier em 2024 (0,0927 contra 0,1148) e fora da amostra (0,0062 contra 0,0074), sem mudar nenhuma antecedência. Quando uma régua silencia numa cheia, o rio em geral continua alto; muitas vezes ela silenciou *porque* o rio estava alto. Descontar a última leitura joga fora evidência verdadeira. Silêncio não é desconhecimento. Continuo nomeando as réguas silenciosas em todo alerta; só não acho mais que uma meia-vida fixa represente o que o silêncio significa.
+**O resultado que eu não esperava: o decaimento por idade piorou as coisas.** Tirá-lo melhorou o Brier em 2024 (0,0927 contra 0,1148) e fora da amostra (0,0062 contra 0,0074), sem mudar nenhuma antecedência. Quando uma régua silencia numa cheia, o rio em geral continua alto; às vezes ela silenciou *porque* o rio estava alto. Descontar a última leitura joga fora evidência verdadeira. Silêncio não é desconhecimento. Continuo nomeando as réguas silenciosas em todo alerta; só não acho mais que uma meia-vida fixa represente o que o silêncio significa.
 
 ## Parte 5: o LLM escreve, nunca calcula
 
@@ -129,11 +129,11 @@ Rodei o agente em 9 horas-chave (o primeiro alerta de cada lugar e a primeira ho
 |---|---|---|---|
 | saída por ferramenta | 9 / 9 | 9 / 9 | 9 / 9 |
 | saída por ferramenta + nova tentativa se a auditoria falhar | 9 / 9 | 9 / 9 | 10 / 9 |
-| saída no texto (JSON no prompt) | 7 / 9 | 9 / 9 | 9 / 9 |
+| saída em texto (JSON na resposta) | 7 / 9 | 9 / 9 | 9 / 9 |
 
-Em inglês, as duas falhas do modo com JSON no texto foram do mesmo tipo: uma régua silenciosa listada no campo `silent_gauges`, mas nunca mencionada no texto, justamente nas duas horas com duas ou três réguas silenciosas. Em português, as duas horas passaram. É uma execução por hora, com temperatura 0 e uma entrada com outra redação, então não leio isso como "em português é mais confiável". Mostra que o agente e a auditoria funcionam no idioma em que o alerta seria de fato lido.
+Em inglês, as duas falhas do modo com JSON na resposta foram do mesmo tipo: uma régua silenciosa listada no campo `silent_gauges`, mas nunca mencionada no texto, justamente nas duas horas com duas ou três réguas silenciosas. Em português, as duas horas passaram. É uma execução por hora, com temperatura 0 e uma entrada com outra redação, então não leio isso como "em português é mais confiável". Mostra que o agente e a auditoria funcionam no idioma em que o alerta seria de fato lido.
 
-Este é o alerta de Porto Alegre às 3h de 03/05, probabilidade combinada de 95,6%, no modo com JSON no texto, exatamente como foi gerado:
+Este é o alerta de Porto Alegre às 3h (hora local) de 03/05, probabilidade combinada de 95,6%, no modo com JSON na resposta, exatamente como foi gerado:
 
 > **Porto Alegre: EMERGÊNCIA com 95,6% de probabilidade**
 > A probabilidade combinada de 95,6% foi calculada com base no nível do rio em Porto Alegre (87450004) com efeito +4,52, que sem ele seria 19,1%. O nível do rio em Guaíba (87242000) contribuiu com efeito +2,12, reduzindo para 72,5% sem ele. Chuvas em Canela (A879) e Porto Alegre (A801) também elevaram a probabilidade. A régua 87450020 em Porto Alegre está silenciosa há 72 h e não contribuiu. Réguas 86950000 e 87450004 também estão desatualizadas e com menor peso.
@@ -142,13 +142,13 @@ Este é o alerta de Porto Alegre às 3h de 03/05, probabilidade combinada de 95,
 
 O texto do modo por ferramenta, na mesma hora, também passou, e está errado de um jeito que a auditoria não vê. Ele diz: "As réguas silenciosas 87450020 e 86950000 não foram usadas devido à ausência de leituras recentes". Mas a 86950000 *foi* usada, com confiabilidade 0,12, e a régua da própria cidade, 87450004, só aparece como o sinal principal, nunca como silenciosa. Passa porque um código de estação em qualquer lugar do texto conta como menção.
 
-Então, três limites. A auditoria confere *fundamentação*, não *pareamento* nem sentido. Em português, o modo por ferramenta atribuiu o código da régua de Estrela a Encantado e chamou duas réguas de rio silenciosas de "estações de chuva" (o mesmo texto nas duas execuções por ferramenta), e um texto com JSON no prompt chamou dois níveis de rio a montante de "leituras de chuva". Nada disso é número, código ou lugar inventado. Uma checagem de pareamento por script pega o código atribuído ao lugar errado (2 de 27 textos em português, 0 de 27 em inglês); o resto exigiu leitura. Segundo, a auditoria precisa falar a língua do modelo: um leitor de números só em inglês leria o "1.355 cm" de um brasileiro como 1,355. Terceiro, a auditoria é tão boa quanto a entrada. Lendo os textos em inglês, descobri que, numa hora, minha lista de réguas silenciosas mostrava o acumulado de *chuva* de 24 horas de Encantado como a "última leitura", porque a ANA usa o mesmo código para chuva e nível. Nenhuma auditoria contra a mesma entrada pega isso. Está corrigido, com teste; depois da correção, aquela hora passou nos três modos, nos dois idiomas.
+Então, três limites. A auditoria confere *fundamentação*, não *pareamento* nem sentido. Em português, o modo por ferramenta atribuiu o código da régua de Estrela a Encantado e chamou duas réguas de rio silenciosas de "estações de chuva" (o mesmo texto nas duas execuções por ferramenta), e um texto do modo com JSON na resposta chamou dois níveis de rio a montante de "leituras de chuva". Nada disso é número, código ou lugar inventado. Uma checagem de pareamento por script pega o código atribuído ao lugar errado (2 de 27 textos em português, 0 de 27 em inglês); o resto exigiu leitura. Segundo, a auditoria precisa falar a língua do modelo: um leitor de números só em inglês leria o "1.355 cm" de um brasileiro como 1,355. Terceiro, a auditoria é tão boa quanto a entrada. Lendo os textos em inglês, descobri que, numa hora, minha lista de réguas silenciosas mostrava o acumulado de *chuva* de 24 horas de Encantado como a "última leitura", porque a ANA usa o mesmo código para chuva e nível. Nenhuma auditoria contra a mesma entrada pega isso. Está corrigido, com teste; depois da correção, aquela hora passou nos três modos, nos dois idiomas.
 
 ## Parte 6: e se o LLM fizesse a fusão?
 
 Talvez um modelo de 8B simplesmente seja bom nisso. Então dei ao Qwen3-8B o mesmo retrato por hora que a fusão vê (valor, idade, RV calibrada e confiabilidade de cada sinal, os limiares das réguas, as réguas silenciosas, a probabilidade a priori), mas não a probabilidade combinada, e pedi uma probabilidade e um nível. Um prompt fixo para todas as horas, nada ajustado pelos resultados. As horas foram fixadas antes da primeira chamada: a cada 3 horas, de 48 h antes a 12 h depois do cruzamento da cota em 2024 em cada lugar (105), os inícios dos 21 falsos alarmes da fusão fora da amostra e 21 horas calmas sorteadas, pareadas por lugar. Três amostras de cada, com temperatura 0,7: 441 chamadas, 0 erros.
 
-**Antecedência** (primeira hora em alerta ou acima, na grade de 3 horas):
+**Antecedência** em relação à cota atingida (primeira hora em alerta ou acima, na grade de 3 horas, por isso a antecedência da fusão difere um pouco da Parte 3):
 
 | Lugar | Fusão bayesiana | LLM (as 3 amostras concordam) |
 |---|---|---|

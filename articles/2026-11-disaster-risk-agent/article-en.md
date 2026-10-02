@@ -8,11 +8,11 @@ repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2026-11-disaste
 
 # A disaster-risk agent that fuses signals it can't fully trust
 
-In late April and May 2024, rain fell for days over the Taquari and the other rivers that drain into the Guaíba, in Rio Grande do Sul. The Taquari valley flooded, and days later so did Porto Alegre. Defesa Civil RS counts 184 deaths and 25 people still missing (its last update, of April 2025); at the height of the crisis, on 23 May 2024, 581,643 people were out of their homes. Towns like Muçum, Encantado, Lajeado and Estrela had already been flooded in September and November 2023.
+In late April and May 2024, rain fell for days over the Taquari and the other rivers that drain into the Guaíba, in Rio Grande do Sul. The Taquari valley flooded, and days later so did Porto Alegre. Defesa Civil RS counts 184 deaths and 25 people still missing (its last update, of April 2025); at the peak, in its bulletin of 23 May 2024, 581,643 people were displaced from their homes, not counting those in public shelters. Muçum, Encantado and Estrela had already flooded in September and November 2023.
 
 This article is not about what should have been done in those days. People on the ground did their work under conditions no backtest reproduces. It asks a narrower, technical question that the event makes concrete: **when rain gauges, river gauges, satellite maps and history disagree, and some of them stop reporting, how should an agent combine them into a flood alert it can explain? And would it have warned in time?**
 
-I built one and replayed the event hour by hour, with only the data that was available at each hour. The idea comes from the video *"5 AI Agents Projects to Build in 2026"* (project #1, multi-signal disaster intelligence). The architecture, the data and the evaluation here are my own. Every number below comes from the repo's `docs/RESULTS.md`.
+I built one and replayed the event hour by hour, with only the data that was available at each hour. The idea comes from the video *"5 AI Agents Projects to Build in 2026"* (project #1, multi-signal disaster intelligence). The architecture, the data and the evaluation here are my own. Every number below comes from the repo's `code/docs/RESULTS.md`.
 
 ## The setup
 
@@ -54,11 +54,11 @@ Three findings shaped everything after that.
 | Taquari | 108 | 127 h |
 | Porto Alegre, Cais Mauá | 93 | 429 h (to the end of the window) |
 
-Telemetry never recorded Encantado's first-wave crest, which SGB later surveyed at 23.14 m. Cais Mauá stops at 23:15 on 05-02, three days before the Guaíba's 5.37 m crest. It had happened before: Muçum's September 2023 record of 26.11 m is missing too, so the historical maxima *understate* the floods. Any fusion has to treat "no reading" as a state with its own meaning, not as a zero.
+Telemetry never recorded Encantado's first-wave crest, which SGB later surveyed at 23.14 m. Cais Mauá stops at 23:15 on 05-02 (local time), three days before the Guaíba's 5.37 m crest. It had happened before: Muçum's September 2023 record of 26.11 m is missing too, so the historical maxima *understate* the floods. Any fusion has to treat "no reading" as a state with its own meaning, not as a zero.
 
-**The satellite arrives after the peak.** There was no Sentinel-1 pass over the Taquari before 05-08, and Sentinel-2 was clouded on 05-01. The first Copernicus EMS flood map was delivered at 19:29 UTC on 05-04, 103.5 hours after the Estrela river level had reached the band with a likelihood ratio of 10 or more. In the replay a map becomes visible at its *delivery* time and serves as a label. The satellite can confirm this flood; it can't warn of it.
+**The satellite arrives after the peak.** There was no Sentinel-1 scene over Encantado, in the Taquari valley, before 05-08, and Sentinel-2 was clouded on 05-01. The first Copernicus EMS flood map was delivered at 19:29 UTC on 05-04, 103.5 hours after the Estrela river level had reached the band with a likelihood ratio of 10 or more. In the replay a map becomes visible at its *delivery* time and serves as a label. The satellite can confirm this flood; it can't warn of it.
 
-**There's an official clock to compare against.** SGB's SACE archive lists every 2024 Taquari bulletin with its upload time: 43 in April–May, the first uploaded at 07:54 on 04-30 (local time). Municipal Defesa Civil alert times aren't machine-readable, so the other reference is physical: the first ANA reading at or above each gauge's flood level. Getting those clocks right (ANA is local time, INMET is UTC and hour-ending) took more work than any model.
+**There's an official clock to compare against.** SGB's SACE archive lists every 2024 Taquari bulletin with its upload time: 43 in April–May, the first uploaded at 07:54 on 04-30 (local time). Defesa Civil's alerts are published one web page per notice, with no archive I could query, so the other reference is physical: the first ANA reading at or above each gauge's flood level. Getting those clocks right (ANA is local time, INMET is UTC and hour-ending) took more work than any model.
 
 ## Part 2: signals, freshness, and a replay that can't see the future
 
@@ -92,7 +92,7 @@ With the calibrated table, here's the first alert at each place in 2024, against
 
 Against the official bulletins, the fair comparison is with SGB's first SACE bulletin, a basin-wide warning uploaded at 07:54 on 04-30. The fusion put Encantado and Estrela on alert 10.9 and 11.9 hours before it. Muçum and Taquari were within about 3 hours of it: the bulletin came 3.1 h before the Muçum alert and 0.1 h before Taquari's. I want to be careful here. SGB issued a forecast bulletin for a whole basin; my fusion gives a probability for one gauge, in a replay, with a table fitted on earlier years. It shows the signals were there, not that anyone missed them.
 
-**Earlier floods.** From 2019 to April 2024, the calibrated fusion alerted before 20 of 22 flood onsets, including all 10 at the Taquari gauges in the out-of-sample period (2023 to April 2024), and 1 of 2 at Cais Mauá. In November 2023, though, SACE beat it at Muçum (by 11 h) and Taquari (by 18 h). The hand-set table alerted before 4 of the 22.
+**Earlier floods.** From 2019 to April 2024, the calibrated fusion alerted before 20 of 22 flood onsets, including all 10 at the Taquari gauges in the out-of-sample period (2023 to April 2024), and 1 of the 2 out-of-sample onsets at Cais Mauá (the 2019–2022 onsets are in-sample for the fitted table). In November 2023, though, SACE beat it at Muçum (by 11 h) and Taquari (by 18 h). The hand-set table alerted before 4 of the 22.
 
 ## Part 4: false alarms, calibration and ablations
 
@@ -100,9 +100,9 @@ Early alerts have a price. In the out-of-sample period (2023-01 → 2024-04, 6.5
 
 **Calibration:** Brier score 0.0074 out of sample (skill 0.44 over climatology) and 0.1148 in 2024 (skill 0.66). Out of sample it's overconfident between 0.5 and 0.9 (hours at 0.60 flooded 29 % of the time; naive Bayes still double-counts correlated evidence). In 2024 it was underconfident below 0.9: the event was bigger than anything in the training years.
 
-**Ablations** (2024 leads in hours; out-of-sample false alarms and Brier scores):
+**Ablations** (2024 leads in hours before the flood-level crossing, rounded to the hour except for the full model; out-of-sample false alarms and Brier scores):
 
-| Configuration | Muçum | Encantado | Estrela | Taquari | Porto Alegre | False alarms (per place-year) | Brier TEST | Brier 2024 |
+| Configuration | Muçum | Encantado | Estrela | Taquari | Porto Alegre | False alarms (per place-year) | Brier, out of sample | Brier, 2024 |
 |---|---|---|---|---|---|---|---|---|
 | full | +25.75 | +17.25 | +12.25 | +20.25 | +7.25 | 21 (3.23) | 0.0074 | 0.1148 |
 | no river levels (rain only) | missed | missed | missed | missed | missed | 0 | 0.0124 | 0.3104 |
@@ -113,7 +113,7 @@ Early alerts have a price. In the out-of-sample period (2023-01 → 2024-04, 6.5
 
 River levels carry the system: with rain alone, nothing reached alert. Upstream gauges buy the lead at Taquari and Porto Alegre, and cause 14 of the 21 false alarms. Equal weights alert earliest, with 2.4 times the false alarms.
 
-**The finding I didn't expect: freshness decay made things worse.** Removing it improved the Brier score in 2024 (0.0927 vs 0.1148) and out of sample (0.0062 vs 0.0074), and changed no lead time. When a gauge goes silent in a flood, the river is usually still high; often it went silent *because* the river was high. Discounting its last reading throws away true evidence. Silent isn't unknown. I still name silent gauges in every alert; I just no longer think a fixed half-life models what silence means.
+**The finding I didn't expect: freshness decay made things worse.** Removing it improved the Brier score in 2024 (0.0927 vs 0.1148) and out of sample (0.0062 vs 0.0074), and changed no lead time. When a gauge goes silent in a flood, the river is usually still high; sometimes it went silent *because* the river was high. Discounting its last reading throws away true evidence. Silent isn't unknown. I still name silent gauges in every alert; I just no longer think a fixed half-life models what silence means.
 
 ## Part 5: the LLM writes, it never computes
 
@@ -133,7 +133,7 @@ I ran it on 9 key hours (each place's first alert, and its first hour at attenti
 
 In English, both prompted failures were the same kind: a silent gauge listed in the `silent_gauges` field but never mentioned in the text, at the two hours with two or three silent gauges. In Portuguese, both hours passed. That's one run per hour at temperature 0, with a differently worded input, so I don't read it as "Portuguese is more reliable". It shows that the agent and the audit work in the language the alert would actually be read in.
 
-Here's Porto Alegre at 03:00 on 05-03, fused probability 95.6 %, prompted mode, as generated:
+Here's Porto Alegre at 03:00 local time on 05-03, fused probability 95.6 %, prompted mode, as generated:
 
 > **Porto Alegre: EMERGÊNCIA com 95,6% de probabilidade**
 > A probabilidade combinada de 95,6% foi calculada com base no nível do rio em Porto Alegre (87450004) com efeito +4,52, que sem ele seria 19,1%. O nível do rio em Guaíba (87242000) contribuiu com efeito +2,12, reduzindo para 72,5% sem ele. Chuvas em Canela (A879) e Porto Alegre (A801) também elevaram a probabilidade. A régua 87450020 em Porto Alegre está silenciosa há 72 h e não contribuiu. Réguas 86950000 e 87450004 também estão desatualizadas e com menor peso.
@@ -150,7 +150,7 @@ So, three limits. The audit checks *grounding*, not *pairing* or meaning. In Por
 
 Maybe an 8B model is simply good at this. So I gave Qwen3-8B the same per-hour snapshot the fusion sees (every signal's value, age, calibrated likelihood ratio, reliability, the gauges' thresholds, the silent gauges, the prior), but not the fused probability, and asked for a probability and a level. One fixed prompt for every hour, nothing tuned on outcomes. The hours were fixed before the first call: every 3 hours from 48 h before to 12 h after each place's 2024 crossing (105), the onsets of the fusion's 21 out-of-sample false alarms, and 21 random quiet hours matched by place. Three samples each at temperature 0.7: 441 calls, 0 errors.
 
-**Lead time** (first hour at alert or above, on the 3-hour grid):
+**Lead time** before the flood-level crossing (first hour at alert or above, on the 3-hour grid, so the fusion's leads differ slightly from Part 3):
 
 | Place | Bayesian fusion | LLM (all 3 samples agree) |
 |---|---|---|

@@ -11,7 +11,8 @@ make reference   # official bulletin times and flood-level crossings per gauge
 make backtest    # replay 2024-04-20 -> 05-20 hour by hour, write runs/signals.csv
 make evaluate    # milestone 3: fusion, lead times, false alarms, calibration, ablations -> runs/m3/
 make alerts      # alert agent on 2 key hours (needs the local LLM server at localhost:8088)
-make alerts-queued  # scripts/run_after_queue.sh: all key hours, 3 modes, after the shared server's queue
+make alerts-queued  # scripts/run_after_queue.sh: English alert texts (--lang en), all key hours, 3 modes, after the shared server's queue
+make alerts-pt   # pt-BR alert texts (the default language): 9 key hours x 3 modes -> runs/m3/alerts_pt.jsonl
 make llm-fusion  # LLM-only fusion on the pre-registered hours (3 samples each, local LLM server) -> runs/m4/
 make llm-fusion-score  # LLM-only vs Bayesian fusion: leads, quiet-hour alerts, Brier, run-to-run spread
 ```
