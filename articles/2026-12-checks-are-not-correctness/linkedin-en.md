@@ -5,7 +5,7 @@ My agent's checks passed. The answers were still wrong.
 I built four agent systems on Brazilian data (public contracts, the 2024 RS floods, Belo Horizonte's roads, wind turbines), each with a deterministic check on the model's output. Every check worked. Every one let wrong answers through:
 
 → Quotes verified verbatim, used to "refute" the very clause that broke the rule.
-→ 98.8% of numbers found in tool outputs, some attached to the wrong thing ("increased from 54.43% to 48.36%").
+→ 98.8% of numbers found in tool outputs (once my own audit bugs were fixed), some attached to the wrong thing ("increased from 54.43% to 48.36%").
 → Every station code in an alert was real; one was given to the wrong town.
 → A required justification, filled in with comparisons that were false by the agent's own numbers.
 

@@ -5,7 +5,7 @@ As checagens do meu agente passaram. As respostas continuavam erradas.
 Construí quatro sistemas de agentes com dados brasileiros (contratos públicos, as cheias de 2024 no RS, as ruas de BH, aerogeradores), cada um com uma checagem determinística sobre a saída do modelo. Todas funcionaram. Todas deixaram passar respostas erradas:
 
 → Citações conferidas palavra por palavra, usadas para "refutar" justamente a cláusula que violava a regra.
-→ 98,8% dos números encontrados nas ferramentas, alguns presos à coisa errada ("aumentou de 54,43% para 48,36%").
+→ 98,8% dos números encontrados nas ferramentas (depois de corrigir bugs da minha auditoria), alguns presos à coisa errada ("aumentou de 54,43% para 48,36%").
 → Todo código de estação no alerta era real; um foi atribuído à cidade errada.
 → Uma justificativa obrigatória, preenchida com comparações falsas pelos próprios números do agente.
 
