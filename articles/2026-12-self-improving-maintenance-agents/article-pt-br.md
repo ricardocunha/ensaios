@@ -1,12 +1,12 @@
 ---
-title: "Agentes de manutenção que aprendem com os próprios erros"
+title: "Um agente de manutenção consegue aprender com os próprios erros?"
 subtitle: "Um agente de LLM com memória episódica diante dos alarmes e do livro de falhas de um parque eólico real: o que a memória mudou, o que não conseguiu mudar, e por que 21 incidentes não provam nada em nenhuma direção"
 platforms: Medium, LinkedIn Articles, TabNews, dev.to (pt)
 status: RASCUNHO — números finais (code/docs/RESULTS.md), dados do Brasil com fontes em code/docs/DATA.md
 repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2026-12-self-improving-maintenance-agents
 ---
 
-# Agentes de manutenção que aprendem com os próprios erros
+# Um agente de manutenção consegue aprender com os próprios erros?
 
 A promessa de um agente de manutenção "que se aprimora sozinho" é simples. O agente diagnostica um alarme, o livro de manutenção depois conta o que aconteceu de verdade, o agente guarda a lição e, na próxima vez, acerta mais. Ninguém retreina nada; quem aprende é a memória.
 

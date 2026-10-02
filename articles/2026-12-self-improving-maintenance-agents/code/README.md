@@ -1,4 +1,4 @@
-# Code: maintenance agents that learn from their own mistakes
+# Code: can a maintenance agent learn from its own mistakes?
 
 This article's own project; it shares no dependencies with other articles.
 

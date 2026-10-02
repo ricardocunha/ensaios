@@ -1,4 +1,4 @@
-# Plan: Maintenance agents that learn from their own mistakes
+# Plan: Can a maintenance agent learn from its own mistakes?
 
 **Branch:** `article/2026-12-self-improving-maintenance-agents` · **Target date:** 2026-12-11 · **Video project:** #5 (self-improving wind turbine maintenance)
 

@@ -1,4 +1,4 @@
-# Maintenance agents that learn from their own mistakes
+# Can a maintenance agent learn from its own mistakes?
 
 **Status:** drafts complete (EN, EN Medium, PT-BR, LinkedIn EN/PT-BR); numbers final; links pending publication · **Branch:** `article/2026-12-self-improving-maintenance-agents` · **Target date:** 2026-12-11
 

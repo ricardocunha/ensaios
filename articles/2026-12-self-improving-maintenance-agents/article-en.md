@@ -1,12 +1,12 @@
 ---
-title: "Maintenance agents that learn from their own mistakes"
+title: "Can a maintenance agent learn from its own mistakes?"
 subtitle: "An LLM agent with episodic memory on a real wind farm's alarms and failure logbook: what memory changed, what it couldn't, and why 21 incidents can't prove it either way"
 platforms: Medium, dev.to, Hashnode
 status: DRAFT — numbers final (code/docs/RESULTS.md), Brazil facts sourced in code/docs/DATA.md
 repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2026-12-self-improving-maintenance-agents
 ---
 
-# Maintenance agents that learn from their own mistakes
+# Can a maintenance agent learn from its own mistakes?
 
 The pitch for a "self-improving" maintenance agent is simple. The agent diagnoses an alarm, the logbook later says what really happened, the agent stores the lesson, and next time it does better. Nobody retrains anything; memory does the learning.
 
