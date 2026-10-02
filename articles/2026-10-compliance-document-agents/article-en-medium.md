@@ -2,7 +2,7 @@
 title: "Compliance agents that know when they're unsure"
 subtitle: "An open 8B model reviewing Brazilian public contracts, and the checks that decide when a human should look"
 platforms: Medium (short version; the full version is article-en.md, for dev.to / Hashnode)
-status: DRAFT — replace every [[RESULT: …]] and [[LINK]] before publishing
+status: DRAFT — fill in the real-contracts result before publishing
 repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2026-10-compliance-document-agents
 ---
 
@@ -12,11 +12,11 @@ A compliance agent that is right 80% of the time is useless if you can't tell *w
 
 I built one for Brazilian public-procurement contracts (from PNCP, the national portal), checking eight rules from the procurement law, Lei 14.133/2021. The stack comes from project #4 of the video *"5 AI Agents Projects to Build in 2026"*: **Docling** parses scanned PDFs, an **MCP server** exposes them, and **Pydantic AI** runs the agents. The model is **Qwen3-8B on a laptop**, at no cost per document.
 
-To measure it, I generated 60 synthetic contracts with planted violations, plus legal-but-suspicious cases: an 8% guarantee *with* the justification the law requires, a term exactly at the 5-year limit.
+To measure it, I generated 20 synthetic contracts with planted violations, plus legal-but-suspicious cases: an 8% guarantee *with* the justification the law requires, a term exactly at the 5-year limit.
 
 ## OCR: fine until it isn't, and Docling half-knows it
 
-I rendered 20 real born-digital contracts as image-only "scans" at four degradation levels and compared Docling's OCR with the original text. Up to medium degradation it recovered about 95% of the words and 92–97% of the numbers. On heavy scans it got 48% of the words and 40% of the numbers.
+I rendered 20 real born-digital contracts as image-only "scans" at four degradation levels and compared Docling's OCR with the original text. Up to medium degradation it recovered 95–97% of the words and 92–97% of the numbers. On heavy scans it got 48% of the words and 40% of the numbers.
 
 When Docling's `ocr_score` is below 0.95, the page really is bad 94% of the time, but that flag catches only a third of the bad pages. A postal code in small print was read wrong with a score of 1.0.
 
@@ -24,7 +24,7 @@ When Docling's `ocr_score` is below 0.95, the page really is bad 94% of the time
 
 - **The jurisdiction clause.** The reviewer called "Foro de CURITIBA" a violation 3 times out of 3, at 0.95 confidence. The contracting office *is* in Curitiba, but the agent never read the preamble. Telling it to read the preamble did nothing. Returning the preamble inside the tool's output fixed it.
 - **A search that couldn't conjugate.** The agent searched for "vinculação", the contract said "vincula-se", and my search matched whole words only. It concluded the clause was missing, ten times. The fix was matching word stems.
-- **Arithmetic.** The model quoted "12 (doze) meses" and then said it exceeds "5 anos". Now it only extracts the values, and ten lines of Python apply the legal limits.
+- **Arithmetic.** The model quoted "12 (doze) meses" and then said it exceeds "5 anos". Now it only extracts the values, and a few lines of Python apply the legal limits.
 
 Together these took accuracy from **74% to 95%** and false alarms **from 34 to 6**, and all the legal-but-suspicious cases became right.
 
@@ -36,8 +36,8 @@ The model's own confidence was useless on clean text: almost everything came bac
 |---|---|---|
 | Accuracy, no escalation | 97.5% | **47.5%** |
 | Escalate when samples disagree | 11% escalated, 99.3% right on the rest | catches only 30% of errors |
-| Escalate when OCR score < 0.9 | nothing to catch | catches 82% of errors |
-| All checks combined | 18% escalated, 99.2% right | 93% escalated, 100% right on the rest |
+| Escalate when OCR score < 0.9 | escalates nothing | catches 82% of errors |
+| Any of the four checks | 18% escalated, 99.2% right | 93% escalated, 100% right on the rest |
 
 On heavy scans the reviewer reports unreadable clauses as "missing", *every time*, so its samples agree and disagreement can't catch it. OCR quality can. On clean text it's the other way around. **Combine them.**
 

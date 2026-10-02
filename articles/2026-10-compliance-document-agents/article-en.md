@@ -2,7 +2,7 @@
 title: "Compliance agents that know when they're unsure"
 subtitle: "Reviewing Brazilian public contracts with Docling, MCP and Pydantic AI, and measuring when the agent should hand the case to a human"
 platforms: Medium, dev.to, Hashnode
-status: DRAFT — replace every [[RESULT: …]] before publishing
+status: DRAFT — fill in the Part 4 result before publishing
 repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2026-10-compliance-document-agents
 ---
 
@@ -27,7 +27,7 @@ PNCP contract PDF ─► Docling (+ Apple Vision OCR, pt-BR) ─► sections, pa
 ```
 
 - **Eight rules** from Lei 14.133, each tied to an article I checked against the official text: the object clause, binding to the tender notice (*vinculação*), price and payment, the price-adjustment index (art. 92 § 3º), the budget allocation, the jurisdiction (*foro*) clause (art. 92 § 1º), the guarantee limit (art. 98) and the contract-term limits (arts. 106–107).
-- **Ground truth:** 60 synthetic contracts in the usual structure, with 0–2 **planted violations** each. They also include **hard compliant cases**: legal variants that look suspicious, such as an 8% guarantee *with* the justification art. 98 requires, a 60-month term, or a *foro* written as "Comarca de <seat>".
+- **Ground truth:** 20 synthetic contracts in the usual structure, with 0–2 **planted violations** each (23 in total). They also include **hard compliant cases**: legal variants that look suspicious, such as an 8% guarantee *with* the justification art. 98 requires, a 60-month term, or a *foro* written as "Comarca de <seat>".
 - **Model:** Qwen3-8B 4-bit on a local mlx-lm server. It costs nothing per document, which matters when every experiment is hundreds of agent runs.
 
 ## Part 1: how good is OCR on contracts, and does Docling know when it's wrong?
@@ -60,7 +60,7 @@ The reviewer is a Pydantic AI agent with **one run per rule**. That's easier for
 - ***Foro.*** On a Receita Federal contract ("É eleito o Foro de CURITIBA"), the reviewer said *violation* **3 times out of 3, at 0.95 confidence**. The contracting office is in Curitiba, so the clause is compliant. The agent never looked at the preamble, where the parties are named. Telling it to read the preamble changed nothing. Returning the preamble inside `parse_document`'s output fixed it: **3 of 3 correct**.
 - ***Vinculação.*** In the first baseline this rule produced **10 false alarms in 20 contracts**. The agent searched for "vinculação", my search tool required exact words, and the contract said "vincula-se". The search returned nothing, and the agent concluded the clause was missing. The fix was matching on word stems.
 
-**Let the model extract and code decide.** On the guarantee and term rules the 8B model quoted "12 (doze) meses" correctly and then said it exceeds "5 anos". Those two rules had 23 false alarms in 40 findings. Now the model only **extracts** values (percentage, justification quote, months, whether the service is continuous) and ten lines of Python apply the law. It's the same split as in my previous article: the model reads, rules decide.
+**Let the model extract and code decide.** On the guarantee and term rules the 8B model quoted "12 (doze) meses" correctly and then said it exceeds "5 anos". Those two rules had 23 false alarms in 40 findings. Now the model only **extracts** values (percentage, justification quote, months, whether the service is continuous) and a few lines of Python apply the law. It's the same split as in my previous article: the model reads, rules decide.
 
 Together, the two fixes took accuracy from **74.4% to 95.0%** and cut false alarms **from 34 to 6**. All 11 hard compliant cases are now right, against 4 before. Recall dipped slightly, from 22 to 21 of 23 violations found.
 
@@ -89,7 +89,7 @@ I ran every contract and rule 3 times and took the majority, on the text PDFs an
 | OCR score < 0.9 | 0% | 97.5% | 0% | 77% | 59.5% | **82%** |
 | self-confidence < 0.9 | 7% | 97.3% | 0% | 77% | 73.0% | 88% |
 | auditor disputes | 13% | 99.3% | 75% | 51% | 66.7% | 69% |
-| any of the above | 18% | 99.2% | 75% | 93% | **100%** | **100%** |
+| disagree, quote, OCR or auditor | 18% | 99.2% | 75% | 93% | **100%** | **100%** |
 
 **On clean text, disagreement is the signal.** It escalates 11% of decisions, catches three quarters of the mistakes, and leaves 99.3% accuracy on the rest.
 

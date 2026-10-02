@@ -8,9 +8,9 @@ Review of Brazilian public-procurement contracts (PNCP, Lei 14.133) with Docling
 |---|---|
 | Article (EN) | [article-en.md](article-en.md) |
 | Article (PT-BR) | [article-pt-br.md](article-pt-br.md) |
+| Article (Medium, short EN) | [article-en-medium.md](article-en-medium.md) |
 | LinkedIn | [EN](linkedin-en.md) · [PT-BR](linkedin-pt-br.md) |
 | Code | [code/](code/) |
-| Plan | [PLAN.md](PLAN.md) |
 | Plan | [PLAN.md](PLAN.md) |
 
 ## Published

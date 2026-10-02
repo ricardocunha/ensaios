@@ -2,7 +2,7 @@
 title: "Agentes de compliance que sabem quando não têm certeza"
 subtitle: "Revisando contratos públicos brasileiros com Docling, MCP e Pydantic AI, e medindo quando o agente deve passar o caso para uma pessoa"
 platforms: Medium, LinkedIn Articles, TabNews, dev.to (pt)
-status: RASCUNHO — substituir todos os [[RESULT: …]] antes de publicar
+status: RASCUNHO — preencher o resultado da Parte 4 antes de publicar
 repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2026-10-compliance-document-agents
 ---
 
@@ -27,7 +27,7 @@ PDF do contrato (PNCP) ─► Docling (+ OCR Apple Vision, pt-BR) ─► seçõe
 ```
 
 - **Oito regras** da Lei 14.133, cada uma ligada a um artigo que conferi no texto oficial: cláusula de objeto, vinculação ao edital, preço e pagamento, índice de reajuste (art. 92, § 3º), dotação orçamentária, foro (art. 92, § 1º), limite da garantia (art. 98) e limites de vigência (arts. 106 e 107).
-- **Gabarito:** 60 contratos sintéticos na estrutura usual, com 0 a 2 **violações plantadas** cada. Também há **casos difíceis em conformidade**: variantes legais que parecem suspeitas, como garantia de 8% *com* a justificativa que o art. 98 exige, vigência de 60 meses ou um foro escrito como "Comarca de <sede>".
+- **Gabarito:** 20 contratos sintéticos na estrutura usual, com 0 a 2 **violações plantadas** cada (23 no total). Também há **casos difíceis em conformidade**: variantes legais que parecem suspeitas, como garantia de 8% *com* a justificativa que o art. 98 exige, vigência de 60 meses ou um foro escrito como "Comarca de <sede>".
 - **Modelo:** Qwen3-8B 4-bit em um servidor mlx-lm local. Custo zero por documento, o que importa quando cada experimento são centenas de execuções do agente.
 
 ## Parte 1: o OCR é bom em contratos, e o Docling sabe quando erra?
@@ -43,7 +43,7 @@ Digitalizações de verdade são mais raras no PNCP do que eu esperava. Na minha
 
 Meço os **números** separadamente porque, em um contrato, um número errado (valor, percentual, prazo) pesa mais que uma palavra errada.
 
-**A própria confiança do Docling encontra as páginas ruins?** Quando o `ocr_score` fica abaixo de 0,95, a página é mesmo ruim em 94% dos casos. Mas esse alerta pega **só 34% das páginas ruins**; o resto parece bom para o Docling. Em páginas limpas, por exemplo, o CEP no rodapé do papel timbrado saiu 46304-053 em vez de 88304-053, com `ocr_score` = 1,0. Nota baixa é um sinal útil; nota alta não garante nada.
+**A própria confiança do Docling encontra as páginas ruins?** Quando o `ocr_score` fica abaixo de 0,95, a página é mesmo ruim em 94% dos casos. Mas esse alerta pega **só 34% das páginas ruins**; o resto parece bom para o Docling. Em páginas limpas, por exemplo, o CEP em letra miúda no papel timbrado saiu 46304-053 em vez de 88304-053, com `ocr_score` = 1,0. Nota baixa é um sinal útil; nota alta não garante nada.
 
 **Quatro dos meus primeiros "erros de OCR" eram bugs da minha medição.** Cada um apareceu como um número que não fazia sentido:
 1. O Docling tira a numeração dos parágrafos ("5.3") do texto e a guarda em um campo `marker`. Parecia erro de OCR, e esses números também sumiam do que o agente lia, sendo justamente o que uma constatação precisa citar.
@@ -60,7 +60,7 @@ O revisor é um agente Pydantic AI com **uma execução por regra**. Isso é mai
 - ***Foro.*** Em um contrato da Receita Federal ("É eleito o Foro de CURITIBA"), o revisor disse *violação* **3 vezes em 3, com confiança 0,95**. A unidade contratante fica em Curitiba, então a cláusula está correta. O agente nunca olhou o preâmbulo, onde as partes são qualificadas. Mandar ler o preâmbulo não mudou nada. Devolver o preâmbulo dentro da saída de `parse_document` resolveu: **3 de 3 corretos**.
 - ***Vinculação.*** No primeiro baseline, essa regra gerou **10 falsos alarmes em 20 contratos**. O agente buscava "vinculação", minha ferramenta de busca exigia palavras exatas e o contrato dizia "vincula-se". A busca voltava vazia e o agente concluía que a cláusula não existia. A correção foi casar pelo radical das palavras.
 
-**O modelo extrai, o código decide.** Nas regras de garantia e de vigência, o modelo de 8B citava "12 (doze) meses" corretamente e depois dizia que isso passava de "5 anos". Essas duas regras somaram 23 falsos alarmes em 40 constatações. Agora o modelo só **extrai** os valores (percentual, citação da justificativa, meses, se o serviço é contínuo) e dez linhas de Python aplicam a lei. É a mesma divisão do meu artigo anterior: o modelo lê, as regras decidem.
+**O modelo extrai, o código decide.** Nas regras de garantia e de vigência, o modelo de 8B citava "12 (doze) meses" corretamente e depois dizia que isso passava de "5 anos". Essas duas regras somaram 23 falsos alarmes em 40 constatações. Agora o modelo só **extrai** os valores (percentual, citação da justificativa, meses, se o serviço é contínuo) e algumas linhas de Python aplicam a lei. É a mesma divisão do meu artigo anterior: o modelo lê, as regras decidem.
 
 Juntas, as duas correções levaram o acerto de **74,4% para 95,0%** e os falsos alarmes **de 34 para 6**. Os 11 casos difíceis em conformidade agora estão todos certos, contra 4 antes. O recall caiu um pouco: de 22 para 21 das 23 violações encontradas.
 
@@ -89,7 +89,7 @@ Rodei cada contrato e regra 3 vezes e fiquei com a maioria, nos PDFs com texto e
 | nota de OCR < 0,9 | 0% | 97,5% | 0% | 77% | 59,5% | **82%** |
 | confiança declarada < 0,9 | 7% | 97,3% | 0% | 77% | 73,0% | 88% |
 | auditor contesta | 13% | 99,3% | 75% | 51% | 66,7% | 69% |
-| qualquer um dos acima | 18% | 99,2% | 75% | 93% | **100%** | **100%** |
+| discordância, citação, OCR ou auditor | 18% | 99,2% | 75% | 93% | **100%** | **100%** |
 
 **Em texto limpo, o sinal é a discordância.** Ela escala 11% das decisões, pega três quartos dos erros e deixa 99,3% de acerto no restante.
 
