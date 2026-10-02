@@ -6,7 +6,7 @@ Measured on 20 synthetic contracts × 8 rules (docs/RESULTS.md § 4): on text PD
 
 ## Considered options
 
-- **Self-reported confidence**: no information on clean text (94% of findings ≥ 0.95); it does drop on garbled scans, so it is kept only as part of the combined rule, never alone.
+- **Self-reported confidence**: left out of the rule. It carries no information on clean text (94% of findings ≥ 0.95). On heavy scans it does drop, and alone it would catch 88% of errors, but the combined rule already catches 100% there without it.
 - **Disagreement only**: misses systematic errors.
 - **Letting the auditor overturn verdicts**: rejected; it disputed a third of the true violations with real but irrelevant quotes. A dispute escalates, never overturns.
 

@@ -16,5 +16,5 @@ The contracts are public by law, but they name individual suppliers (sole propri
 
 ## Observations about PNCP
 
-- In a sample of 18 PDFs with no text layer, **6 were blank pages** (broken or empty uploads). `pncp.py` checks the rendered pages for ink before counting a PDF as a scan.
+- In the first sample (18 PDFs), 8 had no text layer, and **6 of those 8 were blank pages** (broken or empty uploads). `pncp.py` checks the rendered pages for ink before counting a PDF as a scan.
 - Real scans are rare. Most contracts are born-digital PDFs, so the OCR benchmark uses degraded renders of text-layer PDFs, plus the real scans that turned up as a sanity check.
