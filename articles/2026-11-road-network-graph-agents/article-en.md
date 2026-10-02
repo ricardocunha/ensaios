@@ -82,7 +82,7 @@ Value is concentrated: 5% of the budget captures over half of it, because betwee
 
 There's a second deterministic bar. The plan's **15 most critical sections** are "major works" that close the road while they run. They have to go into the quarter's 3 months, at most 5 per month. A **violation** is a month whose works, closed together, cut hospital (10 min) or school (5 min) access that no single work cuts on its own. Two deterministic schedules set the bar:
 
-- **Naive** (priority order): 1 violation at every budget, from the same pair each time: Anel section S00102 and Avenida Presidente Antônio Carlos section S01395 in the same month.
+- **Naive** (priority order): 1 violation at every budget, from the same pair each time: Anel section S00102 and Avenida Presidente Antônio Carlos section S01395 in the same month (at 20%, two Waldir Soeiro Emrich sections conflict in that month too).
 - **Heuristic** (pairwise conflict check, greedy fill, swaps, no LLM): **0 violations**, and a worst month 17–27% lower than the naive one.
 
 ## The agents
@@ -99,7 +99,7 @@ There's a second deterministic bar. The plan's **15 most critical sections** are
 - every number the closure agent states per month, recomputed from scratch;
 - every number in the prose, looked up in a **ledger** of all the numbers the tools returned and the prompts showed. The agents' own text never enters the ledger, so a claim can't ground itself.
 
-I ran the pipeline **3 times at each of 3 budgets** (5%, 10%, 20%) with the same inputs: 9 pipelines, 37 minutes in total on the shared laptop server.
+I ran the pipeline **3 times at each of 3 budgets** (5%, 10%, 20%) with the same inputs: 9 pipelines, 37 minutes in total on the shared local model server.
 
 ## Results
 

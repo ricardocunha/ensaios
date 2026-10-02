@@ -82,7 +82,7 @@ O valor é concentrado: 5% do orçamento captura mais da metade dele, porque a b
 
 Há uma segunda régua determinística. Os **15 trechos mais críticos** do plano são "obras grandes", que fecham a via enquanto duram. Elas precisam caber nos 3 meses do trimestre, no máximo 5 por mês. Uma **violação** é um mês cujas obras, fechadas juntas, cortam acesso a hospital (10 min) ou escola (5 min) que nenhuma obra corta sozinha. Duas agendas determinísticas definem a régua:
 
-- **Ingênua** (ordem de prioridade): 1 violação em todos os orçamentos, sempre do mesmo par: o trecho S00102 do Anel e o trecho S01395 da Avenida Presidente Antônio Carlos no mesmo mês.
+- **Ingênua** (ordem de prioridade): 1 violação em todos os orçamentos, sempre do mesmo par: o trecho S00102 do Anel e o trecho S01395 da Avenida Presidente Antônio Carlos no mesmo mês (com 20%, dois trechos da Waldir Soeiro Emrich também entram em conflito nesse mês).
 - **Heurística** (checagem de conflito par a par, preenchimento guloso, trocas, sem LLM): **0 violações**, e o pior mês de 17% a 27% abaixo do da ingênua.
 
 ## Os agentes
@@ -99,7 +99,7 @@ Há uma segunda régua determinística. Os **15 trechos mais críticos** do plan
 - cada número que o agente de interdições declara por mês, recalculado do zero;
 - cada número do texto, procurado num **livro-razão** com todos os números que as ferramentas devolveram e os prompts mostraram. O texto dos próprios agentes nunca entra no livro-razão, então uma afirmação não consegue se autojustificar.
 
-Rodei o pipeline **3 vezes em cada um de 3 orçamentos** (5%, 10%, 20%) com as mesmas entradas: 9 pipelines, 37 minutos no total no servidor compartilhado do notebook.
+Rodei o pipeline **3 vezes em cada um de 3 orçamentos** (5%, 10%, 20%) com as mesmas entradas: 9 pipelines, 37 minutos no total no servidor local de modelo, compartilhado com outros trabalhos.
 
 ## Resultados
 

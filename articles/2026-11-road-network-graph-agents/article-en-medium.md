@@ -88,7 +88,7 @@ Its worst month is **28.8% worse than the heuristic's**.
 
 ### What a number audit can vouch for
 
-The strict audit found **227 of 253** prose numbers in the ledger (89.7%). Of the 26 misses, 20 were correct values in scientific notation that my audit misread (an audit bug) and 3 were correct derived numbers like 100 − 51.04. With those credited: **250 of 253 (98.8%)**, and the coordinator goes to **108/108**. The three unsupported numbers are all the maintenance agent's claims about its own effect, such as a "3.77-point improvement" where its own tool call had shown a 4.2-point loss.
+The strict audit found **227 of 253** prose numbers in the ledger (89.7%). Of the 26 misses, 20 were correct values in scientific notation that my audit misread (an audit bug) and 3 were correct derived numbers like 100 − 51.04. With those credited: **250 of 253 (98.8%)**, and the coordinator goes to **108/108**. The three unsupported numbers are all the maintenance agent's claims about its own effect, such as a claimed 3.77-point improvement where its own tool call had shown a 4.2-point loss.
 
 Reading the texts showed the limit. The coordinator wrote that a plan "gave up 1.08%" of requests; it *gained* 1.08 points. The lookup credited it, because 1.08 is in the ledger. "Every number is traceable" is reachable with an 8B model. "Every sentence is right" is a different property.
 
@@ -99,7 +99,7 @@ Reading the texts showed the limit. The coordinator wrote that a plan "gave up 1
 | Value captured | 54.43 / 70.24 / 83.98% | 93.8–100% of the solver's |
 | Requests covered | 5.36 / 10.89 / 21.65% | −0.04 to +1.08 points |
 | Schedule completed | 9/9 | 1/9 |
-| Worst-month delay | 51,731.9 s | 66,627.6 s |
+| Worst-month delay (the one comparable case) | 51,731.9 s | 66,627.6 s |
 | Same answer on rerun | yes | deviation overlap 0.0–0.87 |
 
 On this problem the LLM adds **explanation and small shifts in request coverage, not better plans**. A plan with its trade-offs written out is something a city engineer can read and argue with. But the decision belongs to the solver.
