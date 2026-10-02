@@ -13,6 +13,7 @@ make baseline   # Isolation Forest sanity check -> runs/baseline_*.json
 make detect     # milestone 2: walk-forward detectors, incidents, episodes -> runs/m2_*
 make replay-dry # milestone 3: replay harness with an offline rule stand-in (no server)
 make replay     # milestone 3: 77 episodes x 3 memory arms on a local OpenAI-compatible server -> runs/m3_*
+make replay-v2  # milestone 3, v2 prompt (track record, costs, justification), same 3 arms -> runs/m3v2_*
 ```
 
 The agent talks to any OpenAI-compatible server: `AGENT_BASE_URL` (default `http://localhost:8088/v1`), `AGENT_MODEL` (default `default_model`). We used mlx-lm serving Qwen3-8B 4-bit, with thinking off.

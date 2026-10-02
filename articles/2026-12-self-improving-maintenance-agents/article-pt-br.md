@@ -49,7 +49,7 @@ O livro tem 28 linhas de falha: grupo hidráulico 8, gerador 7, rolamento do ger
 
 **Correção 2: um vazamento nos rótulos.** O Farm A tem um `status_type_id` em cada linha. Parece um sinal de estado de operação. Não é: o código 4 marca exatamente os 14 dias antes de cada registro do livro, e o código 3 os 3 dias depois. Um detector que o usasse como variável "previria" todas as falhas. Não uso em lugar nenhum.
 
-O SCADA ainda me contou mais uma coisa: **a data do livro marca uma parada, não o início da degradação.** Em 12 das 28 datas a turbina desarma ali mesmo; outras 8 caem no fim de uma parada que já estava em curso. Por isso toda janela de detecção termina no dia anterior à data registrada.
+O SCADA ainda me contou mais uma coisa: **a data do livro marca uma parada, não o início da degradação.** Em 12 das 28 datas a turbina desarma ali mesmo; outras 8 caem durante uma parada que já estava em curso, em geral perto do fim dela. Por isso toda janela de detecção termina no dia anterior à data registrada.
 
 As linhas do livro foram agrupadas em **21 incidentes** (mesmo componente em até 45 dias, ou qualquer componente em até 7 dias). Esse é todo o gabarito: 21 incidentes em 5 turbinas.
 
@@ -59,7 +59,7 @@ Um Isolation Forest ingênuo sobre as médias brutas dos sensores, treinado nos 
 
 Duas coisas resolveram. **Retreino progressivo** a cada 30 dias, com o limiar definido nos últimos 21 dias ou mais que o modelo ainda não viu (um teste prova que a nota de um dia não muda quando algo depois dele muda). E **resíduos de comportamento normal**: um modelo de gradient boosting por temperatura prevê quanto ela sobe acima da ambiente a partir de vento, potência, rotação e carga recente, e o detector avalia o que sobra. Isso elimina principalmente os alarmes do parque inteiro, causados por clima e rede: as datas com 3 ou mais das 5 turbinas alarmando caíram de 12-13 para 3-4.
 
-Com um orçamento equivalente de no máximo um dia de alarme saudável por turbina-mês, o Isolation Forest nos resíduos pegou **7 de 18** incidentes avaliáveis dentro de 14 dias (nas três sementes), contra uma taxa de 0,18-0,20 nas janelas tranquilas. Rolamentos do gerador foram detectados (4 de 5); incidentes hidráulicos (0-2 de 7) e da caixa multiplicadora (1 de 4), em geral, não.
+Com um orçamento equivalente de no máximo um dia de alarme saudável por turbina-mês, o Isolation Forest nos resíduos pegou **7 de 18** incidentes avaliáveis dentro de 14 dias (nas três sementes), contra uma taxa de 0,18-0,20 nas janelas tranquilas. Rolamentos do gerador foram detectados (4 de 5); incidentes hidráulicos (1 de 7; 0-2 em todos os detectores testados) e da caixa multiplicadora (1 de 4), em geral, não.
 
 O detector consegue dizer *tem algo errado*. É fraco em dizer *o quê*: o grupo de resíduo mais alto coincidiu com o componente do livro em **3 de 22** episódios pré-incidente. Essa lacuna é o motivo de existir o agente.
 
@@ -67,7 +67,7 @@ O detector gerou **77 episódios**: 22 começam até 30 dias antes de um inciden
 
 ## O agente, a memória e o gate
 
-**O momento da decisão é o fim do primeiro dia de alarme.** A tabela de episódios da detecção resumia episódios inteiros, de até 18 dias. Isso é informação do futuro. Então a visão do agente é reconstruída só a partir do primeiro dia, e as três ferramentas dele (série de resíduos de qualquer grupo de componentes, contexto como as notas das outras turbinas, e o livro de manutenção) devolvem apenas dados anteriores a esse momento. Vista assim, o grupo mais alto do detector acerta em **1 de 22** episódios pré-incidente, não em 3.
+**O momento da decisão é o fim do primeiro dia de alarme.** A tabela de episódios da detecção resumia episódios inteiros, de até 18 dias. Isso é informação do futuro. Então a visão do agente é reconstruída só a partir do primeiro dia, e as três ferramentas dele (série de resíduos de qualquer grupo de componentes, contexto como as notas das outras turbinas, e o livro de manutenção) devolvem apenas dados anteriores a esse momento. Por esse critério, o grupo mais alto do detector acerta em **1 de 22** episódios pré-incidente, não em 3.
 
 **Memória.** Um registro por episódio diagnosticado: o resumo e o vetor de resíduos do primeiro dia, o diagnóstico do agente e o desfecho. O desfecho vem só do livro de manutenção: a primeira linha do livro naquela turbina em até 30 dias, conhecida na data dela; senão, "nenhuma falha em 30 dias", conhecido no 31º dia. Até lá, a memória diz "desfecho ainda desconhecido". A memória nunca lê os rótulos usados na avaliação.
 
@@ -75,7 +75,7 @@ O detector gerou **77 episódios**: 22 começam até 30 dias antes de um inciden
 
 **O gate** foi fixado antes de qualquer execução do modelo: desfecho conhecido, similaridade ≥ 0,5, no máximo 365 dias de idade, mesma turbina ou mesmo grupo de componentes no topo, no máximo 3. O braço "sem gate" pega os 3 episódios passados mais parecidos, sem filtro.
 
-**Sem olhar o futuro, com teste.** Um teste reproduz um parque sintético três vezes: como está, com o futuro alterado e cortado numa data; todo prompt, resultado de ferramenta, decisão do gate e diagnóstico antes dessa data precisa ser idêntico.
+**Sem olhar o futuro, com teste.** Um teste reproduz um parque sintético três vezes: como está, com o futuro alterado, e cortado numa data. Todo prompt, resultado de ferramenta, decisão do gate e diagnóstico antes dessa data precisa ser idêntico.
 
 **O que o gate faz, antes de rodar qualquer modelo.** Os prompts sem gate carregam 2,92 memórias em média; os com gate, 0,97. E este é o número que enquadrou todo o resto: em só **4** (sem gate) e **1** (com gate) dos 22 episódios pré-incidente alguma memória mostrada registra uma falha passada do componente que depois falhou. Neste parque, a memória raramente consegue entregar a resposta ao agente. Se ajuda, tem de ajudar sobretudo pelo outro lado: mostrando que alarmes parecidos não deram em nada.
 
@@ -94,7 +94,7 @@ O agente respondeu **"inspecionar" em todos os 77 episódios, nos três braços*
 
 A memória mudou, sim, o componente em 9 episódios, sempre na mesma direção: para `generator_bearing`. Rolamentos do gerador dominam as falhas que a memória mostra (44 das 70 memórias de falha nos prompts sem gate), e o agente copiou. Duas vezes isso atingiu um episódio avaliado:
 
-- **Episódio 45 (T09, dez/2016), certo por um motivo fraco.** O braço sem gate trocou gerador por rolamento do gerador, o que estava certo. As três memórias dele eram episódios da T07 de abril de 2016, com 245 a 274 dias, similaridade 0,34-0,45, todos seguidos de falha de rolamento na T07. O gate teria rejeitado as três.
+- **Episódio 45 (T09, dez/2016), certo por um motivo fraco.** O braço sem gate trocou gerador por rolamento do gerador, o que estava certo. As três memórias dele eram episódios da T07 de abril de 2016, de 245 a 274 dias antes, similaridade 0,34-0,45, todos seguidos de falha de rolamento na T07. O gate teria rejeitado as três.
 - **Episódio 19 (T07, jun/2016), a mesma atração, errada.** Uma memória de falha de rolamento na T09 (similaridade 0,77) levou o braço sem gate de gerador para rolamento do gerador. O incidente foi no transformador.
 
 A lição da rodada 1 foi sobre o agente, não sobre a memória: sem custo para uma inspeção e sem nada que pese "cinco alarmes parecidos não deram em nada" contra "um deu em falha", inspecionar é sempre a resposta que parece segura. Memória não muda uma decisão que nunca se mexe.
@@ -120,7 +120,7 @@ Também rodei o braço sem memória com o prompt novo, para separar o efeito do 
 
 **O prompt sozinho não mudou nada.** Com custos nas instruções e sem memória, o agente ainda inspecionou os 77 episódios e ainda indicou o grupo mais alto do detector em todos.
 
-**A memória mudou uma decisão em 231.** As curvas mensais de aprendizado são linhas retas, uma em cima da outra: o "adequado" acumulado é igual ao número de episódios pré-incidente vistos até ali, em todos os braços e nas duas versões, porque o agente inspecionou todos eles e todos os falsos alarmes também.
+**A memória mudou uma decisão em 231.** As curvas mensais de aprendizado ficam uma em cima da outra: o "adequado" acumulado é igual ao número de episódios pré-incidente vistos até ali, em todos os braços e nas duas versões, porque o agente inspecionou todos eles e todos os falsos alarmes também.
 
 O interessante é *como* o agente usou o histórico. Quatro episódios mostram isso:
 
@@ -140,7 +140,7 @@ Nenhuma das diferenças acima é um resultado estatístico. São 22 episódios p
 ## O que eu diria a um time construindo isso
 
 1. **Verifique se a decisão chega a mudar antes de pôr memória.** Minha primeira rodada parecia um experimento sobre memória. Era, na verdade, uma medição do comportamento padrão do modelo. Se o braço sem memória dá a mesma resposta para todos os casos, nenhum desenho de memória consegue mostrar uma curva de aprendizado.
-2. **Conte a taxa base antes de discutir custos.** Neste parque, cerca de um terço dos alarmes do detector (27 de 77) precedeu uma falha no livro. Com uma proporção de custo de 1 : 10, isso torna "inspecionar" racional. Uma memória que ensina "a maioria dos alarmes é ruído" só ajuda onde a maioria dos alarmes *é* ruído, ou seja, com um detector mais ruidoso, ou num parque com um detector mais barato e bem calibrado.
+2. **Conte a taxa base antes de discutir custos.** Neste parque, cerca de um terço dos alarmes do detector (27 de 77) precedeu uma falha no livro. Com uma proporção de custo presumida de 1 : 10, isso torna "inspecionar" racional. Uma memória que ensina "a maioria dos alarmes é ruído" só ajuda onde a maioria dos alarmes *é* ruído, ou seja, com um detector mais ruidoso que este.
 3. **Justificativa obrigatória é um campo, não uma checagem.** O agente preencheu sempre, uma vez com números que contradiziam a afirmação. Se o motivo importa, confira em código (compare as notas, os resíduos), do mesmo jeito que você conferiria uma citação.
 4. **O gate deixou a memória mais relevante e o prompt mais curto, não as respostas melhores.** Ele reduziu as memórias por prompt de 2,92 para 0,97 e eliminou os casos de baixa similaridade. Neste parque, foram justamente esses casos de baixa similaridade que produziram o único acerto de componente causado pela memória.
 5. **Peça os dados que tornariam isso testável.** Para os operadores do Nordeste, as peças são SCADA a cada 10 minutos e um registro de falhas com componente, data e observação, mantido por turbina durante anos. Com algumas centenas de incidentes em vez de 21, o mesmo arcabouço, os testes contra olhar o futuro e os três braços dariam uma resposta em vez de um estudo de caso. Não encontrei nenhuma fonte brasileira, órgão público ou operador, que publique esses dados.

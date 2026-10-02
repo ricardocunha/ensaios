@@ -88,7 +88,7 @@ None of this is a statistical result. 22 pre-incident episodes covering 9 incide
 ## What I'd tell a team
 
 1. **Check whether the decision ever moves before you add memory.** If the no-memory arm gives the same answer to everything, no memory design can show a learning curve.
-2. **Count the base rate before arguing about costs.** At a third of alarms preceding a failure and a 1 : 10 cost ratio, "inspect" is rational. Memory that teaches "most alarms are noise" helps only where they *are* noise.
+2. **Count the base rate before arguing about costs.** At a third of alarms preceding a failure and an assumed 1 : 10 cost ratio, "inspect" is rational. Memory that teaches "most alarms are noise" helps only where they *are* noise.
 3. **A required justification is a field, not a check.** Verify the reason in code, like you'd verify a quote.
 4. **Gating made memory relevant and the prompt shorter, not the answers better.** Memories per prompt fell from 2.92 to 0.97; accuracy didn't improve.
 5. **Ask for the data that would make this testable.** For Northeast operators: 10-minute SCADA plus a per-turbine failure log with component, timestamp and remark, kept for years. With a few hundred incidents instead of 21, the same harness would give an answer instead of a case study.

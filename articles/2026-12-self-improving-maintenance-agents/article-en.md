@@ -49,7 +49,7 @@ The logbook has 28 failure rows: hydraulic group 8, generator 7, generator beari
 
 **Fix 2: a leak in the labels.** Farm A has a per-row `status_type_id`. It looks like an operating-state signal. It isn't: code 4 marks exactly the 14 days before each logbook entry, and code 3 the 3 days after. A detector that used it as a feature would "predict" every failure. I use it nowhere.
 
-One more thing the SCADA told me: **the logbook timestamp marks a stop, not the start of degradation.** At 12 of the 28 timestamps the turbine trips right there; 8 more fall at the end of an existing stop. So every detection window ends the day before the logged date.
+One more thing the SCADA told me: **the logbook timestamp marks a stop, not the start of degradation.** At 12 of the 28 timestamps the turbine trips right there; 8 more fall during a stop that had already begun, usually near its end. So every detection window ends the day before the logged date.
 
 Logbook rows were merged into **21 incidents** (same component within 45 days, or any component within 7 days). That is the whole ground truth: 21 incidents on 5 turbines.
 
@@ -59,7 +59,7 @@ A naive Isolation Forest on raw sensor averages, trained on the first 60 days, l
 
 Two things fixed it. **Walk-forward retraining** every 30 days, with the threshold set on the last 21+ days the model hasn't seen (a test proves a day's score doesn't change when anything after it changes). And **normal-behaviour residuals**: one gradient-boosted model per temperature predicts its rise over ambient from wind, power, rotor speed and recent load, and the detector scores what's left. That mostly removes farm-wide weather and grid alarms: dates with 3+ of 5 turbines alarming fell from 12-13 to 3-4.
 
-At a matched budget of at most one healthy alarm-day per turbine-month, the Isolation Forest on residuals caught **7 of 18** evaluable incidents within 14 days (all three seeds), against a quiet-window rate of 0.18-0.20. Generator bearings were caught (4 of 5); hydraulic (0-2 of 7) and gearbox (1 of 4) incidents mostly weren't.
+At a matched budget of at most one healthy alarm-day per turbine-month, the Isolation Forest on residuals caught **7 of 18** evaluable incidents within 14 days (all three seeds), against a quiet-window rate of 0.18-0.20. Generator bearings were caught (4 of 5); hydraulic (1 of 7; 0-2 for every detector tried) and gearbox (1 of 4) incidents mostly weren't.
 
 The detector can say *something is off*. It is poor at saying *what*: the top residual group matched the logbook component in **3 of 22** pre-incident episodes. That gap is what the agent is for.
 
@@ -75,7 +75,7 @@ The detector produced **77 episodes**: 22 start within 30 days before an inciden
 
 **The gate** was fixed before any model run: outcome known, similarity ≥ 0.5, at most 365 days old, same turbine or same top component group, at most 3. The "ungated" arm takes the 3 most similar past episodes with no filter.
 
-**No look-ahead, tested.** A test replays a synthetic farm as is, with the future changed, and cut at a split date; every prompt, tool result, gate decision and diagnosis before the split must be identical.
+**No look-ahead, tested.** A test replays a synthetic farm three times: as is, with the future changed, and cut at a split date. Every prompt, tool result, gate decision and diagnosis before the split must be identical.
 
 **What the gate does, before any model runs.** Ungated prompts carry 2.92 memories on average, gated ones 0.97. And here's the number that framed everything after: in only **4** (ungated) and **1** (gated) of the 22 pre-incident episodes does a shown memory record a past failure of the component that later failed. On this farm, memory can rarely hand the agent the answer. If it helps, it must help mostly from the other direction: by showing that similar alarms led to nothing.
 
@@ -120,7 +120,7 @@ I also ran the no-memory arm with the new prompt, to separate what the prompt di
 
 **The prompt alone changed nothing.** With costs in the instructions and no memory, the agent still inspected all 77 episodes and still named the detector's top group every time.
 
-**Memory changed one decision out of 231.** The per-month learning curves are flat lines on top of each other: cumulative "appropriate" equals the number of pre-incident episodes seen so far, in every arm and both versions, because the agent inspected all of them and all the false alarms too.
+**Memory changed one decision out of 231.** The per-month learning curves lie on top of each other: cumulative "appropriate" equals the number of pre-incident episodes seen so far, in every arm and both versions, because the agent inspected all of them and all the false alarms too.
 
 The interesting part is *how* the agent used the record. Four episodes show it:
 
@@ -140,11 +140,11 @@ None of the differences above is a statistical result. There are 22 pre-incident
 ## What I'd tell a team building this
 
 1. **Check whether the decision ever moves before you add memory.** My first run looked like an experiment on memory. It was really a measurement of the model's default. If an arm without memory gives the same answer to every case, no memory design can show a learning curve.
-2. **Count the base rate before arguing about costs.** On this farm about a third of the detector's alarms (27 of 77) preceded a logbook failure. At a 1 : 10 cost ratio that makes "inspect" rational. Memory that teaches "most alarms are noise" only helps where most alarms *are* noise, which means a noisier detector, or a farm with a cheaper, better-tuned one.
+2. **Count the base rate before arguing about costs.** On this farm about a third of the detector's alarms (27 of 77) preceded a logbook failure. At an assumed 1 : 10 cost ratio that makes "inspect" rational. Memory that teaches "most alarms are noise" only helps where most alarms *are* noise, which means a noisier detector than this one.
 3. **A required justification is a field, not a check.** The agent filled it every time, once with numbers that contradicted the claim. If the reason matters, verify it in code (compare the scores, the residuals), the same way you'd verify a quote.
 4. **Gating made memory relevant and the prompt shorter, not the answers better.** It cut memories per prompt from 2.92 to 0.97 and removed the low-similarity cases. On this farm, those low-similarity cases also produced the only memory-driven component hit.
 5. **Ask for the data that would make this testable.** For operators in Brazil's Northeast, the pieces are SCADA at 10 minutes and a failure log with component, timestamp and remark, kept per turbine for years. With a few hundred incidents instead of 21, the same harness, the no-look-ahead tests and the three arms would give an answer instead of a case study. I found no Brazilian source, public agency or operator, that publishes them.
 
 ---
 
-*Idea from the video "5 AI Agents Projects to Build in 2026: Full AI Architecture + 10X System" (project #5, a self-improving wind-turbine maintenance agent). Data: CARE to Compare Wind Farm A (Zenodo 15846963) and EDP's 2016/2017 failure logbooks, both CC BY-SA 4.0. Code, tests and every number: [github.com/ricardocunha/ensaios › articles/2026-12-self-improving-maintenance-agents](https://github.com/ricardocunha/ensaios/tree/main/articles/2026-12-self-improving-maintenance-agents).*
+*Idea from the video "5 AI Agents Projects to Build in 2026: Full AI Architecture + 10X System" (project #5, a self-improving wind-turbine maintenance agent). Data: CARE to Compare Wind Farm A (Zenodo 15846963) and EDP's 2016/2017 failure logbooks, both CC BY-SA 4.0. Brazil figures: EPE, Balanço Energético Nacional 2025; ONS data via ABEEólica, Boletim Anual 2024. Code, tests and every number: [github.com/ricardocunha/ensaios › articles/2026-12-self-improving-maintenance-agents](https://github.com/ricardocunha/ensaios/tree/main/articles/2026-12-self-improving-maintenance-agents).*

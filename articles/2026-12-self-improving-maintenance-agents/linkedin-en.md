@@ -1,4 +1,4 @@
-<!-- LinkedIn post (EN), ~1,300 characters. -->
+<!-- LinkedIn post (EN), ~1,400 characters. -->
 
 "Self-improving" agents learn from memory. I tested whether that's true on a real wind farm.
 
@@ -12,11 +12,11 @@ What I found:
 
 → A required justification is a field, not a check. Once the agent justified inspecting with "higher" readings that its own numbers showed weren't higher.
 
-→ "Always inspect" wasn't dumb here: 27 of 77 alarms preceded a logged failure. At a 1 : 10 cost ratio, that's near optimal.
+→ "Always inspect" wasn't dumb here: 27 of 77 alarms preceded a logged failure. At an assumed 1 : 10 cost ratio, that's close to optimal.
 
 And the honest part: 21 incidents can't prove memory helps or hurts. This is a case study of the mechanism, not a learning curve.
 
-Wind is 14.1% of Brazil's electricity and 92% of that wind comes from the Northeast, but I found no public Brazilian data with turbine-level failure logs. That's what would make this testable.
+In 2024 wind supplied 14.1% of Brazil's electricity, and the Northeast produced 92% of the country's wind generation, but I found no public Brazilian data with turbine-level failure logs. That's what would make this testable.
 
 Full write-up and code: [[LINK]]
 

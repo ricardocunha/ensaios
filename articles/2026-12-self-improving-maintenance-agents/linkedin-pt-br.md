@@ -1,4 +1,4 @@
-<!-- Post LinkedIn (PT-BR), ~1.300 caracteres. -->
+<!-- Post LinkedIn (PT-BR), ~1.400 caracteres. -->
 
 Agentes "que se aprimoram sozinhos" aprendem com a memória. Testei se isso é verdade num parque eólico real.
 
@@ -12,11 +12,11 @@ O que encontrei:
 
 → Justificativa obrigatória é um campo, não uma checagem. Uma vez justificou a inspeção com leituras "maiores" que, pelos próprios números, não eram.
 
-→ "Sempre inspecionar" não era bobagem: 27 de 77 alarmes vieram antes de uma falha registrada. Com custo de 1 : 10, isso é quase ótimo.
+→ "Sempre inspecionar" não era bobagem: 27 de 77 alarmes vieram antes de uma falha registrada. Com uma premissa de custo de 1 : 10, isso fica perto do ótimo.
 
 E a parte honesta: 21 incidentes não provam que a memória ajuda nem que atrapalha. É um estudo de caso do mecanismo, não uma curva de aprendizado.
 
-A eólica é 14,1% da eletricidade do Brasil, e 92% dela vem do Nordeste, mas não achei dado público brasileiro com falhas por turbina. É isso que tornaria o teste possível.
+Em 2024 a eólica foi 14,1% da eletricidade do Brasil, e o Nordeste produziu 92% da geração eólica do país, mas não achei dado público brasileiro com falhas por turbina. É isso que tornaria o teste possível.
 
 Texto completo e código: [[LINK]]
 
