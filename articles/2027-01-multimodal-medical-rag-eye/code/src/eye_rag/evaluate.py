@@ -45,7 +45,10 @@ def _prompts() -> list[str]:
     return [t.format(c) for c in classes for t in TEMPLATES] + [t.format(NORMAL_DESCRIPTION) for t in TEMPLATES]
 
 
-def run(out_dir: Path = Path("runs"), qdrant_path: Path = QDRANT_PATH) -> dict:
+def compute(qdrant_path: Path = QDRANT_PATH) -> dict:
+    """Everything the M1 baselines need, on every image of the official split: embeddings,
+    labels, neighbours, the val-tuned choices and the test predictions per method.
+    Milestone 2 reuses it to re-score on the deduplicated test split."""
     random.seed(SEED)
     np.random.seed(SEED)
     model = BiomedCLIP()
@@ -101,6 +104,19 @@ def run(out_dir: Path = Path("runs"), qdrant_path: Path = QDRANT_PATH) -> dict:
         "zero_shot_p0.5": zs_test,
         "zero_shot_val_thresholds": zs_cal_test,
     }
+    client.close()
+    return {
+        "model": model, "recs": recs, "vec": vec, "y": y, "frequent": frequent, "present": present,
+        "train_counts": train_counts, "nb": nb, "y_nb": y_nb, "sims": sims, "choice": choice,
+        "methods": methods, "zs": zs, "thr": thr, "t_embed": t_embed, "t_search": t_search,
+    }
+
+
+def run(out_dir: Path = Path("runs"), qdrant_path: Path = QDRANT_PATH) -> dict:
+    c = compute(qdrant_path)
+    model, recs, y, frequent, present = c["model"], c["recs"], c["y"], c["frequent"], c["present"]
+    train_counts, nb, y_nb, choice, methods, thr = c["train_counts"], c["nb"], c["y_nb"], c["choice"], c["methods"], c["thr"]
+    t_embed, t_search = c["t_embed"], c["t_search"]
     yt = y["test"]
     f1s = {m: f1_per_label(yt, p) for m, p in methods.items()}
     summary = {
@@ -153,7 +169,6 @@ def run(out_dir: Path = Path("runs"), qdrant_path: Path = QDRANT_PATH) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "m1_baselines.json").write_text(json.dumps(result, indent=2))
     (out_dir / "m1_baselines.md").write_text(to_markdown(result, list(methods)))
-    client.close()
     return result
 
 

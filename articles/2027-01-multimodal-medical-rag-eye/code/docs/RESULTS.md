@@ -72,3 +72,74 @@ Methods:
 - **Caveat on kNN:** at least two test images have a near-identical training photo of the same eye with a *different* label (DATA.md). Retrieval can match the eye rather than the disease, and the labels themselves disagree in places.
 
 What this sets up for Milestone 2: the VLM + retrieval system has to beat **0.339** (frequent macro-F1) and **0.931** (`Disease_Risk` F1) on this split, and zero-shot VLM has to beat 0.141 to be worth its cost.
+
+## 2. Milestone 2 (2026-10-02)
+
+Same setup as section 1 (official split, index = 1,920 training images, choices on validation). New: a same-eye audit and an exclusion list, a hybrid Qdrant index, and a local vision-language model.
+
+### 2.1 Same-eye audit and the "deduplicated" test split (`make dedup`, `make m2-baselines`)
+
+How the audit works and how its thresholds were set: [DATA.md, "Duplicate audit"](DATA.md#duplicate-audit-milestone-2-2026-10-02). In short: every one of the 5.1 M image pairs was checked with a geometric match of the retina's vessel pattern (SIFT + RANSAC); 154 pairs among 263 images show the same eye, 70 of them across splits, and 83 of the 154 pairs (54 %) carry different label sets. **31 test images** (and 28 validation images) have a same-eye image in an earlier split; they are listed in `docs/exclusions.json` and left out of every "deduplicated" number from here on. Deduplicated test = **609** images.
+
+The M1 baselines, unchanged (same k, thresholds and prompts), scored on all 640 test images and on the 609 deduplicated ones (`runs/m2_baselines_dedup.json`):
+
+| Method | macro-F1, 16 frequent: all | dedup | F1 `Disease_Risk`: all | dedup | macro-F1 on the 31 excluded only |
+|---|---|---|---|---|---|
+| all positive (floor) | 0.108 | 0.107 | 0.883 | 0.881 | 0.109 |
+| kNN majority, k = 5 | 0.264 | 0.268 | 0.931 | 0.935 | 0.260 |
+| kNN weighted, k = 20, t = 0.20 | 0.339 | **0.341** | 0.923 | 0.925 | 0.380 |
+| zero-shot, p ≥ 0.5 | 0.141 | 0.143 | 0.793 | 0.799 | 0.111 |
+| zero-shot, val thresholds | 0.183 | 0.186 | 0.891 | 0.889 | 0.105 |
+
+- **Duplicates did not inflate kNN.** Without the 31 affected test images, kNN weighted scores 0.341 instead of 0.339: none of its score came from same-eye matches (the excluded images are a bit easier, 0.380, but they are 5 % of the split). Re-tuning k and t on the deduplicated validation split picks the same k = 20, t = 0.20 (val macro-F1 0.370).
+- **Why not:** BiomedCLIP rarely retrieves the same eye. Of the 22 excluded test images whose same-eye partner is in the training index, the partner is the top-1 neighbour for only **5**, and only 2 of those 5 have the same labels as the test image. Most same-eye pairs are different photos (another field of view, camera or exposure), and a global 224-px embedding doesn't key on the vessel pattern.
+- Retrieval quality moves the same way (dedup vs all): top-1 neighbour shares a label 55.0 % vs 54.5 %; frequent-label macro P@10 0.253 vs 0.252.
+- The real cost of the duplicates is **label noise**, not leakage: in 7 of the 8 near-identical photo pairs, the two copies have different labels.
+
+### 2.2 Hybrid retrieval: dense image vectors + sparse "report" text (`make retrieval`)
+
+- **No free text in RFMiD.** Each training image gets a deterministic "report" built from its labels and the fixed one-line descriptions in `eye_rag.labels` (e.g. "diabetic retinopathy (DR): microaneurysms, dot and blot hemorrhages and hard exudates."). It contains nothing that the labels don't.
+- **Index:** one Qdrant collection (`rfmid_hybrid`), dense vector `image` (BiomedCLIP, cosine) + sparse vector `report` (bag of words, Qdrant IDF modifier). Hybrid = Reciprocal Rank Fusion (`Fusion.RRF`) of the top 50 from each side.
+- **The query side.** A test image has no labels, so its text must come from something available at test time:
+  - `hybrid_knn` (the method): a report built from the **kNN pre-labels** (the M1 kNN: labels with weighted share ≥ 0.20 among the 20 nearest training images). It needs no extra model, but it recycles the dense neighbours' labels, so the sparse side re-ranks towards cases that agree with the kNN vote.
+  - `hybrid_vlm`: a report built from the VLM's zero-shot labels (arm a below), on the VLM subset.
+  - `hybrid_oracle`: a report from the query's **true** labels. Uses test labels; an upper bound only, never a method.
+
+Label precision@k (deduplicated splits; "frequent macro" = mean over the 16 frequent conditions of the share of the k retrieved cases carrying the query's condition; "any overlap" = share of retrieved cases sharing ≥ 1 label with the query, normal counting as a label). `runs/m2_retrieval.json`:
+
+| Retrieval | split | frequent macro P@1 | P@3 | P@5 | P@10 | any-overlap P@1 | P@3 | P@5 | P@10 |
+|---|---|---|---|---|---|---|---|---|---|
+| dense only | val (612) | 0.305 | 0.274 | 0.265 | 0.250 | 0.515 | 0.505 | 0.493 | 0.478 |
+| hybrid_knn | val (612) | 0.313 | **0.321** | 0.321 | 0.318 | 0.533 | **0.547** | 0.546 | 0.544 |
+| hybrid_oracle (upper bound) | val (612) | 0.382 | 0.527 | 0.567 | 0.604 | 0.554 | 0.687 | 0.716 | 0.744 |
+| dense only | test (609) | 0.330 | 0.277 | 0.271 | 0.253 | 0.550 | 0.522 | 0.513 | 0.502 |
+| hybrid_knn | test (609) | 0.334 | **0.329** | 0.322 | 0.316 | 0.553 | **0.577** | 0.571 | 0.568 |
+| hybrid_vlm (query = VLM zero-shot labels) | test (609) | 0.329 | 0.243 | 0.220 | 0.216 | 0.550 | 0.486 | 0.465 | 0.461 |
+| hybrid_oracle (upper bound) | test (609) | 0.366 | 0.540 | 0.569 | 0.615 | 0.571 | 0.705 | 0.722 | 0.754 |
+
+- Hybrid with kNN-derived query text beats dense only at k ≥ 3 on both splits (frequent macro P@3 0.329 vs 0.277 on test; any-overlap P@3 0.577 vs 0.522). At k = 1 they're nearly equal: RRF keeps the best dense hit on top.
+- **A worse query text makes hybrid worse than dense.** With the VLM's zero-shot labels as the query text, precision drops below dense only (P@3 0.243 vs 0.277): the VLM calls 60 % of test images "media haze" (366 of 609, vs 103 true), and the sparse side then pulls in hazy cases. Hybrid is only as good as the text you can honestly put in the query.
+- The oracle row shows how much a good text query could add (P@10 0.615 vs 0.253), and why it can't be used: the text side is the labels.
+- **Choice for the VLM arm (on validation):** `hybrid_knn`, k = 3 cases (val frequent macro P@3 0.321 vs 0.274 dense).
+
+### 2.3 VLM zero-shot vs VLM + retrieved cases vs kNN (`make vlm-zero-shot vlm-retrieval m2-score`)
+
+- **Model:** Qwen3-VL-8B-Instruct, 4-bit, local through mlx-vlm (`mlx-community/Qwen3-VL-8B-Instruct-4bit@defcdea7`), greedy decoding, typed JSON answer (labels from the fixed RFMiD list, or `normal`), up to 2 retries with the validation error. Prompt fixed in `eye_rag.vlm`.
+- **Arms:** zero-shot (query photo only); retrieval (the 3 `hybrid_knn` cases from 2.2, each image with its label-report, then the query); kNN weighted (M1 method, unchanged).
+- **Images:** all 609 deduplicated test images. Prompt and k checked on a 20-image validation pilot only.
+
+All 609 test images (`runs/m2_three_arms_test.{json,md}`):
+
+| Arm | macro-F1, 16 frequent | F1 `Disease_Risk` | s / image |
+|---|---|---|---|
+| VLM zero-shot | 0.058 | 0.872 | 5.2 |
+| VLM + 3 retrieved cases | 0.298 | 0.899 | 7.5 |
+| kNN weighted (k = 20, t = 0.20) | **0.341** | **0.925** | < 0.01 |
+
+Per condition (F1; positives in brackets): DR (117) 0.18 / 0.58 / 0.60 · MH (103) 0.42 / 0.51 / 0.65 · ODC (88) 0.00 / 0.23 / 0.32 · TSLN (50) 0.09 / 0.32 / 0.43 · MYA (32) 0.04 / 0.46 / 0.68 · BRVO (20) 0.10 / 0.60 / 0.59 · ODE (17) 0.00 / 0.54 / 0.67 · CSR (12) 0.00 / 0.13 / 0.00 · CRS (10) 0.00 / 0.18 / 0.00. Full table in the run file.
+
+- **Zero-shot VLM is below the all-positive floor** (0.058 vs 0.107): it names one finding per image on average (1.13), and that finding is usually media haze.
+- **Retrieved cases add 0.24 macro-F1**, but the VLM + retrieval arm still loses to the kNN vote it is built on (0.298 vs 0.341), and costs ~7.5 s per image instead of a vector lookup. It wins only on a few rare conditions where kNN's threshold never fires (CSR, CRS, LS; 10–12 positives each, so these are a handful of images).
+- **Most of what it says comes from the cases.** In 74 % of answers every predicted label appears in one of the 3 cases shown. Section 2.4 tests whether it is reading the photographs or the labels.
+- **The diagnosis step's own citations** (`cited_cases`, no extra call): 64.7 % of answers cite at least one case, none cite a case that doesn't exist, and in 90.1 % of the citing answers every cited case shares a label with the answer.
+- Reliability: 0 failed answers in 1,218 calls; 1 retry (zero-shot).

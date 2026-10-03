@@ -9,6 +9,8 @@ Research demo, not a medical device: see the [article README](../../README.md). 
 | **RFMiD 1.0** (Pachade et al. 2021), via the Hugging Face mirror [`ctmedtech/RFMID`](https://huggingface.co/datasets/ctmedtech/RFMID), pinned to revision `16ee0cf5…` | 3,200 colour fundus photos, 45 condition labels + `Disease_Risk`, official split 1,920 / 640 / 640 | CC BY 4.0 as stated by the mirror [[VERIFY: licence on the official IEEE DataPort page, which needs a login to read in full; the mirror card, the Kaggle copy (per the `bumbledeep/rfmid` card) and the authors' own RFMiD 2.0 Zenodo record all say CC BY 4.0]] | **No** (downloaded to `data/rfmid/`) |
 | **RFMiD 2.0** (Panchal et al. 2023), [Zenodo 10.5281/zenodo.7505822](https://doi.org/10.5281/zenodo.7505822), uploaded by the authors | 860 fundus photos, 51 label columns, split 509 / 177 / 174 | CC BY 4.0 (Zenodo record) | **No**. Not used in Milestone 1; reserved as an out-of-distribution check |
 | BiomedCLIP `microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224` (HF revision `9f341de2…` on 2026-10-01) | Image and text encoder | MIT. The model card limits intended use to research; "any deployed use case … is currently out of scope" | No (HF cache) |
+| **Qwen3-VL-8B-Instruct**, 4-bit MLX conversion [`mlx-community/Qwen3-VL-8B-Instruct-4bit`](https://huggingface.co/mlx-community/Qwen3-VL-8B-Instruct-4bit), revision `defcdea7…` (of [`Qwen/Qwen3-VL-8B-Instruct`](https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct)) | Vision-language model for the diagnosis arms (Milestone 2), run locally with mlx-vlm 0.7.4 | Apache-2.0 (both repos), not gated, no account | No (HF cache, 5.8 GB) |
+| MedGemma 4B (`google/medgemma-4b-it`) | Considered, **not used** | Health AI Developer Foundations Terms of Use (last modified 2024-11-15): research use is allowed and Google claims no ownership of outputs (§3.3), so publishing results would be fine; clinical use needs regulatory authorisation (§3.1–3.2). But the official repo is **gated** (an HF account and accepting the terms), and this project doesn't sign up for anything; the ungated community re-uploads carry the same terms and skip the acceptance step, so we don't use them either | — |
 | `tests/` fixtures | Synthetic label CSVs, random images and vectors | Ours | Yes |
 
 ### Citation requirements
@@ -110,8 +112,43 @@ Notes on label quality:
 - **`Disease_Risk`** is "any condition present", so it's a normal-vs-abnormal label, 79% positive in training.
 - **`MH` (media haze)** is the third most common label (317 training images). It describes the photo's clarity as much as the eye, and fundus photos of cataract patients look hazy; a model can learn it from image quality.
 - The labels come from "adjudicated consensus of two senior retinal experts" (paper abstract, quoted in the mirror cards). We haven't audited them.
-- **Near-duplicates across splits, with different labels.** Looking at the closest test/train pairs by BiomedCLIP cosine and pixel difference, at least two test images have a training image that is visibly the same eye in a near-identical photo, labelled differently (mean absolute pixel difference on 256-px-wide copies): `test/541` (DN) vs `train/1877` (normal), 2.1 / 255; `test/571` (normal) vs `train/1818` (ODC), 3.6 / 255. We checked only the handful of closest pairs by eye, so this is a lower bound, not a count [[VERIFY: a proper duplicate audit, e.g. perceptual hashes inside the fundus circle]]. Two consequences: kNN can score by finding the same eye, and some label disagreements are annotator noise, not model error.
-- The images come from three cameras with different resolutions and fields of view; camera is not in the label files, so a kNN index can match on camera instead of disease. Worth checking in Milestone 2.
+- **The same eye appears in several images, across splits, sometimes with different labels.** Milestone 1 spotted two cases by eye (`test/541` DN vs `train/1877` normal; `test/571` normal vs `train/1818` ODC). Milestone 2 ran a full audit over all 5.1 M image pairs: see "Duplicate audit" below. Result: 154 same-eye pairs among 263 images, 70 of them across splits; **31 test and 28 validation images** have a same-eye image in an earlier split and are excluded from the "deduplicated" numbers (`docs/exclusions.json`).
+- The images come from three cameras with different resolutions and fields of view; camera is not in the label files, so a kNN index can match on camera instead of disease. Not checked yet (still open after Milestone 2).
+
+## Duplicate audit (Milestone 2, 2026-10-02)
+
+`make dedup` (`eye_rag.dedup`) checks **every** pair of the 3,200 images (5,118,400 pairs) and writes the exclusion list `docs/exclusions.json` (committed; ids only, no images). The official split is not changed: later evaluations report both "all" and "deduplicated" (= minus the excluded images).
+
+**Signals.** Three per pair:
+
+1. BiomedCLIP image cosine (the M1 embeddings).
+2. A 64-bit perceptual hash (DCT pHash, as in `imagehash.phash`) of the fundus disc, after cropping the black surround.
+3. A geometric match of the retina: SIFT keypoints on the green channel (Gaussian blur σ 1.5, then CLAHE; 512 px; only the inner 85 % of the disc, which drops the rim and the camera's notch), Lowe ratio test 0.75, matches made **one-to-one**, and a RANSAC similarity transform (5 px). The score is the number of RANSAC inliers, and it's zeroed unless the transform looks like a re-photograph (scale 0.8–1.25, rotation ≤ 30°). 54.7 s for the features, 620 s to match all pairs (one CPU process, `nice`).
+
+**How the thresholds were set (by looking at pairs, not by a metric).** We made side-by-side contact sheets of pairs in score bands and looked at them (scripts not kept; the bands are reproducible from `runs/dedup_pairs.json` and the cached matrix `data/embeddings/pair_inliers.npz`):
+
+- **Cosine alone can't do it.** BiomedCLIP puts every fundus photo close together: 1,587 pairs have cosine ≥ 0.99 and 48,343 ≥ 0.98. Of the 12 closest cross-split pairs, 3 pass the geometric check (the two known duplicates and `train/1456`–`val/244`); the other 9 looked like different eyes with a similar layout and colour, and score 0–4 inliers. Only 8 of the 1,587 pairs at ≥ 0.99 pass the geometric check; same-eye pairs have cosines as low as 0.84 (median 0.96).
+- **pHash alone can't do it either.** Pairs at Hamming distance ≤ 2 (191 pairs) were mostly different eyes with the disc in the same place and similar brightness; 2 of them pass the geometric check. Same-eye pairs have a median Hamming distance of 19 (of 64): a different field of view, exposure or camera changes the hash completely.
+- **A first version of the geometric match had false positives**: different eyes with 60–200 "inliers". Two causes, both fixed before the full run: small-scale noise keypoints (fixed by the blur), and many-to-one matches collapsing onto one textured spot (fixed by one-to-one matching). A high-pass vessel cross-correlation we also tried was dominated by camera artefacts (dust blotches on hazy photos) and was dropped.
+- **With the final matcher**, random pairs score 0–5 inliers (5,083,788 pairs score 0; only 218 of 5.1 M pairs reach ≥ 6). Looking at the bands: 6–7 inliers were different eyes; **8–14 is a grey zone** (roughly half the pairs we looked at were clearly the same eye, often photographed with a different centre, e.g. disc-centred vs macula-centred); ≥ 15 were mostly the same eye, including one normal eye photographed seven times (5 train, 1 val, 1 test) with different cameras and exposures. Thumbnails can't settle every pair, so these are judgements, not counts.
+- **Threshold: ≥ 8 inliers** for the exclusion list, on purpose on the generous side: wrongly excluding a test image costs a little sample size, wrongly keeping a same-eye image leaks. Numbers at ≥ 15 are reported too.
+
+**Counts** (`runs/dedup_pairs.json`):
+
+| Pair of splits | same-eye pairs (≥ 8 inliers) | … with different labels | pairs at ≥ 15 inliers | … with different labels |
+|---|---|---|---|---|
+| train–train | 61 | 33 | 48 | 26 |
+| train–val | 33 | 21 | 25 | 16 |
+| train–test | 26 | 14 | 20 | 10 |
+| val–val | 12 | 4 | 11 | 3 |
+| val–test | 11 | 6 | 7 | 3 |
+| test–test | 11 | 5 | 5 | 0 |
+| **total** | **154** (263 images) | **83** | 116 | 58 |
+
+- **Cross-split:** 70 pairs (≥ 8 inliers), 52 at ≥ 15.
+- **Excluded:** 31 test images (21 at ≥ 15) and 28 validation images (20 at ≥ 15). Deduplicated test = **609** images; all 36 conditions present in the test split are still present.
+- **Label disagreement is common within same-eye pairs: 83 of 154 pairs (54 %)**. Some is legitimate (a different field of view can show a finding the other photo doesn't, e.g. laser scars at the edge); some is not: among the 8 pairs that are near-identical photos (cosine ≥ 0.99 and geometric match), **7 have different label sets**. That bounds what any method can score against these labels, and it means a "wrong" answer on such an image may be annotator disagreement.
+- **Recall is unknown.** A same-eye pair whose vessels can't be matched (heavy media haze, very different fields) isn't found. The audit can only under-count.
 
 ## The mirror: what we check, what we can't
 
