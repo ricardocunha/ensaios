@@ -43,7 +43,7 @@ I compared three open models from Hugging Face's OCR overview, zero-shot, on syn
 
 So I fine-tuned the smallest, **PaddleOCR-VL (0.9B)**, with LoRA on a MacBook (M4 Pro, 1h51, 5.7 GB). One lesson first: my first run ran out of memory, and the log said *49.8% trainable parameters*. mlx-vlm wasn't freezing PaddleOCR-VL's vision tower, which is named `visual` instead of the usual names. **Always read the trainable-parameter line.**
 
-The fine-tuned model scored **99.8% on my synthetic test set.** Then I tested it on **real CNH templates** from the BID Dataset (scanned, often upside down):
+The fine-tuned model scored **99.8% on my synthetic test set.** Then I tested it on **real CNH templates** from the [BID Dataset](https://github.com/ricardobnjunior/Brazilian-Identity-Document-Dataset) (scanned, often upside down; cited, not redistributed):
 
 | Real CNH templates (BID) | Label accuracy | Real CNHs rejected as "not a CNH" |
 |---|---|---|
@@ -51,6 +51,10 @@ The fine-tuned model scored **99.8% on my synthetic test set.** Then I tested it
 | Round 2: same images, varied (palettes, fonts, layouts, scans, rotations) | 52.3% | 30 of 70 |
 | **Round 3: the model only reads; "is this a CNH?" is decided from the text** | **81.0%** | **0 of 70** |
 | Qwen3.5-9B zero-shot, for reference | 48.2% | 5 of 70 |
+
+![Top row: three round-1 synthetic CNHs, all the same green design. Bottom row: four round-2 CNHs with different palettes, fonts and boxed fields, including a scan and a rotated card.](images/synthetic-cnh-round1-vs-round2.jpg)
+
+*Top: round 1, one design. Bottom: round 2, same images, everything that shouldn't matter varied. All cards are synthetic.*
 
 Round 1 read the real cards it accepted almost perfectly. What it had really learned was **"a CNH looks like *my* renderer's card"**, so it rejected most real ones. Two lessons:
 

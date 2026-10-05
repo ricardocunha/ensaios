@@ -79,7 +79,7 @@ Um alerta de licença, porque isso vai pegar alguém: **os pesos do Chandra 2 n�
 - degrada cada cartão para parecer "foto de celular": perspectiva, rotação, sombra, desfoque, artefatos de JPEG;
 - mistura 10% de "iscas" (cartões parecidos com RG, notas fiscais) que o pipeline precisa rejeitar.
 
-São 2.293 imagens de treino (o plano era 3.000; uma execução interrompida me fez parar por aí, e é mais que suficiente para LoRA), 300 de validação, 300 de teste e 100 "difíceis". Para checar realismo além do meu próprio gerador, também avalio no **BID Dataset** (Soares et al., SIBGRAPI 2020), citado e não redistribuído. Falo mais dele abaixo, porque ele mudou a história.
+São 2.293 imagens de treino (o plano era 3.000; uma execução interrompida me fez parar por aí, e é mais que suficiente para LoRA), 300 de validação, 300 de teste e 100 "difíceis". Para checar realismo além do meu próprio gerador, também avalio no **[BID Dataset](https://github.com/ricardobnjunior/Brazilian-Identity-Document-Dataset)** (Soares et al., SIBGRAPI 2020), citado e não redistribuído; o repositório dele mostra como são os documentos reais. Falo mais dele abaixo, porque ele mudou a história.
 
 **O treino roda localmente.** O `mlx-vlm` suporta LoRA em Apple Silicon para o PaddleOCR-VL e para a família Qwen3.5, na qual o Chandra 2 é baseado. Ajustei só o menor modelo, o PaddleOCR-VL (0,9B). Ele treina em menos de duas horas num M4 Pro de 48 GB, o que me permitiu rodar três rodadas completas e aprender algo com cada uma. O Chandra 2 e o Qwen3.5-9B aparecem abaixo só em zero-shot; ajustá-los com QLoRA de 4 bits é o próximo experimento óbvio:
 
@@ -162,6 +162,10 @@ A correção é *domain randomization*: variar tudo o que não deveria mudar a r
 - **Visual:** seis paletas, três famílias de fonte, layout deslocado, campos em caixas, rótulos acima ou abaixo da caixa, e variações de rótulo impressas (`CAT.HAB.`, `N° REGISTRO`, `1º HABILITAÇÃO`).
 - **Captura:** 40% escaneados, e um quarto das imagens girado 90°, 180° ou 270°.
 - **Iscas:** RGs e CPFs com as *mesmas* paletas e o mesmo estilo de caixas.
+
+![Em cima: três CNHs sintéticas da rodada 1, todas com o mesmo layout verde sobre fundos diferentes. Embaixo: quatro CNHs da rodada 2 com paletas, fontes e campos em caixas diferentes, incluindo um escaneamento e um documento girado 270°.](images/synthetic-cnh-round1-vs-round2.jpg)
+
+*Em cima: rodada 1, um único layout. Embaixo: rodada 2, as mesmas 2.293 imagens, variando tudo o que não deveria importar. Todos os documentos são sintéticos e têm a marca d'água "AMOSTRA • SYNTHETIC".*
 
 Para o BID continuar honesto como teste, usei só propriedades gerais que notei ao escrever o loader, e avalio nele uma vez por rodada.
 

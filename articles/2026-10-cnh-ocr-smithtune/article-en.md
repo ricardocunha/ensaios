@@ -79,7 +79,7 @@ A licensing note, because it will bite someone: **Chandra 2's weights are not fr
 - degrades each card into a "phone photo": perspective, rotation, shadows, blur, JPEG artifacts;
 - mixes in 10% decoys (RG-like cards, invoices) that the pipeline must reject.
 
-That gives 2,293 training images (I planned 3,000; an interrupted run made me settle, and it's plenty for LoRA), 300 for validation, 300 for test, and 100 "hard" images. To check realism beyond my own renderer, I also evaluate on the **BID Dataset** (Soares et al., SIBGRAPI 2020), cited and not redistributed. More on that below, because it changed the story.
+That gives 2,293 training images (I planned 3,000; an interrupted run made me settle, and it's plenty for LoRA), 300 for validation, 300 for test, and 100 "hard" images. To check realism beyond my own renderer, I also evaluate on the **[BID Dataset](https://github.com/ricardobnjunior/Brazilian-Identity-Document-Dataset)** (Soares et al., SIBGRAPI 2020), cited and not redistributed; its repository shows what the real cards look like. More on that below, because it changed the story.
 
 **Training runs locally.** `mlx-vlm` supports LoRA on Apple Silicon for PaddleOCR-VL and for the Qwen3.5 family, which Chandra 2 is built on. I fine-tuned only the smallest model, PaddleOCR-VL (0.9B). It trains in under two hours on an M4 Pro with 48 GB, which let me run three full rounds and learn something from each. Chandra 2 and Qwen3.5-9B appear below zero-shot only; fine-tuning them with 4-bit QLoRA is the obvious next experiment:
 
@@ -162,6 +162,10 @@ The fix is *domain randomization*: vary everything that shouldn't affect the ans
 - **Design:** six palettes, three font families, jittered layouts, boxed fields, labels above or below the box, and printed label variants (`CAT.HAB.`, `N° REGISTRO`, `1º HABILITAÇÃO`).
 - **Capture:** 40% flatbed scans, and a quarter of images turned 90°, 180° or 270°.
 - **Decoys:** RG and CPF cards in the *same* palettes and boxed style.
+
+![Top row: three round-1 synthetic CNHs, all the same green design on different backgrounds. Bottom row: four round-2 CNHs with different palettes, fonts and boxed fields, including a flatbed scan and a card turned 270°.](images/synthetic-cnh-round1-vs-round2.jpg)
+
+*Top: round 1, one design. Bottom: round 2, the same budget of 2,293 images with everything that shouldn't matter varied. Every card is synthetic and watermarked "AMOSTRA • SYNTHETIC".*
 
 To keep BID honest as a test set, I used only coarse properties I'd noticed while writing its loader, and I evaluate on it once per round.
 

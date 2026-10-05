@@ -108,7 +108,7 @@ Published artifacts (private until launch): dataset [synthetic-cnh-br](https://h
 | `Qwen/Qwen3-8B` | Apache-2.0 | Extractor Student, fine-tuned here (LoRA, local) |
 | `Qwen/Qwen3.8-27B` (Fireworks `qwen3p8-27b`) | Apache-2.0 | Student trained through smithtune on Fireworks (1 epoch) |
 | `datalab-to/chandra-ocr-2` | AI Pubs Open RAIL-M (modified) | Zero-shot only; no adapter published. Free for research and personal use; **commercial use prohibited above US$2M revenue or funding**; share-alike covers derivatives and outputs |
-| BID Dataset (Soares, Junior & Bezerra, SIBGRAPI 2020) | none stated | Evaluation only: cited, not redistributed, never trained on. Real CNH templates with synthetic personal data and blurred faces |
+| [BID Dataset](https://github.com/ricardobnjunior/Brazilian-Identity-Document-Dataset) (Soares, Junior & Bezerra, SIBGRAPI 2020, doi:10.5753/sibgrapi.est.2020.12997) | none stated | Evaluation only: cited, not redistributed, never trained on. Real CNH templates with synthetic personal data and blurred faces |
 
 ## License
 
