@@ -14,7 +14,7 @@ Does retrieving similar labeled eye images (with their reports) help a vision mo
 
 ## Brazilian angle (short framing section)
 
-Brazil has a well-documented ophthalmology dataset, **BRSET** (Brazilian Multilabel Ophthalmological Dataset; Nakayama et al., *PLOS Digital Health*, 2024): 16,266 fundus photos of 8,524 patients from three ophthalmology centres in São Paulo, 2010–2020, with multi-label disease, image-quality and demographic labels (PhysioNet, v1.0.2). But "open" means **credentialed** access on PhysioNet: an account, CITI "Data or Specimens Only Research" training, and a signed data use agreement (PhysioNet Credentialed Health Data License 1.5.0). That's a reasonable protection for patient data, and it's also a real barrier for a reader who wants to rerun an article in an afternoon. The point for the article: a Brazilian dataset exists and is well documented, and the access model decides who can actually use it. Its DUA also asks anyone who publishes results to publish their code, which this repo does anyway. [[VERIFY: whether the article should mention mBRSET (smartphone fundus photos), also on PhysioNet]]
+Brazil has a well-documented ophthalmology dataset, **BRSET** (Brazilian Multilabel Ophthalmological Dataset; Nakayama et al., *PLOS Digital Health*, 2024): 16,266 fundus photos of 8,524 patients from three ophthalmology centres in São Paulo, 2010–2020, with multi-label disease, image-quality and demographic labels (PhysioNet, v1.0.2). But "open" means **credentialed** access on PhysioNet: an account, CITI "Data or Specimens Only Research" training, and a signed data use agreement (PhysioNet Credentialed Health Data License 1.5.0). That's a reasonable protection for patient data, and it's also a real barrier for a reader who wants to rerun an article in an afternoon. The point for the article: a Brazilian dataset exists and is well documented, and the access model decides who can actually use it. Its DUA also asks anyone who publishes results to publish their code, which this repo does anyway. Decided 2026-10-05: the drafts do not mention mBRSET (smartphone fundus photos, also on PhysioNet); BRSET alone makes the point.
 
 ## Architecture
 
@@ -41,7 +41,7 @@ Brazil has a well-documented ophthalmology dataset, **BRSET** (Brazilian Multila
 1. **Done (2026-10-01):** dataset choice (RFMiD) + BiomedCLIP embedding index (Qdrant, local) + kNN and zero-shot baselines.
 2. **Done (2026-10-05):** VLM + retrieval (top-k cases in the prompt), explanation agent with citation check, faithfulness test (shuffled labels).
 3. Optional: rerun on BRSET if credentialed access is ever granted; RFMiD 2.0 as an out-of-distribution check.
-4. Evaluation + drafts.
+4. **Done (2026-10-05):** evaluation (paired bootstrap, RESULTS §3) + drafts (EN, EN Medium, PT-BR, LinkedIn EN/PT-BR), glossary (`code/CONTEXT.md`), ADRs 0001–0002. Left: proofread, launch-day links.
 
 ## Milestone 1 result (2026-10-01)
 
