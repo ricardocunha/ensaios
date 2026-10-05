@@ -19,6 +19,7 @@ CC BY 4.0 requires attribution. The article and the code README cite:
 
 - S. Pachade, P. Porwal, D. Thulkar, M. Kokare, G. Deshmukh, V. Sahasrabuddhe, L. Giancardo, G. Quellec, F. Mériaudeau. *Retinal Fundus Multi-Disease Image Dataset (RFMiD): A Dataset for Multi-Disease Detection Research.* Data 2021, 6(2), 14. doi:10.3390/data6020014. Dataset: IEEE DataPort, doi:10.21227/s3g7-st65.
 - RFMiD 2.0 (when used): S. Panchal et al., Zenodo, doi:10.5281/zenodo.7505822 [[VERIFY: the companion data paper's exact citation (Data 2023, "Retinal Fundus Multi-Disease Image Dataset (RFMiD) 2.0: A Dataset of Frequently and Rarely Identified Diseases")]].
+- BRSET (mentioned, not used): L. F. Nakayama et al., *A Brazilian Multilabel Ophthalmological Dataset (BRSET)*, PhysioNet v1.0.2; data paper in *PLOS Digital Health*, 2024. Counts (16,266 photos, 8,524 patients, three centres in São Paulo, 2010–2020) and access terms from the PhysioNet page.
 - BiomedCLIP: S. Zhang et al., *BiomedCLIP: a multimodal biomedical foundation model pretrained from fifteen million scientific image-text pairs*, 2023 (arXiv:2303.00915) [[VERIFY: final venue]].
 
 ## Why RFMiD (and why not BRSET, for now)
