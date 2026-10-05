@@ -21,6 +21,9 @@ uv sync --group vlm                 # mlx-vlm (Apple Silicon only)
 make vlm-zero-shot                  # Qwen3-VL-8B 4-bit, ~5-7 s per image on an M4 Pro
 make vlm-retrieval RETRIEVAL=hybrid_knn   # + 3 retrieved cases per image, ~8-9 s per image
 make m2-score      # three-arm table
+make vlm-shuffled   # faithfulness test: same case images, wrong labels
+make explain explain-shuffled   # explanation agent + citation check on both arms, ~12 s per image
+make explain-score  # citation, explanation and faithfulness scores
 ```
 
 `N=…` on the `vlm-*` targets runs a seeded subset of the deduplicated test split.
@@ -36,8 +39,9 @@ Embeddings run on Apple Silicon (MPS) when available, else CUDA or CPU. The Qdra
 | `eye_rag.baselines`, `eye_rag.metrics`, `eye_rag.evaluate` | kNN and zero-shot baselines, macro-F1, label precision@k |
 | `eye_rag.dedup` | same-eye audit (cosine, pHash, SIFT + RANSAC on the retina) and the exclusion list |
 | `eye_rag.hybrid` | hybrid Qdrant collection: dense image vector + sparse "report" built from labels, RRF fusion |
-| `eye_rag.vlm`, `eye_rag.diagnose` | typed VLM diagnosis (Pydantic, retries on invalid JSON), mlx-vlm backend, the run loop |
+| `eye_rag.vlm`, `eye_rag.diagnose` | typed VLM diagnosis (Pydantic, retries on invalid JSON), mlx-vlm backend, the run loop (incl. the shuffled-labels arm) |
 | `eye_rag.m2` | Milestone 2 evaluation: dedup re-score, retrieval precision, three-arm table |
+| `eye_rag.explain` | Explanation agent, deterministic citation check, faithfulness scores |
 
 ## Data and licences
 

@@ -143,3 +143,38 @@ Per condition (F1; positives in brackets): DR (117) 0.18 / 0.58 / 0.60 · MH (10
 - **Most of what it says comes from the cases.** In 74 % of answers every predicted label appears in one of the 3 cases shown. Section 2.4 tests whether it is reading the photographs or the labels.
 - **The diagnosis step's own citations** (`cited_cases`, no extra call): 64.7 % of answers cite at least one case, none cite a case that doesn't exist, and in 90.1 % of the citing answers every cited case shares a label with the answer.
 - Reliability: 0 failed answers in 1,218 calls; 1 retry (zero-shot).
+
+### 2.4 Explanation agent, citation check and the shuffled-labels test (`make vlm-shuffled explain explain-shuffled explain-score`)
+
+**Shuffled labels (faithfulness test).** The retrieval arm again, on the same 609 images with the same 3 retrieved case *images*, but each case shown with the recorded findings of a random other training case, never one of the query's real case label sets (`eye_rag.diagnose.shuffled_case_labels`, seeded per query). If the model compares photographs, its answer should barely move.
+
+| Arm (same 609 images) | macro-F1, 16 frequent | F1 `Disease_Risk` |
+|---|---|---|
+| VLM zero-shot | 0.058 | 0.872 |
+| VLM + cases, true labels | 0.298 | 0.899 |
+| VLM + cases, **shuffled labels** | **0.056** | 0.887 |
+
+- **Shuffling the labels erases the whole retrieval gain** (0.298 → 0.056, back to zero-shot). The case photographs alone add nothing measurable; the text next to them does all the work.
+- **58 % of answers change** when only the labels change.
+- Share of answer labels found in the cases' *shown* labels: 76 % with true labels, 60 % with shuffled ones. Only 34 % of the shuffled-run answer labels are in the hidden, true labels of the cases it was looking at.
+- **Injected labels:** in 29 % of images (205 labels in total) the shuffled run gives a label that is in the shown (wrong) text, in none of the real cases, not in the zero-shot answer, and not true for the image. Only the wrong text explains it.
+
+**Explanation agent + citation check** (`eye_rag.explain`; same VLM, greedy). For each diagnosed label the model says whether it comes from the photo (`image`), the cases (`cases`) or `both`, and cites case numbers. A deterministic check then verifies: each diagnosed label explained exactly once; cited cases exist; source agrees with citations; **each cited case's recorded findings contain the label it is cited for**. Problems go back to the model as a list, up to 2 retries; an answer that still fails is kept and marked unverified. Run on both arms' diagnoses (`runs/m2_explain_test.json`):
+
+| | true labels | shuffled labels |
+|---|---|---|
+| verified at first try | 60.3 % | 51.1 % |
+| verified after ≤ 2 retries | **90.0 %** | **89.3 %** |
+| unverified | 61 | 65 |
+| case citations in verified explanations | 549 | 344 |
+| … where the cited label is true for the image | **48.8 %** | **12.2 %** |
+| verified findings sourced "image" only | 28 % (214 of 763) | 49 % (336 of 680) |
+| s / image | 11.9 | 12.9 |
+
+- **The check passes as often on wrong labels as on right ones** (90.0 % vs 89.3 %). It verifies that a citation matches the text the model was shown, and it does that job: first-try problems were mostly a case cited for a label it doesn't carry (296 with true labels, 520 shuffled) and labels explained that weren't diagnosed (70 / 244), and retries fixed most of them. It cannot tell whether the shown text was true.
+- **A verified citation is not a correct one.** Even with true labels, under half of the verified case citations name a label the image actually has (48.8 %); with shuffled labels, 12.2 %.
+- **Explanations claim the photo.** Almost every cited finding is sourced "both" (seen in the photo *and* in the cases), and with shuffled labels the share sourced "image" alone rises to 49 %. The diagnoses moved with the text (above), so these "I see it in the photo" claims are not evidence that it did.
+- **Example (test/205):** the image is labelled DR; its 3 real nearest cases are all DR, and the true-label run answers DR. Shown the same 3 photos with case 1 relabelled ARMD and cases 2–3 relabelled normal, the model answers ARMD, cites case 1, and explains: "The QUERY photograph shows signs of age-related macular degeneration, consistent with the finding in reference case 1, which was also labeled ARMD." Source "both"; verified on the first try.
+- Unverified explanations are mostly the same mistake repeated after feedback, e.g. citing myopia cases for tessellation "which is associated with" myopia. The prompt was not tuned to pass the check (20-image validation pilot only).
+
+What this sets up for the evaluation milestone: on this dataset the VLM + retrieval system does not beat the kNN vote it is built on, its gain comes from reading the retrieved labels, and a citation check measures consistency with the retrieved text, not correctness or faithfulness to the image. The shuffled-labels arm is the test that shows it.

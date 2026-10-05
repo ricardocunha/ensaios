@@ -39,7 +39,7 @@ Brazil has a well-documented ophthalmology dataset, **BRSET** (Brazilian Multila
 ## Milestones
 
 1. **Done (2026-10-01):** dataset choice (RFMiD) + BiomedCLIP embedding index (Qdrant, local) + kNN and zero-shot baselines.
-2. VLM + retrieval (top-k cases in the prompt), explanation agent with citation check, faithfulness test (shuffled labels).
+2. **Done (2026-10-05):** VLM + retrieval (top-k cases in the prompt), explanation agent with citation check, faithfulness test (shuffled labels).
 3. Optional: rerun on BRSET if credentialed access is ever granted; RFMiD 2.0 as an out-of-distribution check.
 4. Evaluation + drafts.
 
@@ -51,6 +51,15 @@ Brazil has a well-documented ophthalmology dataset, **BRSET** (Brazilian Multila
 - **Retrieval:** 49.6% of top-10 neighbours share a label with the query (15.0% at random).
 - **Surprises:** zero-shot is barely above the floor and badly calibrated (val-tuned thresholds 0.03–0.999); small findings (drusen, laser scars, disc pallor) are invisible to a global 224-px embedding; at least two test images have a near-identical training photo of the same eye with a different label.
 - Details: `code/docs/RESULTS.md`. 19 offline tests.
+
+## Milestone 2 result (2026-10-05)
+
+- **Same-eye audit:** 154 same-eye pairs among 263 images (SIFT + RANSAC on the vessel pattern), 54 % with different labels; 31 test images excluded → 609 deduplicated. Duplicates did not inflate kNN (0.339 → 0.341); their real cost is label noise.
+- **Hybrid retrieval** (Qdrant dense image + sparse label-report text, RRF) with kNN-derived query text: frequent-label P@3 0.329 vs 0.277 dense. With the VLM's own labels as query text it gets worse than dense.
+- **VLM (Qwen3-VL-8B 4-bit, local):** zero-shot 0.058 macro-F1 (below the 0.107 floor); + 3 retrieved cases 0.298; kNN 0.341. Retrieval helps the VLM but it does not beat the kNN it is built on.
+- **Shuffled labels:** same case photos, wrong labels → 0.056, back to zero-shot; 58 % of answers change; 29 % of images get a wrong label only the shown text explains.
+- **Citation check:** passes 90.0 % (true labels) vs 89.3 % (shuffled) after retries; verified case citations name a true label 48.8 % vs 12.2 % of the time. The check measures consistency with the retrieved text, not correctness.
+- Details: `code/docs/RESULTS.md` §2. 47 offline tests.
 
 ## Common rules (all five articles)
 
