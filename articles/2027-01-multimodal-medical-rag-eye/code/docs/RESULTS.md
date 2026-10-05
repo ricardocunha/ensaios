@@ -178,3 +178,39 @@ Per condition (F1; positives in brackets): DR (117) 0.18 / 0.58 / 0.60 · MH (10
 - Unverified explanations are mostly the same mistake repeated after feedback, e.g. citing myopia cases for tessellation "which is associated with" myopia. The prompt was not tuned to pass the check (20-image validation pilot only).
 
 What this sets up for the evaluation milestone: on this dataset the VLM + retrieval system does not beat the kNN vote it is built on, its gain comes from reading the retrieved labels, and a citation check measures consistency with the retrieved text, not correctness or faithfulness to the image. The shuffled-labels arm is the test that shows it.
+
+## 3. Evaluation: how sure are these differences? (`make evaluate`, 2026-10-05)
+
+Paired bootstrap over the 609 deduplicated test images, 2,000 resamples, seed 0 (`eye_rag.m4`, `runs/m4_eval.json`). Each resample re-scores every arm on the same images. Macro-F1 averages over the frequent conditions present in the resample; citation rates resample images, not citations. No model is called; it reads the Milestone 2 run files.
+
+| Arm | macro-F1, 16 frequent (95 % CI) | F1 `Disease_Risk` (95 % CI) |
+|---|---|---|
+| kNN weighted | **0.341** (0.304–0.380) | **0.925** (0.907–0.941) |
+| VLM + 3 cases, true labels | 0.298 (0.249–0.344) | 0.899 (0.878–0.917) |
+| VLM + 3 cases, shuffled labels | 0.056 (0.044–0.069) | 0.887 (0.866–0.906) |
+| VLM zero-shot | 0.058 (0.042–0.077) | 0.872 (0.848–0.893) |
+
+| Paired difference in macro-F1 | point | 95 % CI |
+|---|---|---|
+| VLM + cases − kNN | −0.043 | −0.084 to −0.006 |
+| VLM + cases − VLM zero-shot | +0.240 | +0.187 to +0.286 |
+| VLM + cases (true) − VLM + cases (shuffled) | +0.243 | +0.192 to +0.286 |
+| VLM + cases (shuffled) − VLM zero-shot | −0.002 | −0.023 to +0.016 |
+
+| Faithfulness and explanations | true labels | shuffled labels |
+|---|---|---|
+| answers that change when only the case labels change | – | 58.0 % (54.0–61.6) |
+| explanations verified by the citation check | 90.0 % (87.5–92.3) | 89.3 % (86.9–91.8) |
+| verified case citations naming a label the image has | 48.8 % (44.8–53.1), of 549 | 12.2 % (9.0–15.6), of 344 |
+
+- **VLM + retrieval is worse than the kNN vote it is built on**, and the interval excludes zero, though only just (upper end −0.006). "Not better" is the safe reading; "worse by about 0.04" is the point estimate.
+- **The whole retrieval gain is the labels.** With shuffled labels the arm is indistinguishable from zero-shot (−0.002, CI −0.023 to +0.016), and the true-vs-shuffled gap (+0.243) is the same size as the retrieval gain over zero-shot (+0.240).
+- **The citation check doesn't separate true from shuffled labels**: 90.0 % vs 89.3 %, a 0.7-point gap inside either interval's ±2.4-point width. What it verifies (citation matches shown text) holds either way; what we'd want (cited label is right) drops from 48.8 % to 12.2 %.
+- `Disease_Risk` (normal vs abnormal) barely moves across arms (0.87–0.92), and is near the all-positive floor (0.881): 79 % of test images are abnormal, so this label says little about any of the methods.
+
+### Limits of these numbers
+
+- One dataset (RFMiD 1.0: 3 cameras, one hospital network in India), one split, one VLM (Qwen3-VL-8B, 4-bit), one prompt, greedy decoding. The intervals cover resampling of images, not a different model, prompt, k or dataset.
+- Labels are the reference, and they disagree with themselves: 7 of 8 near-identical photo pairs have different label sets (DATA.md). Every F1 here is agreement with these labels, not diagnostic accuracy.
+- Camera is not in the label files, so a possible camera shortcut in kNN (and so in the cases shown to the VLM) is untested.
+- RFMiD 2.0 (out-of-distribution check) and BRSET were not run (Milestone 3, optional).

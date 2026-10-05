@@ -18,3 +18,15 @@ def test_subset_is_seeded_and_skips_exclusions():
     assert a == subset(ids, frozenset({"test/3"}), 5) and len(a) == 5 and "test/3" not in a
     assert len(subset(ids, frozenset({"test/3"}), None)) == 19
     assert np.unique(a).size == 5
+
+
+def test_m4_macro_f1_skips_conditions_absent_from_a_resample():
+    from eye_rag.m4 import bootstrap, interval, macro_f1_present
+
+    y = np.array([[1, 0], [1, 0], [0, 0]], dtype=bool)
+    p = np.array([[1, 0], [0, 0], [0, 0]], dtype=bool)
+    assert macro_f1_present(y, p, [0, 1]) == 2 / 3  # column 1 has no positives: left out, not scored 1
+    d = bootstrap(3, lambda i: float(i.mean()), b=200)
+    assert d.shape == (200,) and (d == bootstrap(3, lambda i: float(i.mean()), b=200)).all()
+    r = interval(0.5, d)
+    assert r["point"] == 0.5 and r["ci95"][0] <= r["ci95"][1]

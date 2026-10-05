@@ -1,4 +1,4 @@
-.PHONY: test download stats embed baselines dedup m2-baselines retrieval vlm-zero-shot vlm-retrieval m2-score retrieval-vlm vlm-shuffled explain explain-shuffled explain-score
+.PHONY: test download stats embed baselines dedup m2-baselines retrieval vlm-zero-shot vlm-retrieval m2-score retrieval-vlm vlm-shuffled explain explain-shuffled explain-score evaluate
 
 N ?=            # VLM subset size (empty = the whole deduplicated test split)
 RETRIEVAL ?= dense
@@ -65,3 +65,8 @@ explain-shuffled:
 # Citation, explanation and faithfulness scores -> runs/m2_explain_test.json
 explain-score:
 	nice -n 10 uv run python -m eye_rag.explain score
+
+# --- Milestone 4
+# Paired bootstrap 95 % intervals for the Milestone 2 numbers (reads run files only) -> runs/m4_eval.json
+evaluate:
+	nice -n 10 uv run python -m eye_rag.m4
