@@ -13,4 +13,4 @@ The explanation agent's citations are checked in code (labels covered once, case
 
 ## Consequences
 
-Result (docs/RESULTS.md §2.4, §3): shuffling erased the retrieval gain (0.298 → 0.056; zero-shot 0.058), and the check verified 90.0 % (true) vs 89.3 % (shuffled) of explanations, with 48.8 % vs 12.2 % of verified case citations true for the image. Costs one extra VLM run and one extra explanation run per evaluation (~1.3 h and ~2 h on an M4 Pro for 609 images).
+Result (docs/RESULTS.md §2.4, §3): shuffling erased the retrieval gain (0.298 → 0.056; zero-shot 0.058), and the check verified 90.0 % (true) vs 89.3 % (shuffled) of explanations, with 48.8 % vs 12.2 % of verified case citations true for the image. Costs one extra VLM run and one extra explanation run per evaluation (~1.2 h and ~2.2 h on an M4 Pro for 609 images).

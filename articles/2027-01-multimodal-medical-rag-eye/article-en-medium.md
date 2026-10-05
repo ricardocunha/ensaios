@@ -14,7 +14,7 @@ The pitch for multimodal medical RAG: a vision-language model looks at a retinal
 
 I built one, entirely on a laptop, on 3,200 public retinal photos, and compared it with the same model alone and with a plain nearest-neighbour vote. Then I ran the test I think every system like this needs: **keep the retrieved photos, swap their labels for wrong ones, and see what the model does.** The idea is project #2 of the video *"5 AI Agents Projects to Build in 2026"*; the architecture, code and numbers are mine.
 
-The short version: retrieval lifted the model's macro-F1 from 0.058 to 0.298, which was still below the nearest-neighbour vote (0.341). With shuffled labels, the whole gain vanished (0.056). A citation check passed 90 % of explanations with true labels and 89 % with shuffled ones.
+The short version: retrieval lifted the model's macro-F1 from 0.058 to 0.298, which was still below the nearest-neighbour vote (0.341). With shuffled labels, the whole gain vanished (0.056, indistinguishable from no retrieval). A citation check passed 90 % of explanations with true labels and 89 % with shuffled ones.
 
 ## Why this matters in Brazil
 
@@ -32,13 +32,13 @@ Everything runs locally on an M4 Pro:
 
 **Data: RFMiD 1.0**, 3,200 photos from three cameras in India, 45 conditions, an official split, CC BY 4.0. I score macro-F1 over the 16 conditions with at least 20 training images.
 
-**Fixing the data first.** I checked all 5.1 million image pairs for the same eye by matching the retina's vessel pattern. Embedding similarity and perceptual hashes both failed at this. The check found 154 same-eye pairs, and 31 test images with the same eye in an earlier split. Those are excluded, leaving 609 test images. The bigger surprise: **54 % of same-eye pairs carry different labels**, and among the 8 near-identical photo pairs, 7 do. That's a ceiling for every method on this dataset.
+**Fixing the data first.** I checked all 5.1 million image pairs for the same eye by matching the retina's vessel pattern. Embedding similarity and perceptual hashes both failed at this. The check found 154 same-eye pairs, and 31 test images with the same eye in an earlier split. From the three arms on, those are excluded, leaving 609 test images. The bigger surprise: **54 % of same-eye pairs carry different labels**, and among the 8 near-identical photo pairs, 7 do. That limits what any method can score against these labels.
 
 ## A vector lookup is hard to beat
 
-The plain kNN vote predicts a label when at least 20 % of the 20 nearest training images carry it. It scores **0.341**. BiomedCLIP's text-prompt zero-shot scores 0.141, and predicting every label scores 0.108.
+The plain kNN vote predicts a label when it has a similarity-weighted share of at least 0.20 among the 20 nearest training images. On all 640 test images it scores **0.339** (0.341 without the duplicates). BiomedCLIP's text-prompt zero-shot scores 0.141, and predicting every label scores 0.108.
 
-RFMiD has no text reports, only labels. So each case's "report" is generated from its labels, and the query's text side has to come from somewhere available at test time. Using the kNN vote's labels raised precision at 3 from 0.277 to 0.329. Using the vision model's own guesses made it worse than no text at all (0.243): it called 60 % of test images "media haze", against 17 % true.
+RFMiD has no text reports, only labels. So each case's "report" is generated from its labels, and the query's text side has to come from somewhere available at test time. Using the kNN vote's labels raised label precision at 3 from 0.277 to 0.329. Using the vision model's own zero-shot labels made it worse than no text at all (0.243): it called 60 % of test images "media haze", against 17 % true.
 
 ## Retrieval helps the model, and still loses
 
@@ -50,7 +50,7 @@ Results on the same 609 test images, with 95 % paired bootstrap intervals:
 | **VLM + 3 retrieved cases** | **0.298** (0.249–0.344) | 7.5 |
 | kNN vote | 0.341 (0.304–0.380) | < 0.01 |
 
-The model alone is below the "predict everything" floor. Retrieval adds 0.24, and that gain is clearly real. But compared with the vote that chose the cases, the difference is −0.043 (−0.084 to −0.006): not better, probably slightly worse. And in 74 % of answers, every label appears in one of the three cases shown. Is it comparing photos, or copying labels?
+The model alone is below the "predict everything" floor. Retrieval adds 0.24, and its interval (+0.187 to +0.286) is well clear of zero. But compared with the kNN vote it is built on, the difference is −0.043 (−0.084 to −0.006): not better, and the point estimate is slightly worse. And in 74 % of answers, every label appears in one of the three cases shown. Is it comparing photos, or copying labels?
 
 ## Same photos, wrong labels
 
@@ -62,7 +62,7 @@ I re-ran the retrieval arm with the same three photos per image, each shown with
 | VLM + cases, true labels | 0.298 |
 | VLM + cases, **shuffled labels** | **0.056** (0.044–0.069) |
 
-**The whole gain disappeared.** Shuffled-label retrieval is indistinguishable from no retrieval (difference −0.002, CI −0.023 to +0.016). 58 % of answers changed when only the text changed. In 29 % of images, the model gave a label that appeared only in the wrong text: not in the real cases, not in its own zero-shot answer, and not true.
+**The whole gain disappeared.** Shuffled-label retrieval is indistinguishable from no retrieval (difference −0.002, CI −0.023 to +0.016). 58 % of answers changed when only the labels changed. In 29 % of images, the model gave a label that appeared only in the wrong text: not in the real cases, not in its own zero-shot answer, and not true for the image.
 
 ## A citation check that passes either way
 
@@ -76,7 +76,7 @@ For each label, the explanation agent says whether it came from the photo, the c
 
 The check did its job. It caught hundreds of cases cited for labels they don't carry, and feedback fixed most of them. But its job was consistency with the text shown, and that text was wrong.
 
-One example, image 205 from the test set, verified on the first try. The image is labelled diabetic retinopathy, and its real neighbours all are too. With case 1 relabelled as macular degeneration, the model answered macular degeneration, cited case 1, and explained: *"The QUERY photograph shows signs of age-related macular degeneration, consistent with the finding in reference case 1, which was also labeled ARMD."* Every check passed.
+One example, image 205 from the test set, verified on the first try. The image is labelled diabetic retinopathy, and its three real retrieved cases all carry it too. With case 1 relabelled as macular degeneration, the model answered macular degeneration, cited case 1, and explained: *"The QUERY photograph shows signs of age-related macular degeneration, consistent with the finding in reference case 1, which was also labeled ARMD."* Every check passed.
 
 ## What I'd tell a team building this
 
@@ -84,9 +84,9 @@ One example, image 205 from the test set, verified on the first try. The image i
 2. **Compare with the nearest-neighbour vote**, not just with the model alone. "Retrieval improves the VLM by 0.24" is true and misleading.
 3. **A citation check proves consistency, not correctness.** Keep it; it catches real mistakes. Then measure separately whether the cited claims are true.
 4. **Don't trust "I see it in the image".** It's a generated sentence. Change what the model could have used, and watch what moves.
-5. **Audit duplicates and labels before the model.** Half the same-eye pairs here disagree on the labels.
+5. **Audit duplicates and labels before the model.** More than half the same-eye pairs here disagree on the labels.
 
-This is one dataset, one 8B model, one prompt. The intervals cover which images were drawn, not a different model or dataset. A stronger model might compare photos better, and the shuffled-labels test is exactly how you'd find out.
+This is one dataset, one 8B model at 4 bits, one prompt, and none of it is diagnostic accuracy. The intervals cover which images were drawn, not a different model, prompt or dataset. A stronger model might compare photos better, and the shuffled-labels test is exactly how you'd find out.
 
 ---
 
