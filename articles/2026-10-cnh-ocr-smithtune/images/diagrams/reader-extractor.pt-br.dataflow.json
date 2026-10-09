@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Reader + Extractor: da foto da CNH ao registro validado",
+    "quality_profile": "showcase",
+    "viewBox": [860, 560],
+    "legend": { "entries": { "emphasis": { "label": "documento" }, "dashed": { "label": "destilação" }, "database": { "label": "dados" } } }
+  },
+  "stages": [
+    { "label": "Imagem" },
+    { "label": "Visão" },
+    { "label": "Texto" },
+    { "label": "Resultado" }
+  ],
+  "nodes": [
+    { "id": "photo", "type": "frontend", "label": "Foto da CNH", "stage": 0, "row": 0 },
+    { "id": "reader", "type": "backend", "label": "Reader", "sublabel": "modelo de OCR (visão)", "tag": "fine-tuning com MLX", "stage": 1, "row": 0 },
+    { "id": "transcription", "type": "database", "label": "Transcrição", "width": 144, "stage": 2, "row": 0 },
+    { "id": "extractor", "type": "backend", "label": "Extractor", "sublabel": "agente só-texto", "tag": "com ferramentas", "stage": 2, "row": 1 },
+    { "id": "teacher", "type": "external", "label": "DeepSeek-V4-Pro", "sublabel": "destilado no Qwen3-8B", "width": 144, "stage": 2, "row": 2 },
+    { "id": "record", "type": "database", "label": "Registro CNH", "sublabel": "JSON validado", "stage": 3, "row": 1 }
+  ],
+  "flows": [
+    { "id": "photo-reader", "from": "photo", "to": "reader", "label": "pixels", "variant": "emphasis" },
+    { "id": "reader-transcription", "from": "reader", "to": "transcription", "label": "texto", "variant": "emphasis" },
+    { "id": "transcription-extractor", "from": "transcription", "to": "extractor", "label": "lê", "variant": "emphasis", "labelDy": 24 },
+    { "id": "extractor-record", "from": "extractor", "to": "record", "label": "envia", "variant": "emphasis" },
+    { "id": "teacher-extractor", "from": "teacher", "to": "extractor", "label": "curado com o smithtune", "variant": "dashed" }
+  ]
+}

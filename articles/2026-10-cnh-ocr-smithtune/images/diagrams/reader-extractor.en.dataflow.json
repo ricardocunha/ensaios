@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Reader + Extractor: from CNH photo to validated record",
+    "quality_profile": "showcase",
+    "viewBox": [860, 560],
+    "legend": { "entries": { "emphasis": { "label": "document path" }, "dashed": { "label": "distillation" }, "database": { "label": "data" } } }
+  },
+  "stages": [
+    { "label": "Image" },
+    { "label": "Vision" },
+    { "label": "Text" },
+    { "label": "Result" }
+  ],
+  "nodes": [
+    { "id": "photo", "type": "frontend", "label": "CNH photo", "stage": 0, "row": 0 },
+    { "id": "reader", "type": "backend", "label": "Reader", "sublabel": "vision OCR model", "tag": "fine-tuned with MLX", "stage": 1, "row": 0 },
+    { "id": "transcription", "type": "database", "label": "Transcription", "width": 144, "stage": 2, "row": 0 },
+    { "id": "extractor", "type": "backend", "label": "Extractor", "sublabel": "text-only agent", "tag": "with tools", "stage": 2, "row": 1 },
+    { "id": "teacher", "type": "external", "label": "DeepSeek-V4-Pro", "sublabel": "distilled to Qwen3-8B", "width": 144, "stage": 2, "row": 2 },
+    { "id": "record", "type": "database", "label": "CNH Record", "sublabel": "validated JSON", "stage": 3, "row": 1 }
+  ],
+  "flows": [
+    { "id": "photo-reader", "from": "photo", "to": "reader", "label": "pixels", "variant": "emphasis" },
+    { "id": "reader-transcription", "from": "reader", "to": "transcription", "label": "text", "variant": "emphasis" },
+    { "id": "transcription-extractor", "from": "transcription", "to": "extractor", "label": "reads", "variant": "emphasis", "labelDy": 24 },
+    { "id": "extractor-record", "from": "extractor", "to": "record", "label": "submits", "variant": "emphasis" },
+    { "id": "teacher-extractor", "from": "teacher", "to": "extractor", "label": "curated with smithtune", "variant": "dashed" }
+  ]
+}

@@ -50,11 +50,7 @@ Ou seja: **hoje o smithtune não faz fine-tuning de modelo de OCR.** Não é def
 
 Dividi o problema no ponto em que os pixels viram texto:
 
-```
-Foto da CNH ─► [ Reader ] ─► Transcrição ─► [ Extractor ] ─► Registro CNH (JSON validado)
-               modelo de OCR (visão)           agente só-texto com ferramentas
-               fine-tuning com MLX              DeepSeek-V4-Pro → Qwen3-8B, curado com o smithtune
-```
+![Diagrama do pipeline. A foto da CNH vai para o Reader, um modelo de OCR de visão ajustado com MLX, que gera uma Transcrição. O Extractor, um agente só-texto com ferramentas, lê a Transcrição e envia um Registro CNH em JSON validado. Uma seta tracejada mostra que o Extractor é o DeepSeek-V4-Pro destilado no Qwen3-8B, com dados curados com o smithtune.](images/reader-extractor.pt-br.svg)
 
 - O **Reader** é um modelo de visão que transforma a foto numa *Transcrição*: uma linha `RÓTULO: valor` por campo impresso, **exatamente como está impresso, com erros e tudo**. Ele nunca valida nada.
 - O **Extractor** é um agente que só lê texto. Ele recebe a Transcrição e chama ferramentas determinísticas: dígitos verificadores do CPF, dígitos verificadores do número de registro da CNH, uma ferramenta que sugere correções de OCR (`O→0`, `S→5`, `B→8`), normalização de datas e checagens de coerência como "CNH emitida aos 45 anos vale 10 anos" (Lei 14.071/2020). No fim, envia um **Registro CNH** validado, ou rejeita a entrada se não for uma CNH.

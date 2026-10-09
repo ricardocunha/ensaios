@@ -29,11 +29,7 @@ Every paid step needs `--confirm`; without it you get a preview. That turned out
 
 I read the source before planning. In v0.1.0, **trajectories that contain images are filtered out** on purpose, and the trainable base models come from a **fixed list** of text LLMs. So smithtune can't fine-tune an OCR model. That isn't a flaw; it's a text-and-tool-calls product. It just shaped the architecture:
 
-```
-CNH photo ─► [ Reader ] ─► Transcription ─► [ Extractor ] ─► validated CNH record
-             vision OCR model                 text-only agent with tools
-             fine-tuned on my Mac             distilled from a Teacher, curated with smithtune
-```
+![Pipeline diagram. A CNH photo goes to the Reader, a vision OCR model fine-tuned with MLX, which outputs a Transcription. The Extractor, a text-only agent with tools, reads the Transcription and submits a CNH Record as validated JSON. A dashed arrow shows the Extractor is DeepSeek-V4-Pro distilled to Qwen3-8B, with data curated with smithtune.](images/reader-extractor.en.svg)
 
 The **Reader** transcribes what's printed, errors included. The **Extractor** is an agent with deterministic tools: CPF and CNH check digits, OCR-fix suggestions (`O→0`, `S→5`), and date rules. It submits a validated record, or rejects the document if it isn't a CNH.
 

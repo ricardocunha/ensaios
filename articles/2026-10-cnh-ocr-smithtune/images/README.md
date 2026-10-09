@@ -3,6 +3,7 @@
 All images here are **synthetic**, rendered by this article's generator (`code/`), and watermarked "AMOSTRA • SYNTHETIC" / "SEM VALOR LEGAL". Names, numbers and dates are generated; no real person's data and no real document. No BID Dataset images are included (BID is cited, not redistributed).
 
 - `synthetic-cnh-round1-vs-round2.jpg`: the figure in the articles. Top: round 1 (one design). Bottom: round 2 (palettes, fonts, boxed fields, scans, rotations varied). Round 3 uses the same images as round 2.
+- `reader-extractor.en.svg` / `reader-extractor.pt-br.svg`: the Reader + Extractor pipeline diagram in the articles (EN drafts and PT-BR draft). `reader-extractor.en.png` / `reader-extractor.pt-br.png` are the same diagrams as PNG (light theme); Medium does not render SVG, so upload the PNG there by hand. Sources: `diagrams/reader-extractor.en.dataflow.json` and `diagrams/reader-extractor.pt-br.dataflow.json`. Made with [archify](https://github.com/tt-a1i/archify) (MIT) from the article's own content; these are drawings, not document images.
 
 ## samples/
 

@@ -50,11 +50,7 @@ So **smithtune can't fine-tune an OCR model today.** That isn't a flaw. It's a t
 
 I split the problem at the point where pixels become text:
 
-```
-CNH photo ─► [ Reader ] ─► Transcription ─► [ Extractor ] ─► CNH Record (validated JSON)
-             vision OCR model                 text-only agent with tools
-             fine-tuned with MLX              DeepSeek-V4-Pro → Qwen3-8B, curated with smithtune
-```
+![Pipeline diagram. A CNH photo goes to the Reader, a vision OCR model fine-tuned with MLX, which outputs a Transcription. The Extractor, a text-only agent with tools, reads the Transcription and submits a CNH Record as validated JSON. A dashed arrow shows the Extractor is DeepSeek-V4-Pro distilled to Qwen3-8B, with data curated with smithtune.](images/reader-extractor.en.svg)
 
 - The **Reader** is a vision model that turns the photo into a *Transcription*: one `LABEL: value` line per printed field, **exactly as printed, errors included**. It never validates anything.
 - The **Extractor** is a text-only agent. It reads the Transcription and calls deterministic tools: CPF check digits, CNH-number check digits, a "suggest OCR fixes" tool that tries `O→0`, `S→5`, `B→8`, date normalization, and consistency checks such as "a CNH issued at 45 is valid for 10 years" (Lei 14.071/2020). It ends by submitting a validated **CNH Record**, or by rejecting the input if it isn't a CNH.
