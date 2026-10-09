@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Eye-scan RAG: from photo to checked explanation",
+    "quality_profile": "showcase",
+    "viewBox": [
+      860,
+      640
+    ]
+  },
+  "stages": [
+    {
+      "label": "Query"
+    },
+    {
+      "label": "Retrieve"
+    },
+    {
+      "label": "Diagnose and explain"
+    },
+    {
+      "label": "Check"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "photo",
+      "type": "frontend",
+      "label": "Fundus photo",
+      "sublabel": "query image",
+      "stage": 0,
+      "row": 0
+    },
+    {
+      "id": "embed",
+      "type": "backend",
+      "label": "BiomedCLIP",
+      "sublabel": "image embedding",
+      "stage": 1,
+      "row": 0
+    },
+    {
+      "id": "index",
+      "type": "database",
+      "label": "Qdrant (local)",
+      "sublabel": "image + report text",
+      "stage": 1,
+      "row": 1,
+      "tag": "hybrid, RRF"
+    },
+    {
+      "id": "cases",
+      "type": "database",
+      "label": "3 similar cases",
+      "sublabel": "photo + findings",
+      "stage": 1,
+      "row": 2
+    },
+    {
+      "id": "vlm",
+      "type": "backend",
+      "label": "Qwen3-VL-8B",
+      "sublabel": "4-bit, local",
+      "stage": 2,
+      "row": 2,
+      "tag": "typed JSON"
+    },
+    {
+      "id": "explain",
+      "type": "backend",
+      "label": "Explanation agent",
+      "sublabel": "source per label",
+      "stage": 2,
+      "row": 3
+    },
+    {
+      "id": "check",
+      "type": "backend",
+      "label": "Citation check",
+      "sublabel": "code, no model",
+      "stage": 3,
+      "row": 3,
+      "tag": "deterministic"
+    }
+  ],
+  "flows": [
+    {
+      "id": "photo-embed",
+      "from": "photo",
+      "to": "embed",
+      "label": "image",
+      "variant": "emphasis"
+    },
+    {
+      "id": "embed-index",
+      "from": "embed",
+      "to": "index",
+      "label": "vector query",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "index-cases",
+      "from": "index",
+      "to": "cases",
+      "label": "top 3",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "cases-vlm",
+      "from": "cases",
+      "to": "vlm",
+      "label": "cases + query",
+      "variant": "emphasis"
+    },
+    {
+      "id": "vlm-explain",
+      "from": "vlm",
+      "to": "explain",
+      "label": "labels, citations",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "explain-check",
+      "from": "explain",
+      "to": "check",
+      "label": "explanation",
+      "variant": "emphasis"
+    }
+  ]
+}

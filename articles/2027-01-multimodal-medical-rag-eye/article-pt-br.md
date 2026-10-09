@@ -33,18 +33,7 @@ O recado para uma equipe brasileira é o mesmo do fim deste texto: seja qual for
 
 ## A montagem
 
-```
-foto de fundo de olho ─► embedding de imagem BiomedCLIP ─► Qdrant (local): vetores densos da imagem + texto esparso do "laudo"
-                                                  │  busca híbrida, Reciprocal Rank Fusion
-                                                  ▼
-                          3 casos de treino mais parecidos (foto + achados registrados)
-                                                  │
-           foto consultada + 3 casos ─► Qwen3-VL-8B (4 bits, local, mlx-vlm) ─► Diagnosis{labels, cited_cases}
-                                                  │
-                     agente de explicação: por rótulo, origem = image | cases | both, casos citados
-                                                  │
-                     checagem de citações (código, sem modelo): os casos citados existem e têm o rótulo
-```
+![O pipeline em quatro etapas. Consulta: uma foto de fundo de olho. Recuperação: o BiomedCLIP gera o embedding da imagem, um índice Qdrant local com vetores densos da imagem e texto esparso do laudo é consultado com busca híbrida (RRF), e voltam os 3 casos de treino mais parecidos, cada um com a foto e os achados registrados. Diagnóstico e explicação: o Qwen3-VL-8B (4 bits, local) vê os casos e a consulta e responde em JSON tipado; depois um agente de explicação indica a origem de cada rótulo e os casos citados. Checagem: uma checagem de citações determinística, em código, sem modelo.](images/pipeline.pt-br.svg)
 
 Tudo roda localmente num M4 Pro: BiomedCLIP para os embeddings, Qdrant em modo local e o Qwen3-VL-8B-Instruct numa versão MLX de 4 bits. O modelo responde em JSON tipado (Pydantic): rótulos da lista fixa de 45 códigos de condição do RFMiD, ou "normal", e mais nada. Uma resposta inválida volta com o erro de validação, até duas novas tentativas. Nas 1.218 chamadas de diagnóstico das rodadas zero-shot e com recuperação, todas as respostas terminaram válidas (uma precisou de nova tentativa).
 
@@ -139,6 +128,10 @@ Uma checagem que falha volta para o modelo como uma lista de problemas, até dua
 **Uma citação aprovada não é uma citação correta.** Mesmo com os rótulos verdadeiros, menos da metade das citações aprovadas aponta um rótulo que a imagem tem. Com os rótulos embaralhados, uma em cada oito.
 
 **E as explicações dizem que viram na foto.** Quase todo achado que cita um caso vem como "both", visto na foto *e* nos casos. Com os rótulos embaralhados, metade dos achados aprovados diz "só na foto". Pela seção anterior, sabemos que as respostas acompanharam o texto, então "consigo ver na imagem" não é evidência de que o modelo viu.
+
+![Quatro fotos de retina. À esquerda, maior: a consulta, imagem de teste 205. À direita: os três casos de treino recuperados para ela.](images/test-205-query-and-retrieved-cases.jpg)
+
+*A imagem de teste 205 (à esquerda) e seus três casos recuperados. Com os achados reais dos casos (todos retinopatia diabética), o modelo respondeu retinopatia diabética. Com as mesmas três fotos rotuladas como degeneração macular, normal e normal, respondeu degeneração macular. Imagens: RFMiD (Pachade et al., 2021), CC BY 4.0, recortadas e redimensionadas.*
 
 Um caso da rodada embaralhada, aprovado na primeira tentativa (imagem de teste 205). A imagem tem o rótulo de retinopatia diabética. Os três casos reais mais próximos também têm esse rótulo, e com eles o modelo respondeu retinopatia diabética. Diante das mesmas três fotos, com o caso 1 rotulado como degeneração macular relacionada à idade e os casos 2 e 3 como normais, ele respondeu degeneração macular, citou o caso 1, marcou a origem como "both" e explicou:
 

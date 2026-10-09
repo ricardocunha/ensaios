@@ -76,6 +76,10 @@ For each label, the explanation agent says whether it came from the photo, the c
 
 The check did its job. It caught hundreds of cases cited for labels they don't carry, and feedback fixed most of them. But its job was consistency with the text shown, and that text was wrong.
 
+![Four retinal photographs. Left, larger: the query, test image 205. Right: the three training cases retrieved for it.](images/test-205-query-and-retrieved-cases.jpg)
+
+*Test image 205 (left) and its three retrieved cases. Same photos, different labels next to them, different diagnosis. Images: RFMiD (Pachade et al., 2021), CC BY 4.0, cropped and resized.*
+
 One example, image 205 from the test set, verified on the first try. The image is labelled diabetic retinopathy, and its three real retrieved cases all carry it too. With case 1 relabelled as macular degeneration, the model answered macular degeneration, cited case 1, and explained: *"The QUERY photograph shows signs of age-related macular degeneration, consistent with the finding in reference case 1, which was also labeled ARMD."* Every check passed.
 
 ## What I'd tell a team building this

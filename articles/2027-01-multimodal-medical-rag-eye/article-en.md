@@ -33,18 +33,7 @@ The point for a Brazilian team is the one this article ends on: whichever datase
 
 ## The setup
 
-```
-fundus photo ─► BiomedCLIP image embedding ─► Qdrant (local): dense image vectors + sparse "report" text
-                                                  │  hybrid search, Reciprocal Rank Fusion
-                                                  ▼
-                          3 most similar training cases (photo + recorded findings)
-                                                  │
-           query photo + 3 cases ─► Qwen3-VL-8B (4-bit, local, mlx-vlm) ─► Diagnosis{labels, cited_cases}
-                                                  │
-                     explanation agent: per label, source = image | cases | both, cited cases
-                                                  │
-                     citation check (code, no model): cited cases exist and carry the label
-```
+![The pipeline in four stages. Query: a fundus photo. Retrieve: BiomedCLIP embeds the image, a local Qdrant index with dense image vectors and sparse report text is searched with hybrid search (RRF), and the 3 most similar training cases come back, each a photo with its recorded findings. Diagnose and explain: Qwen3-VL-8B (4-bit, local) sees the cases and the query and answers with typed JSON, then an explanation agent gives a source per label with cited cases. Check: a deterministic citation check, code with no model.](images/pipeline.en.svg)
 
 Everything runs locally on an M4 Pro: BiomedCLIP for embeddings, Qdrant in local mode, and Qwen3-VL-8B-Instruct in a 4-bit MLX build. The model answers with typed JSON (Pydantic): labels from RFMiD's fixed list of 45 condition codes, or "normal", and nothing else. An invalid answer is sent back with the validation error, up to two retries. Across the 1,218 diagnosis calls of the zero-shot and retrieval runs, every answer ended up valid (one needed a retry).
 
@@ -139,6 +128,10 @@ A failed check goes back to the model as a list of problems, up to two retries. 
 **A verified citation is not a correct one.** Even with the true labels, fewer than half of the verified case citations name a label the image has. With shuffled labels, one in eight.
 
 **And the explanations claim the photo.** Nearly every finding that cites a case is sourced "both", seen in the photo *and* in the cases. With shuffled labels, half of the verified findings say "photo only". We know from the previous section that the answers moved with the text, so "I can see it in the image" is not evidence that the model did.
+
+![Four retinal photographs. Left, larger: the query, test image 205. Right: the three training cases retrieved for it.](images/test-205-query-and-retrieved-cases.jpg)
+
+*Test image 205 (left) and its three retrieved cases. With the cases' real findings shown (all diabetic retinopathy), the model answered diabetic retinopathy. With the same three photos relabelled macular degeneration, normal and normal, it answered macular degeneration. Images: RFMiD (Pachade et al., 2021), CC BY 4.0, cropped and resized.*
 
 Here is one case from the shuffled run, verified on the first try (test image 205). The image is labelled diabetic retinopathy. Its three real nearest cases all carry diabetic retinopathy, and with them the model answered diabetic retinopathy. Shown the same three photos, with case 1 relabelled as age-related macular degeneration and cases 2 and 3 as normal, it answered macular degeneration, cited case 1, sourced it "both", and explained:
 
