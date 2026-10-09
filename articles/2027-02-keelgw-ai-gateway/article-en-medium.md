@@ -24,6 +24,10 @@ So: my own classifier, on CPU, sending nothing outside the gateway.
 
 ## The classifier and the data
 
+![Diagram of the classifier. The latest user turn, plus earlier turns up to 8,000 characters in all, goes into intfloat/multilingual-e5-small on ONNX Runtime on CPU, which produces a 384-dimension embedding. A logistic regression with 4 outputs, softmax(Wx + b), turns the embedding into a Tier and its scores.](images/classifier.en.png)
+
+![Diagram of the labelling pipeline. A grid of Tier × 12 stacks × 4 prompt shapes, 16 prompts per cell, is run in two rounds: round 1 with 4 Tiers (192 cells) and round 2 with complex and reasoning again (96 cells). Qwen2.5-Coder-32B on Ollama, on the laptop, writes 4,412 distinct prompts, each for a Tier. Claude Haiku 4.5, through the Batches API and not told that Tier, relabels them: 2,406 agree with a confident relabel and 2,006 are disputed. Claude Opus 5.5 adjudicates the disputed ones: it is confident on 1,003 and unsure on 1,003, which are set aside. The 3,409 labelled prompts are split into train 2,706, val 303 and eval 400 (100 per Tier).](images/labelling.en.png)
+
 - **Model:** `intfloat/multilingual-e5-small` (MIT per its model card) as an ONNX export on CPU, plus a 4-way logistic regression in a JSON file of about 21 KB. Input: the latest user turn plus earlier turns, at most 8,000 characters.
 - **Generation:** Qwen2.5-Coder-32B on Ollama, locally, wrote 4,412 distinct prompts over a grid of Tier × 12 stacks × 4 prompt shapes, some in Portuguese, Spanish, German and French.
 - **Relabel:** Claude Haiku 4.5 labelled every prompt again, without being told which Tier it was written for.
