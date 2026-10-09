@@ -238,3 +238,7 @@ Applied to the drafts after the proofread, from the author's answers. No project
 - **Real provider through the gateway:** author confirms never. Banner unchanged.
 - **Earlier `auto` load-test run (2.2 s p95, 586 dropped):** left out by the author's choice.
 - **Length:** kept.
+
+## Diagrams, 2026-10-09
+
+The two ASCII diagrams in `article-en.md` and `article-pt-br.md` were replaced by images made with archify (MIT): `images/classifier.{en,pt-br}.{svg,png}` and `images/labelling.{en,pt-br}.{svg,png}`, with their sources in `images/diagrams/*.dataflow.json` (listed in `images/README.md`). The diagrams add no claim: every number in them was in the ASCII block they replace and is sourced in "Router: classifier" and "Router: data" above (8,000 characters, 384 dimensions, 4 outputs; 12 stacks, 4 shapes, 16 prompts per cell, 192 and 96 cells, 4,412, 2,406, 2,006, 1,003 confident, 1,003 unsure, 3,409, train 2,706, val 303, eval 400 with 100 per Tier). The PT-BR diagrams have the same numbers with Portuguese separators. `article-en-medium.md` had no diagram and has none now.

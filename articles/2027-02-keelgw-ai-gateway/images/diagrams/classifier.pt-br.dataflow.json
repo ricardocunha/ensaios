@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "O classificador: do prompt ao Tier",
+    "quality_profile": "showcase",
+    "viewBox": [
+      860,
+      420
+    ],
+    "legend": {
+      "entries": {
+        "emphasis": {
+          "label": "caminho principal"
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "label": "Entrada"
+    },
+    {
+      "label": "Embedding"
+    },
+    {
+      "label": "Classificação"
+    },
+    {
+      "label": "Saída"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "turn",
+      "type": "frontend",
+      "label": "Último turno",
+      "sublabel": "do usuário + anteriores",
+      "tag": "máx. 8.000 caracteres",
+      "stage": 0,
+      "row": 0,
+      "width": 150
+    },
+    {
+      "id": "e5",
+      "type": "backend",
+      "label": "multilingual-e5-small",
+      "sublabel": "ONNX Runtime em CPU",
+      "stage": 1,
+      "row": 0,
+      "width": 176
+    },
+    {
+      "id": "head",
+      "type": "backend",
+      "label": "Regressão logística",
+      "sublabel": "softmax(Wx + b)",
+      "tag": "4 saídas",
+      "stage": 2,
+      "row": 1,
+      "width": 176
+    },
+    {
+      "id": "out",
+      "type": "frontend",
+      "label": "Tier + pontuações",
+      "stage": 3,
+      "row": 1,
+      "width": 150
+    }
+  ],
+  "flows": [
+    {
+      "id": "turn-e5",
+      "from": "turn",
+      "to": "e5",
+      "label": "texto",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e5-head",
+      "from": "e5",
+      "to": "head",
+      "label": "embedding de 384 dimensões",
+      "variant": "emphasis"
+    },
+    {
+      "id": "head-out",
+      "from": "head",
+      "to": "out",
+      "label": "saída",
+      "variant": "emphasis"
+    }
+  ]
+}

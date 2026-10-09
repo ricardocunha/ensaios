@@ -42,15 +42,7 @@ On 2026-10-03 I decided to train my own: four Tiers natively, no GPU, nothing se
 
 ## The classifier: an embedding model and a 21 KB head
 
-```
-latest user turn (+ earlier turns, at most 8,000 characters in all)
-        │
-        ▼
-intfloat/multilingual-e5-small, ONNX Runtime on CPU ─► 384-dimension embedding
-        │
-        ▼
-logistic regression, 4 outputs: softmax(Wx + b) ─► Tier + scores
-```
+![Diagram of the classifier. The latest user turn, plus earlier turns up to 8,000 characters in all, goes into intfloat/multilingual-e5-small on ONNX Runtime on CPU, which produces a 384-dimension embedding. A logistic regression with 4 outputs, softmax(Wx + b), turns the embedding into a Tier and its scores.](images/classifier.en.svg)
 
 The embedding model is `intfloat/multilingual-e5-small` (MIT, per its model card's licence metadata), pinned to a Hugging Face revision and checked by sha256 at build time. I chose a multilingual model because Members will write in other languages too. It runs as an ONNX export, with no torch in the image. The head is a multinomial logistic regression with class-balanced weights, in a JSON file of about 21 KB. Its L2 strength is picked on the validation split by macro-F1.
 
@@ -60,20 +52,7 @@ The model reads 512 tokens: the latest user turn first, then earlier turns in wh
 
 I had no real traffic to label, so the data is synthetic.
 
-```
-grid: Tier × 12 stacks × 4 prompt shapes, 16 prompts per cell
-      round 1: 4 Tiers (192 cells) · round 2: complex and reasoning again (96 cells)
-        │  Qwen2.5-Coder-32B on Ollama, on the laptop
-        ▼
-4,412 distinct prompts, each written for a Tier
-        │  Claude Haiku 4.5, Batches API, not told that Tier
-        ▼
-same Tier, relabel confident: 2,406 ───────────────────────┐
-disputed: 2,006 ─► Claude Opus 5.5 ─┬► confident: 1,003 ───┴► 3,409 labelled prompts
-                                    └► unsure: 1,003, set aside
-        ▼
-eval 400 (100 per Tier) · val 303 · train 2,706
-```
+![Diagram of the labelling pipeline. A grid of Tier × 12 stacks × 4 prompt shapes, 16 prompts per cell, is run in two rounds: round 1 with 4 Tiers (192 cells) and round 2 with complex and reasoning again (96 cells). Qwen2.5-Coder-32B on Ollama, on the laptop, writes 4,412 distinct prompts, each for a Tier. Claude Haiku 4.5, through the Batches API and not told that Tier, relabels them: 2,406 agree with a confident relabel and 2,006 are disputed. Claude Opus 5.5 adjudicates the disputed ones: it is confident on 1,003 and unsure on 1,003, which are set aside. The 3,409 labelled prompts are split into train 2,706, val 303 and eval 400 (100 per Tier).](images/labelling.en.svg)
 
 **Generation.** Qwen2.5-Coder-32B, running locally on Ollama, wrote prompts "a developer types into a coding assistant" for each Tier, over 12 stacks (Python and Django, Go services, SQL and PostgreSQL, Terraform and Kubernetes YAML and so on) and 4 shapes: a bare request, a pasted snippet, a pasted error, a follow-up turn. A third of the cells asked for 4 of their 16 prompts in Portuguese, Spanish, German or French. Each request also asked for at least three prompts that would fool a length-based guess: long prompts with an easy ask, short prompts with a hard one.
 

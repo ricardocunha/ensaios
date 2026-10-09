@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "The classifier: from prompt to Tier",
+    "quality_profile": "showcase",
+    "viewBox": [
+      860,
+      420
+    ],
+    "legend": {
+      "entries": {
+        "emphasis": {
+          "label": "main path"
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "label": "Input"
+    },
+    {
+      "label": "Embed"
+    },
+    {
+      "label": "Classify"
+    },
+    {
+      "label": "Output"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "turn",
+      "type": "frontend",
+      "label": "Latest user turn",
+      "sublabel": "+ earlier turns",
+      "tag": "max 8,000 chars",
+      "stage": 0,
+      "row": 0,
+      "width": 150
+    },
+    {
+      "id": "e5",
+      "type": "backend",
+      "label": "multilingual-e5-small",
+      "sublabel": "ONNX Runtime on CPU",
+      "stage": 1,
+      "row": 0,
+      "width": 176
+    },
+    {
+      "id": "head",
+      "type": "backend",
+      "label": "Logistic regression",
+      "sublabel": "softmax(Wx + b)",
+      "tag": "4 outputs",
+      "stage": 2,
+      "row": 1,
+      "width": 176
+    },
+    {
+      "id": "out",
+      "type": "frontend",
+      "label": "Tier + scores",
+      "stage": 3,
+      "row": 1,
+      "width": 150
+    }
+  ],
+  "flows": [
+    {
+      "id": "turn-e5",
+      "from": "turn",
+      "to": "e5",
+      "label": "text",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e5-head",
+      "from": "e5",
+      "to": "head",
+      "label": "384-dim embedding",
+      "variant": "emphasis"
+    },
+    {
+      "id": "head-out",
+      "from": "head",
+      "to": "out",
+      "label": "result",
+      "variant": "emphasis"
+    }
+  ]
+}

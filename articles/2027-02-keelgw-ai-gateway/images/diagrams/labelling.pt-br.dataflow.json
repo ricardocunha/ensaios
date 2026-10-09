@@ -1,0 +1,284 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Rotulagem: da grade aos conjuntos",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1070,
+      640
+    ],
+    "legend": {
+      "entries": {
+        "emphasis": {
+          "label": "caminho principal"
+        },
+        "dashed": {
+          "label": "postos de lado"
+        },
+        "database": {
+          "label": "conjunto de prompts"
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "label": "Grade"
+    },
+    {
+      "label": "Geração"
+    },
+    {
+      "label": "Segunda rotulagem"
+    },
+    {
+      "label": "Arbitragem"
+    },
+    {
+      "label": "Conjuntos"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "round1",
+      "type": "frontend",
+      "label": "192 células",
+      "sublabel": "4 Tiers",
+      "stage": 0,
+      "row": 0,
+      "width": 152
+    },
+    {
+      "id": "grid",
+      "type": "frontend",
+      "label": "Grade de prompts",
+      "sublabel": "Tier × 12 stacks × 4 formatos",
+      "tag": "16 prompts por célula",
+      "stage": 0,
+      "row": 1,
+      "width": 152
+    },
+    {
+      "id": "round2",
+      "type": "frontend",
+      "label": "96 células",
+      "sublabel": "complex e reasoning de novo",
+      "stage": 0,
+      "row": 2,
+      "width": 152
+    },
+    {
+      "id": "qwen",
+      "type": "backend",
+      "label": "Qwen2.5-Coder-32B",
+      "sublabel": "Ollama, no laptop",
+      "stage": 1,
+      "row": 1,
+      "width": 140
+    },
+    {
+      "id": "prompts",
+      "type": "database",
+      "label": "4.412 prompts",
+      "sublabel": "distintos, um Tier cada",
+      "stage": 1,
+      "row": 2,
+      "width": 140
+    },
+    {
+      "id": "agreed",
+      "type": "database",
+      "label": "Concordantes: 2.406",
+      "sublabel": "mesmo Tier, confiante",
+      "stage": 2,
+      "row": 1,
+      "width": 152
+    },
+    {
+      "id": "haiku",
+      "type": "backend",
+      "label": "Claude Haiku 4.5",
+      "sublabel": "Batches API",
+      "tag": "sem saber o Tier",
+      "stage": 2,
+      "row": 2,
+      "width": 152
+    },
+    {
+      "id": "disputed",
+      "type": "database",
+      "label": "Divergentes: 2.006",
+      "stage": 2,
+      "row": 3,
+      "width": 152
+    },
+    {
+      "id": "labelled",
+      "type": "database",
+      "label": "3.409 rotulados",
+      "sublabel": "prompts",
+      "stage": 3,
+      "row": 1,
+      "width": 140
+    },
+    {
+      "id": "opus",
+      "type": "backend",
+      "label": "Claude Opus 5.5",
+      "sublabel": "arbitragem",
+      "stage": 3,
+      "row": 3,
+      "width": 140
+    },
+    {
+      "id": "train",
+      "type": "database",
+      "label": "Treino: 2.706",
+      "stage": 4,
+      "row": 0,
+      "width": 140
+    },
+    {
+      "id": "val",
+      "type": "database",
+      "label": "Validação: 303",
+      "stage": 4,
+      "row": 1,
+      "width": 140
+    },
+    {
+      "id": "eval",
+      "type": "database",
+      "label": "Avaliação: 400",
+      "sublabel": "100 por Tier",
+      "stage": 4,
+      "row": 2,
+      "width": 140
+    },
+    {
+      "id": "unsure",
+      "type": "database",
+      "label": "Em dúvida: 1.003",
+      "sublabel": "postos de lado",
+      "stage": 4,
+      "row": 3,
+      "width": 140
+    }
+  ],
+  "flows": [
+    {
+      "id": "grid-round1",
+      "from": "grid",
+      "to": "round1",
+      "label": "rodada 1",
+      "variant": "emphasis"
+    },
+    {
+      "id": "grid-round2",
+      "from": "grid",
+      "to": "round2",
+      "label": "rodada 2",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "round1-qwen",
+      "from": "round1",
+      "to": "qwen",
+      "label": "pedidos",
+      "variant": "emphasis"
+    },
+    {
+      "id": "round2-qwen",
+      "from": "round2",
+      "to": "qwen",
+      "label": "pedidos",
+      "variant": "emphasis"
+    },
+    {
+      "id": "qwen-prompts",
+      "from": "qwen",
+      "to": "prompts",
+      "label": "escreve",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "prompts-haiku",
+      "from": "prompts",
+      "to": "haiku",
+      "label": "rotula",
+      "variant": "emphasis"
+    },
+    {
+      "id": "haiku-agreed",
+      "from": "haiku",
+      "to": "agreed",
+      "label": "concorda",
+      "variant": "emphasis"
+    },
+    {
+      "id": "haiku-disputed",
+      "from": "haiku",
+      "to": "disputed",
+      "label": "os outros",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "disputed-opus",
+      "from": "disputed",
+      "to": "opus",
+      "label": "arbitra",
+      "variant": "emphasis"
+    },
+    {
+      "id": "agreed-labelled",
+      "from": "agreed",
+      "to": "labelled",
+      "label": "2.406",
+      "variant": "emphasis"
+    },
+    {
+      "id": "opus-labelled",
+      "from": "opus",
+      "to": "labelled",
+      "label": "confiante: 1.003",
+      "variant": "emphasis"
+    },
+    {
+      "id": "opus-unsure",
+      "from": "opus",
+      "to": "unsure",
+      "label": "em dúvida",
+      "variant": "dashed"
+    },
+    {
+      "id": "labelled-train",
+      "from": "labelled",
+      "to": "train",
+      "label": "divide",
+      "variant": "emphasis",
+      "channelX": 832,
+      "route": "vertical-channel"
+    },
+    {
+      "id": "labelled-val",
+      "from": "labelled",
+      "to": "val",
+      "label": "divide",
+      "variant": "emphasis",
+      "labelDx": 10
+    },
+    {
+      "id": "labelled-eval",
+      "from": "labelled",
+      "to": "eval",
+      "label": "divide",
+      "variant": "emphasis",
+      "channelX": 832,
+      "route": "vertical-channel"
+    }
+  ]
+}

@@ -42,15 +42,7 @@ Em 03/10/2026 decidi treinar o meu: quatro Tiers nativos, sem GPU, nada enviado 
 
 ## O classificador: um modelo de embeddings e uma cabeça de 21 KB
 
-```
-último turno do usuário (+ turnos anteriores, no máximo 8.000 caracteres ao todo)
-        │
-        ▼
-intfloat/multilingual-e5-small, ONNX Runtime em CPU ─► embedding de 384 dimensões
-        │
-        ▼
-regressão logística, 4 saídas: softmax(Wx + b) ─► Tier + pontuações
-```
+![Diagrama do classificador. O último turno do usuário, mais os turnos anteriores até 8.000 caracteres ao todo, entra no intfloat/multilingual-e5-small, no ONNX Runtime em CPU, que produz um embedding de 384 dimensões. Uma regressão logística com 4 saídas, softmax(Wx + b), transforma o embedding num Tier e nas pontuações.](images/classifier.pt-br.svg)
 
 O modelo de embeddings é o `intfloat/multilingual-e5-small` (MIT, segundo os metadados de licença do model card), fixado numa revisão do Hugging Face e conferido por sha256 na construção da imagem. Escolhi um modelo multilíngue porque os Members também vão escrever em outros idiomas. Ele roda como exportação ONNX, sem torch na imagem. A cabeça é uma regressão logística multinomial com pesos balanceados por classe, num arquivo JSON de cerca de 21 KB. A força da regularização L2 é escolhida no conjunto de validação, pelo macro-F1.
 
@@ -60,20 +52,7 @@ O modelo lê 512 tokens: primeiro o último turno do usuário, depois os turnos 
 
 Eu não tinha tráfego real para rotular, então os dados são sintéticos.
 
-```
-grade: Tier × 12 stacks × 4 formatos de prompt, 16 prompts por célula
-       rodada 1: 4 Tiers (192 células) · rodada 2: complex e reasoning de novo (96 células)
-        │  Qwen2.5-Coder-32B no Ollama, no laptop
-        ▼
-4.412 prompts distintos, cada um escrito para um Tier
-        │  Claude Haiku 4.5, Batches API, sem saber esse Tier
-        ▼
-mesmo Tier, rótulo confiante: 2.406 ──────────────────────────┐
-divergentes: 2.006 ─► Claude Opus 5.5 ─┬► confiante: 1.003 ───┴► 3.409 prompts rotulados
-                                       └► em dúvida: 1.003, postos de lado
-        ▼
-avaliação 400 (100 por Tier) · validação 303 · treino 2.706
-```
+![Diagrama do pipeline de rotulagem. Uma grade de Tier × 12 stacks × 4 formatos de prompt, com 16 prompts por célula, roda em duas rodadas: a rodada 1 com 4 Tiers (192 células) e a rodada 2 com complex e reasoning de novo (96 células). O Qwen2.5-Coder-32B no Ollama, no laptop, escreve 4.412 prompts distintos, cada um para um Tier. O Claude Haiku 4.5, pela Batches API e sem saber esse Tier, rotula todos de novo: 2.406 concordam com rótulo confiante e 2.006 são divergentes. O Claude Opus 5.5 arbitra os divergentes: fica confiante em 1.003 e em dúvida em 1.003, que são postos de lado. Os 3.409 prompts rotulados são divididos em treino 2.706, validação 303 e avaliação 400 (100 por Tier).](images/labelling.pt-br.svg)
 
 **Geração.** O Qwen2.5-Coder-32B, rodando localmente no Ollama, escreveu prompts do tipo que um desenvolvedor digita num assistente de programação, para cada Tier, em 12 stacks (Python e Django, serviços em Go, SQL e PostgreSQL, Terraform e YAML de Kubernetes e assim por diante) e 4 formatos: um pedido sem nada colado, um trecho de código colado, um erro colado, um turno de continuação. Um terço das células pedia 4 dos 16 prompts em português, espanhol, alemão ou francês. Cada requisição também pedia pelo menos três prompts que enganassem um palpite baseado no tamanho: prompts longos com um pedido fácil, prompts curtos com um pedido difícil.
 
