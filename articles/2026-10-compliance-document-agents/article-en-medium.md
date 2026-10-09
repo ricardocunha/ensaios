@@ -14,6 +14,8 @@ I built one for Brazilian public-procurement contracts (from PNCP, the national 
 
 To measure it, I generated 20 synthetic contracts with planted violations, plus legal-but-suspicious cases: an 8% guarantee *with* the justification the law requires, a term exactly at the 5-year limit.
 
+![The pipeline in four stages. A PNCP contract PDF goes through Docling (with Apple Vision OCR, pt-BR), which produces a parsed document with sections and page scores. An MCP server exposes it through four tools: parse_document, get_section, search_document and verify_quote. The Reviewer (Pydantic AI, one run per rule) uses those tools and returns a Finding with verdict, quote and confidence. The Auditor, which tries to refute violations, plus deterministic checks, decides whether to keep or escalate.](images/pipeline.en.png)
+
 ## OCR: fine until it isn't, and Docling half-knows it
 
 I rendered 20 real born-digital contracts as image-only "scans" at four degradation levels and compared Docling's OCR with the original text. Up to medium degradation it recovered 95–97% of the words and 92–97% of the numbers. On heavy scans it got 48% of the words and 40% of the numbers.
