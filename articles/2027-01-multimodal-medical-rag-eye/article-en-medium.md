@@ -22,6 +22,8 @@ Brazil has **BRSET** (Nakayama et al., *PLOS Digital Health*, 2024): 16,266 fund
 
 ## The setup
 
+![The pipeline in four stages. Query: a fundus photo. Retrieve: BiomedCLIP embeds the image, a local Qdrant index with dense image vectors and sparse report text is searched with hybrid search (RRF), and the 3 most similar training cases come back, each a photo with its recorded findings. Diagnose and explain: Qwen3-VL-8B (4-bit, local) sees the cases and the query and answers with typed JSON, then an explanation agent gives a source per label with cited cases. Check: a deterministic citation check, code with no model.](images/pipeline.en.png)
+
 Everything runs locally on an M4 Pro:
 
 - **Embeddings:** BiomedCLIP image embeddings.
