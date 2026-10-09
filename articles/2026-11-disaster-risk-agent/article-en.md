@@ -16,19 +16,7 @@ I built one and replayed the event hour by hour, with only the data that was ava
 
 ## The setup
 
-```
-ANA telemetry (15-min river level + rain) ─┐
-INMET stations (hourly rain) ──────────────┤   replay: at hour t, adapters see only what
-Copernicus EMS flood maps (EMSR720) ───────┘   was available at t (store.as_of(t))
-                       │
-        Signal{source, value, LR, freshness, reliability}   one per station per hour
-                       │
-        Bayesian fusion (plain Python, log-odds, calibrated on 2019-2022)
-                       │                       ─► p(flood level within 24 h), risk level
-        Alert agent (Pydantic AI, Qwen3-8B local) ─► headline + explanation in Portuguese, no number fields
-                       │
-        Citation audit (deterministic): numbers, stations, places, silent gauges, level
-```
+![Pipeline diagram in four stages. Sources: ANA telemetry (15-minute river level and rain), INMET stations (hourly rain) and Copernicus EMS flood maps (EMSR720) feed a replay store that, at hour t, exposes only the data available up to t (store.as_of(t)). Each station yields one Signal per hour with source, value, LR, freshness and reliability. A Bayesian fusion in plain Python, in log-odds and calibrated on 2019-2022, outputs p(flood level within 24 h) and a risk level. Its fused state goes to the alert agent (Pydantic AI, local Qwen3-8B), which writes a headline and explanation in Portuguese with no number fields. A deterministic citation audit then checks numbers, stations, places, silent gauges and level.](images/pipeline.en.svg)
 
 - **Scope:** the Taquari valley (Muçum → Encantado → Estrela → Taquari) as the main case, and Porto Alegre's Cais Mauá gauge on the Guaíba downstream (flood level 3.00 m, set by SEMA-RS, the state agency that operates the gauge): five places with a river gauge and an official flood level.
 - **Hypothesis per place and hour:** *the place's gauge reaches its official flood level within the next 24 hours.* That's what the probability is about, and what it's scored against.

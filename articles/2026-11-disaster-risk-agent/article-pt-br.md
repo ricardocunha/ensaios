@@ -16,19 +16,7 @@ Construí um agente assim e reproduzi o evento hora a hora, usando em cada hora 
 
 ## A montagem
 
-```
-Telemetria ANA (nível do rio + chuva, 15 min) ─┐
-Estações INMET (chuva horária) ────────────────┤   replay: na hora t, os adaptadores veem só o que
-Mapas de cheia Copernicus EMS (EMSR720) ───────┘   existia em t (store.as_of(t))
-                       │
-        Signal{fonte, valor, RV, idade, confiabilidade}   um por estação por hora
-                       │
-        Fusão bayesiana (Python puro, log-odds, calibrada em 2019-2022)
-                       │                       ─► p(cota de inundação em 24 h), nível de risco
-        Agente de alerta (Pydantic AI, Qwen3-8B local) ─► título + explicação em português, sem campos numéricos
-                       │
-        Auditoria de citações (determinística): números, estações, lugares, réguas silenciosas, nível
-```
+![Diagrama do pipeline em quatro etapas. Fontes: a telemetria da ANA (nível do rio e chuva a cada 15 minutos), as estações do INMET (chuva horária) e os mapas de cheia do Copernicus EMS (EMSR720) alimentam um replay que, na hora t, expõe só os dados que existiam até t (store.as_of(t)). Cada estação gera um Signal por hora, com fonte, valor, RV, idade e confiabilidade. Uma fusão bayesiana em Python puro, em log-odds e calibrada em 2019-2022, produz p(cota de inundação em 24 h) e o nível de risco. O estado fundido vai para o agente de alerta (Pydantic AI, Qwen3-8B local), que escreve título e explicação em português, sem campos numéricos. Uma auditoria de citações determinística confere números, estações, lugares, réguas silenciosas e nível.](images/pipeline.pt-br.svg)
 
 - **Escopo:** o Vale do Taquari (Muçum → Encantado → Estrela → Taquari) como caso principal, e a régua do Cais Mauá, em Porto Alegre, no Guaíba, rio abaixo (cota de inundação de 3,00 m, definida pela SEMA-RS, a secretaria estadual que opera a estação): cinco lugares com régua e cota de inundação oficial.
 - **Hipótese por lugar e por hora:** *a régua do lugar atinge a cota de inundação oficial nas próximas 24 horas.* É sobre isso que a probabilidade fala, e é contra isso que ela é avaliada.

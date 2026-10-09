@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Flood alert pipeline: from gauges to audited alert",
+    "quality_profile": "showcase",
+    "viewBox": [
+      860,
+      760
+    ]
+  },
+  "stages": [
+    {
+      "label": "Sources"
+    },
+    {
+      "label": "Replay"
+    },
+    {
+      "label": "Fuse, alert, audit"
+    },
+    {
+      "label": "Outputs and checks"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "ana",
+      "type": "external",
+      "label": "ANA telemetry",
+      "sublabel": "river level + rain",
+      "tag": "15 min",
+      "stage": 0,
+      "row": 0,
+      "width": 124
+    },
+    {
+      "id": "inmet",
+      "type": "external",
+      "label": "INMET stations",
+      "sublabel": "hourly rain",
+      "stage": 0,
+      "row": 1,
+      "width": 124
+    },
+    {
+      "id": "ems",
+      "type": "external",
+      "label": "Copernicus EMS",
+      "sublabel": "flood maps",
+      "tag": "EMSR720",
+      "stage": 0,
+      "row": 2,
+      "width": 124
+    },
+    {
+      "id": "replay",
+      "type": "database",
+      "label": "Replay at hour t",
+      "sublabel": "only data up to t",
+      "tag": "store.as_of(t)",
+      "stage": 1,
+      "row": 1,
+      "width": 124
+    },
+    {
+      "id": "signal",
+      "type": "backend",
+      "label": "Signal",
+      "sublabel": "per station, per hour",
+      "tag": "source, value",
+      "stage": 1,
+      "row": 2,
+      "width": 124
+    },
+    {
+      "id": "fusion",
+      "type": "backend",
+      "label": "Bayesian fusion",
+      "sublabel": "plain Python, log-odds",
+      "tag": "calibrated 2019-2022",
+      "stage": 2,
+      "row": 2,
+      "width": 150
+    },
+    {
+      "id": "prob",
+      "type": "frontend",
+      "label": "Flood probability",
+      "sublabel": "p(flood level in 24 h)",
+      "stage": 3,
+      "row": 2,
+      "width": 150,
+      "tag": "risk level"
+    },
+    {
+      "id": "agent",
+      "type": "backend",
+      "label": "Alert agent",
+      "sublabel": "Pydantic AI",
+      "tag": "Qwen3-8B local",
+      "stage": 2,
+      "row": 3,
+      "width": 150
+    },
+    {
+      "id": "alert",
+      "type": "frontend",
+      "label": "Alert in Portuguese",
+      "sublabel": "headline + explanation",
+      "tag": "no number fields",
+      "stage": 3,
+      "row": 3,
+      "width": 150
+    },
+    {
+      "id": "audit",
+      "type": "backend",
+      "label": "Citation audit",
+      "stage": 2,
+      "row": 4,
+      "width": 150,
+      "sublabel": "deterministic"
+    },
+    {
+      "id": "checks",
+      "type": "frontend",
+      "label": "Audit checks",
+      "sublabel": "numbers, stations, places",
+      "tag": "silent gauges, level",
+      "stage": 3,
+      "row": 4,
+      "width": 150
+    }
+  ],
+  "flows": [
+    {
+      "id": "ana-replay",
+      "from": "ana",
+      "to": "replay",
+      "label": "level + rain",
+      "variant": "emphasis"
+    },
+    {
+      "id": "inmet-replay",
+      "from": "inmet",
+      "to": "replay",
+      "label": "rain",
+      "variant": "emphasis",
+      "labelDx": -22.5
+    },
+    {
+      "id": "ems-replay",
+      "from": "ems",
+      "to": "replay",
+      "label": "maps",
+      "variant": "emphasis"
+    },
+    {
+      "id": "replay-signal",
+      "from": "replay",
+      "to": "signal",
+      "label": "as of t",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "signal-fusion",
+      "from": "signal",
+      "to": "fusion",
+      "label": "LR, freshness, reliability",
+      "variant": "emphasis",
+      "labelDy": -23
+    },
+    {
+      "id": "fusion-prob",
+      "from": "fusion",
+      "to": "prob",
+      "label": "result",
+      "variant": "default"
+    },
+    {
+      "id": "fusion-agent",
+      "from": "fusion",
+      "to": "agent",
+      "label": "fused state",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "agent-alert",
+      "from": "agent",
+      "to": "alert",
+      "label": "writes",
+      "variant": "default"
+    },
+    {
+      "id": "agent-audit",
+      "from": "agent",
+      "to": "audit",
+      "label": "alert text",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "audit-checks",
+      "from": "audit",
+      "to": "checks",
+      "label": "checks",
+      "variant": "default"
+    }
+  ]
+}
