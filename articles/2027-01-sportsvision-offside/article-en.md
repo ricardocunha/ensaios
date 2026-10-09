@@ -174,15 +174,10 @@ A regression test now covers both sides of `min_frames` at stride 2.
 
 **A CPU cap Kubernetes couldn't see.** A demo run took 457 s against 214 s published. The vision worker held a flat 1.00 core of its 2-core limit with 0 throttle events in 3,741 cgroup periods. The cause was a `docker update --cpus=1` left on the kind node that hosts the vision pods. The node still advertised all 14 CPUs, and the pod's own counters stayed clean. A thread sweep on the capped node said one thread beat two, so I changed threads and batch size along with the scaling trigger, and the next run took 637 s. That slower run exposed the cap. Uncapped, two threads are 1.87 times one (564 against 1,056 ms per frame). It cost a day of misdiagnosis. And `docker update --cpus=0` does not clear the cap; `--cpu-quota=-1` does.
 
-**The host.** A demo failed right after its preflight passed: the worker's startup probe timed out 25 times over 11 minutes with 76 % of host RAM free, while macOS Photos analysis used 314 % CPU. Later, restoring the observability stack moved inference from 564 to 856 ms per frame. Since then I compare per-frame rates inside one run, not wall-clock times across runs.
-
 ## Other things that broke
 
-- **Team clustering with k=2** split "players" from "everyone else": 228 of 243 tracks in one team. Kit purity was 0.57 with k=2 and 0.95 with k=3, so the default is now teams + 1.
-- **ONNX Runtime on CPU was slower than torch on CPU** on macOS with default session options: 26.1 against 41.1 detector fps, measured on the prototype.
 - **The first run on kind failed silently.** A vision worker was OOM-killed, and a killed process records nothing: no error row, no log line, no span. The job sat in `SEGMENTED` with a null error while its messages drained into a dead-letter queue nobody read. The dead-letter watcher and the alerts come from that run.
 - **Missing IAM permissions were invisible locally.** The Go services resolve every dead-letter queue at startup, and the policy only granted the source queues. On AWS none of them would have started. Floci enforces no IAM.
-- **The chaos scripts check node provider IDs**, not just the context name. They delete pods and restart StatefulSets, so each one refuses to run unless every node carries a `kind://` provider ID. The reliability page records why: during that work, the current context in the kubeconfig was a production EKS cluster the whole time. The guard fails closed. Four of the five experiments pass; the poison-message one has not completed a full run.
 
 ## What this does not show
 

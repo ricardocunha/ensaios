@@ -226,3 +226,10 @@ to 2026-10-08, 28 days), "almost two weeks" (13 days), "ten days" (2026-09-28 to
 than 4,000 times" (100.2 / 0.023 ≈ 4,357), "halved" (56 → 27 frames), 3.2 times (273 / 85), the
 footage attribution against `eval/DATA_SOURCES.md:11-13`, and the two SVGs, which are byte-identical
 to the project's `docs/architecture/diagrams/svg/` files and embed no raster image.
+
+## Author decisions, 2026-10-09
+
+Applied to the drafts after the proofread, from the author's answers. No project code was touched.
+
+- **Production EKS sentence:** cut (full EN and PT-BR). The chaos-scripts bullet went with the trim below.
+- **Length:** "Other things that broke" reduced to two items (the silent first run on kind; the IAM permissions the emulator hid), and the host-CPU paragraph ("The host") removed from "What the discarded runs revealed" (EN, PT-BR). Removed material, still in the project's docs: team clustering with k=2, ONNX Runtime vs torch on CPU, the chaos scripts' provider-ID guard, the macOS Photos / observability-stack contention. Their rows above no longer back any sentence in the drafts.

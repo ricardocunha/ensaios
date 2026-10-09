@@ -174,15 +174,10 @@ Um teste de regressão agora cobre os dois lados de `min_frames` com passo 2.
 
 **Um limite de CPU que o Kubernetes não enxergava.** Uma execução de demonstração levou 457 s, contra 214 s publicados. O worker de visão ficou cravado em 1,00 núcleo do seu limite de 2, com 0 eventos de throttling em 3.741 períodos de cgroup. A causa era um `docker update --cpus=1` esquecido no nó do kind que hospeda os pods de visão. O nó continuava anunciando as 14 CPUs, e os contadores do próprio pod continuavam limpos. Uma varredura de threads no nó limitado dizia que uma thread era melhor que duas, então mudei threads e tamanho de lote junto com o gatilho de escala, e a execução seguinte levou 637 s. Foi essa execução mais lenta que denunciou o limite. Sem o limite, duas threads são 1,87 vez mais rápidas que uma (564 contra 1.056 ms por quadro). Custou um dia de diagnóstico errado. E `docker update --cpus=0` não remove o limite; `--cpu-quota=-1` remove.
 
-**A própria máquina.** Uma demonstração falhou logo depois de o preflight passar: a probe de inicialização do worker estourou o tempo 25 vezes em 11 minutos, com 76% da RAM da máquina livre, enquanto a análise do app Fotos do macOS usava 314% de CPU. Mais tarde, religar a pilha de observabilidade levou a inferência de 564 para 856 ms por quadro. Desde então comparo taxas por quadro dentro de uma mesma execução, não tempos de relógio entre execuções.
-
 ## Outras coisas que quebraram
 
-- **O agrupamento de times com k=2** separou "jogadores" de "todo o resto": 228 de 243 tracks num time só. A pureza por uniforme era 0,57 com k=2 e 0,95 com k=3, então o padrão agora é times + 1.
-- **O ONNX Runtime em CPU foi mais lento que o torch em CPU** no macOS com as opções padrão de sessão: 26,1 contra 41,1 fps do detector, medidos no protótipo.
 - **A primeira execução no kind falhou em silêncio.** Um worker de visão foi morto por falta de memória, e um processo morto não registra nada: nem linha de erro, nem log, nem span. O job ficou em `SEGMENTED` com erro nulo enquanto as mensagens dele escoavam para uma fila de mensagens mortas que ninguém lia. O observador dessas filas e os alertas vêm dessa execução.
 - **Permissões de IAM faltando eram invisíveis localmente.** Os serviços em Go resolvem todas as filas de mensagens mortas na inicialização, e a política só liberava as filas de origem. Na AWS nenhum deles teria subido. O Floci não aplica IAM.
-- **Os scripts de caos conferem o providerID dos nós**, não só o nome do contexto. Eles apagam pods e reiniciam StatefulSets, então cada um se recusa a rodar a menos que todos os nós tenham um providerID `kind://`. A página de confiabilidade registra o motivo: durante esse trabalho, o contexto atual do kubeconfig era um cluster EKS de produção o tempo todo. Na dúvida, a trava bloqueia a execução. Quatro dos cinco experimentos passam; o da mensagem envenenada não completou uma execução inteira.
 
 ## O que isto não mostra
 
