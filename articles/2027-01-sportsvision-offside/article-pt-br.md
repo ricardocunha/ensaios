@@ -32,7 +32,7 @@ O projeto é essa divisão:
 
 - A **Percepção** (Python) é a única camada que roda uma rede neural: um detector RF-DETR encontra jogadores, goleiros, árbitros e a bola, um segmento de vídeo por vez.
 - O **Estado** (Python) vê o vídeo inteiro: tracks do ByteTrack, times por agrupamento de embeddings de aparência, a trajetória da bola e as posições em metros por meio de uma homografia.
-- A **Decisão** (Go) é determinística. Ela encontra posse, chutes e passes, traça a linha e transforma uma confiança num resultado. Os testes dela não precisam de GPU, de rede nem de Python.
+- A **Decisão** (Go) é determinística. Ela encontra posse, chutes e passes, traça a linha e transforma uma confiança num resultado. Os testes dela não precisam de rede, de arquivos nem de Python.
 
 Nenhuma camada responde a uma pergunta que pertence à seguinte. O detector nunca diz "impedimento"; o tracker nunca diz "passe".
 
@@ -56,7 +56,7 @@ Benchmark de 16 de setembro de 2026, num Apple M4 Pro com inferência só em CPU
 
 A percepção custa mais de 4.000 vezes a decisão que ela alimenta.
 
-Três ressalvas. Os 0,023 s são a etapa `rules` inteira, como o worker a observa, não um microbenchmark do motor, e vêm de execuções que produziram zero eventos, ou seja, a etapa não tinha nada para renderizar nem gravar. Essas medianas foram tiradas com o detector pré-treinado no COCO, de 640 px; o modelo com ajuste fino que o substituiu roda a 384 px, então a tabela não é comparável com as execuções posteriores. E "vídeos por hora" descreve um laptop.
+Três ressalvas. Os 0,023 s são a etapa `rules` inteira, como o worker a observa, não um microbenchmark do motor, e vêm de execuções que produziram zero eventos, ou seja, a etapa não tinha evidência para renderizar nem evento para gravar. Essas medianas foram tiradas com o detector pré-treinado no COCO, de 640 px; o modelo com ajuste fino que o substituiu roda a 384 px, então a tabela não é comparável com as execuções posteriores. E "vídeos por hora" descreve um laptop.
 
 A parte que não depende do laptop: nas cinco execuções em rajada, os 30 jobs terminaram, com 0 falhas, 0 mensagens mortas, 0 reinícios e 0 processos mortos por falta de memória.
 
@@ -70,13 +70,13 @@ Um evento `INCONCLUSIVE` é um resultado, não um erro. Ele diz o que a percepç
 
 Esse desenho tem um buraco, e este artigo é sobre ele. Os três resultados só existem para um **passe confirmado**. Um chute sem passador, ou sem recebedor, é descartado dentro do motor por um simples `continue`. Não emite nada e não registra nada. Assim, uma execução pode terminar com zero eventos e zero motivos.
 
-## As imagens
+## Os vídeos
 
-O projeto usa três trechos em Creative Commons do Wikimedia Commons (CC BY-SA 4.0). Tudo o que vem abaixo foi medido em um deles: 39 segundos de um jogo internacional feminino sub-17, 1280×720 a 29,97 fps, 1.170 quadros, de uma câmera baixa atrás da linha de fundo que varre metade do campo. A demonstração no cluster usa um corte de 20 segundos dele. Nenhum dos trechos tem passes rotulados.
+O projeto usa três trechos em Creative Commons do Wikimedia Commons (CC BY-SA 4.0). Tudo o que vem abaixo foi medido em um deles: 39 segundos de um jogo internacional feminino sub-17, 1280×720 a 29,97 fps, 1.170 quadros, de uma câmera baixa atrás da linha de fundo que varre metade do campo. O protótipo processa todos os quadros dele. A demonstração no cluster usa um corte de 20 segundos (599 quadros) e processa um quadro a cada dois. Nenhum dos trechos tem passes rotulados.
 
 ## Correção 1: ajuste fino do detector de jogadores
 
-As primeiras execuções usavam um checkpoint do COCO, que não tem classe de goleiro nem de árbitro, e o motor precisa do goleiro. Em 25 de setembro de 2026 fiz o ajuste fino do RF-DETR num dataset público de futebol com quatro classes. Na divisão de validação ele chegou a mAP@50-95 de 0,372 (mAP@50 de 0,742). É um número de detecção, não de impedimento.
+As primeiras execuções usavam um checkpoint do COCO, que não tem classe de goleiro nem de árbitro, e o motor precisa do goleiro. Em 25 de setembro de 2026 fiz o ajuste fino do RF-DETR num dataset público de futebol com quatro classes. Na divisão de validação do dataset, os melhores números dele foram mAP@50-95 de 0,372 e mAP@50 de 0,742. São números de detecção, não de impedimento.
 
 Os jogadores e a separação dos times melhoraram visivelmente. Eventos: 0. A bola estava visível em 547 de 1.170 quadros (47%), numa trajetória quebrada em 34 pedaços, e 60 chutes detectados não viraram nenhum evento.
 
@@ -110,15 +110,15 @@ O tracker agora leva adiante a última posição aceita da bola e rejeita uma ob
 
 A queda de visibilidade é o custo: 380 observações rejeitadas, e uma parte maior do trecho marcada como desconhecida.
 
-Esse único chute virou o primeiro evento do projeto, no quadro 282: `INCONCLUSIVE`, motivo `RECEIVER_MISSING`. O motor achou um chute, um passador, um recebedor, o time deles e a direção de ataque, e então se recusou a julgar, porque o recebedor não tinha posição perto do chute. Não é um veredito. Mostrou que o caminho do passe conseguia rodar, no protótipo, que processa todos os quadros.
+Esse único chute virou o primeiro evento do projeto, no quadro 282: `INCONCLUSIVE`, motivo `RECEIVER_MISSING`. O motor achou um chute, um passador, um recebedor, o time deles e a direção de ataque, e então se recusou a julgar, porque o recebedor não tinha posição conhecida no momento do chute. Não é um veredito. Mostrou que o caminho do passe conseguia rodar, no protótipo, que processa todos os quadros.
 
 A revisão achou dois bugs no filtro. Um quadro sem homografia era tratado como bola fora do campo, o que rejeitou as 36 detecções de um fixture de teste sem calibração; o trecho em que eu media tem homografia válida em todos os quadros, então nunca teria mostrado isso. E o raio permitido crescia com a idade da última posição aceita, de modo que um detector que ficasse pulando entre dois objetos era rejeitado por cerca de um segundo e depois aceito: o filtro se desligava justamente no caso para o qual foi escrito.
 
-No mesmo registro de decisão anotei um remédio que recusei: afrouxar os limiares de posse até aparecerem eventos. Sem nada rotulado, eu não teria como distinguir um evento correto de um acidente confiante. Guarde isso para a correção 5.
+O mesmo registro de decisão cita um remédio que deixei de lado de propósito: afrouxar os limiares de posse até aparecerem eventos. Sem nada rotulado, nada permitiria distinguir um evento correto de um acaso com confiança alta. Guarde isso para a correção 5.
 
 ## Correção 4: implantar o que eu tinha treinado
 
-Em 8 de outubro de 2026 descobri que o detector com ajuste fino nunca tinha sido exportado. O chart do Helm ainda apontava para o modelo do COCO, e o checkpoint treinado ficou no disco enquanto todas as execuções no cluster usavam o antigo. O trabalho que faltava era uma exportação e um upload.
+Até 8 de outubro de 2026, o detector com ajuste fino nunca tinha sido exportado. O chart do Helm ainda apontava para o modelo do COCO, e o checkpoint treinado em 25 de setembro ficou no disco enquanto todas as execuções no cluster usavam o antigo. O trabalho que faltava era uma exportação e um upload.
 
 Com ele implantado, no trecho de 20 segundos: 152 tracks, uma divisão de times de 65/64, 11 atribuições de goleiro, 16 chutes. Eventos: 0. A bola estava visível em 34,7% dos quadros processados, em 26 fragmentos cujo comprimento mediano era de um quadro.
 
@@ -144,7 +144,7 @@ A posse continuou em exatamente 0.
 
 **A contagem estava errada.** `min_frames: 3` exigia três quadros consecutivos do vídeo. O cluster roda a percepção em um quadro a cada dois (`SV_FRAME_STRIDE=2`), e os quadros intermediários são preenchidos com marcadores vazios para que a indexação por número de quadro continue barata. Os candidatos, portanto, alternavam entre um id de track e nada. Nenhuma sequência passava de comprimento 1. A posse era impossível com qualquer passo acima de 1, com qualquer raio.
 
-A suíte de testes do motor esteve verde o tempo todo, então nada nela rodava a posse com passo acima de 1, e o protótipo processa todos os quadros. A correção conta a sequência em observações: quadros que o pipeline nunca olhou não quebram a sequência nem somam a ela.
+Nem os testes nem o protótipo tinham como mostrar isso: antes da correção, nenhum teste do pacote de regras montava um vídeo com as lacunas que o passo deixa, e o protótipo processa todos os quadros. A correção conta a sequência em observações: quadros que o pipeline nunca olhou não quebram a sequência nem somam a ela.
 
 | Sobre os artefatos da última execução no cluster | Antes | Depois (`rules-1.1.0`) |
 |---|---|---|
@@ -164,7 +164,7 @@ Esses são os primeiros vereditos que o motor produziu com vídeo real. O que el
 - Não se sabe se "posição legal" está certo em algum dos dois quadros. Não há gabarito.
 - Os dois são eventos `PASS`, o tipo usado quando a Regra 11.1 resolve o lance sem precisar de linha (o recebedor está no próprio campo, ou na mesma linha da bola ou atrás dela). O sistema ainda não marcou nenhum impedimento.
 - A confiança de 0,71 passa de um limiar de detecção de 0,7 que nunca foi calibrado.
-- Dez dias depois de recusar afrouxar os limiares de posse, mudei um deles. O que posso dizer a favor: o raio sozinho não produziu nada, e a causa que importava era um bug. O raio continua provisório.
+- Dez dias depois de registrar que não afrouxaria os limiares de posse, mudei um deles. O que posso dizer a favor: o novo raio foi defendido pelo orçamento de erro, sozinho não produziu nada, e a causa que importava era um bug. O raio continua provisório.
 
 Um teste de regressão agora cobre os dois lados de `min_frames` com passo 2.
 
@@ -172,17 +172,17 @@ Um teste de regressão agora cobre os dois lados de `min_frames` com passo 2.
 
 **Uma travada causada pelo próprio benchmark.** Uma execução em rajada foi descartada porque um job que normalmente leva cerca de 135 s levou cerca de 13 minutos, com o cluster ocioso. O `sv api` escala pela taxa de requisições, e o gerador de carga consulta cada job a cada dois segundos: cerca de três requisições por segundo para seis vídeos, o bastante para escalar a API para cima e para baixo três vezes em trinta minutos. Uma dessas reduções matou uma réplica que segurava uma mensagem do fan-in, que ficou invisível até o tempo de visibilidade expirar. Nada se perdeu, e nenhum alerta disparou, porque a travada foi mais curta que o limiar do alerta. O benchmark estava comandando o autoscaler que ele media. A página de benchmarks cita as três execuções excluídas e o motivo de cada uma.
 
-**Um limite de CPU que o Kubernetes não enxergava.** Uma execução de demonstração levou 457 s, contra 214 s publicados. O worker de visão ficou cravado em 1,00 núcleo do seu limite de 2, com 0 eventos de throttling em 3.741 períodos de cgroup. A causa era um `docker update --cpus=1` esquecido no nó do kind que hospeda os pods de visão. O nó continuava anunciando as 14 CPUs, e os contadores do próprio pod continuavam limpos. Uma varredura de threads no nó limitado dizia que uma thread era melhor que duas, então mudei threads e tamanho de lote junto com o gatilho de escala, e a execução seguinte levou 637 s. Foi essa execução mais lenta que denunciou o limite. Sem o limite, duas threads rendem 1,87 vez uma (564 contra 1.056 ms por quadro). Custou um dia. E `docker update --cpus=0` não remove o limite; `--cpu-quota=-1` remove.
+**Um limite de CPU que o Kubernetes não enxergava.** Uma execução de demonstração levou 457 s, contra 214 s publicados. O worker de visão ficou cravado em 1,00 núcleo do seu limite de 2, com 0 eventos de throttling em 3.741 períodos de cgroup. A causa era um `docker update --cpus=1` esquecido no nó do kind que hospeda os pods de visão. O nó continuava anunciando as 14 CPUs, e os contadores do próprio pod continuavam limpos. Uma varredura de threads no nó limitado dizia que uma thread era melhor que duas, então mudei threads e tamanho de lote junto com o gatilho de escala, e a execução seguinte levou 637 s. Foi essa execução mais lenta que denunciou o limite. Sem o limite, duas threads são 1,87 vez mais rápidas que uma (564 contra 1.056 ms por quadro). Custou um dia de diagnóstico errado. E `docker update --cpus=0` não remove o limite; `--cpu-quota=-1` remove.
 
-**A máquina hospedeira.** Uma demonstração falhou logo depois de o preflight passar: a probe de inicialização do worker estourou o tempo 25 vezes em 11 minutos, com 76% da RAM da máquina livre, enquanto a análise do app Fotos do macOS usava 314% de CPU. Mais tarde, religar a pilha de observabilidade levou a inferência de 564 para 856 ms por quadro. Desde então comparo taxas por quadro dentro de uma mesma execução, não tempos de relógio entre execuções.
+**A própria máquina.** Uma demonstração falhou logo depois de o preflight passar: a probe de inicialização do worker estourou o tempo 25 vezes em 11 minutos, com 76% da RAM da máquina livre, enquanto a análise do app Fotos do macOS usava 314% de CPU. Mais tarde, religar a pilha de observabilidade levou a inferência de 564 para 856 ms por quadro. Desde então comparo taxas por quadro dentro de uma mesma execução, não tempos de relógio entre execuções.
 
 ## Outras coisas que quebraram
 
 - **O agrupamento de times com k=2** separou "jogadores" de "todo o resto": 228 de 243 tracks num time só. A pureza por uniforme era 0,57 com k=2 e 0,95 com k=3, então o padrão agora é times + 1.
-- **O ONNX Runtime em CPU foi mais lento que o torch em CPU** no macOS com as opções padrão de sessão: 26,1 contra 41,1 fps.
+- **O ONNX Runtime em CPU foi mais lento que o torch em CPU** no macOS com as opções padrão de sessão: 26,1 contra 41,1 fps do detector, medidos no protótipo.
 - **A primeira execução no kind falhou em silêncio.** Um worker de visão foi morto por falta de memória, e um processo morto não registra nada: nem linha de erro, nem log, nem span. O job ficou em `SEGMENTED` com erro nulo enquanto as mensagens dele escoavam para uma fila de mensagens mortas que ninguém lia. O observador dessas filas e os alertas vêm dessa execução.
 - **Permissões de IAM faltando eram invisíveis localmente.** Os serviços em Go resolvem todas as filas de mensagens mortas na inicialização, e a política só liberava as filas de origem. Na AWS nenhum deles teria subido. O Floci não aplica IAM.
-- **Os scripts de caos conferem o providerID dos nós**, não só o nome do contexto. Durante esse trabalho, meu contexto atual do kube era um cluster EKS de produção o tempo todo. Quatro dos cinco experimentos passam; o da mensagem envenenada não completou uma execução inteira.
+- **Os scripts de caos conferem o providerID dos nós**, não só o nome do contexto. Eles apagam pods e reiniciam StatefulSets, então cada um se recusa a rodar a menos que todos os nós tenham um providerID `kind://`. A página de confiabilidade registra o motivo: durante esse trabalho, o contexto atual do kubeconfig era um cluster EKS de produção o tempo todo. Na dúvida, a trava bloqueia a execução. Quatro dos cinco experimentos passam; o da mensagem envenenada não completou uma execução inteira.
 
 ## O que isto não mostra
 
@@ -191,13 +191,13 @@ Nenhuma acurácia. Não existem trechos rotulados, então não há precisão, ne
 ## O que eu diria a um time construindo isso
 
 1. **Faça o "não aconteceu nada" se explicar.** Meu desenho de incerteza cobria passes confirmados e nada antes deles, então uma execução que não emite nada ficava igual a uma execução que não tinha nada para emitir. Contar por que cada chute foi descartado achou as duas causas. Se essas contagens estivessem no resultado de toda execução, a primeira já as teria mostrado, antes do desvio pelo detector, pelo fatiamento e pelo modelo de bola.
-2. **Teste a camada determinística com a amostragem que o pipeline implantado usa.** O motor tem muitos testes, e nenhum deles rodava a posse com passo 2.
-3. **Meça o que a etapa seguinte consome.** A visibilidade da bola subiu duas vezes sem ajudar: uma porque as detecções novas estavam erradas, outra porque estavam espalhadas. O que importava era precisão e continuidade.
+2. **Teste a camada determinística com a amostragem que o pipeline implantado usa.** O motor tem muitos testes, e antes da correção nenhum deles montava um vídeo com as lacunas que o passo 2 deixa.
+3. **Meça o que a etapa seguinte consome.** A visibilidade da bola subiu sem ajudar: com o primeiro modelo de bola porque as detecções novas estavam erradas, com o fatiamento porque estavam espalhadas. O que importava era precisão e continuidade.
 4. **Confira o que está implantado.** Um modelo treinado ficou no disco por quase duas semanas enquanto o cluster rodava o antigo.
-5. **Dê nome às execuções que você exclui, e verifique se o seu instrumento de medição está conduzindo o sistema.** A travada descartada é a origem da questão de projeto em aberto na página de escalabilidade.
+5. **Dê nome às execuções que você exclui, e verifique se o seu instrumento de medição está conduzindo o sistema.** A travada descartada agora é uma questão de projeto em aberto no backlog do projeto.
 6. **No kind, leia o cgroup do nó antes de acreditar num número de vazão.** O Kubernetes não avisa que um nó está limitado.
 7. **Sem rótulos, um veredito é um marco, não um resultado.** Dois eventos depois de quatro semanas sem nenhum é um avanço no encanamento. Ainda não diz nada sobre impedimento.
 
 ---
 
-*Projeto: [github.com/ricardocunha/sportsvision](https://github.com/ricardocunha/sportsvision) (Apache-2.0), incluindo os [benchmarks](https://github.com/ricardocunha/sportsvision/blob/main/docs/benchmarks.md), a [página de avaliação](https://github.com/ricardocunha/sportsvision/blob/main/docs/evaluation.md) e os [registros de decisão](https://github.com/ricardocunha/sportsvision/blob/main/docs/adr/README.md). Imagens: três trechos do Wikimedia Commons, CC BY-SA 4.0, de NaBUru38 (Copa do Mundo Feminina Sub-17 da FIFA de 2018, Nova Zelândia x Canadá, trechos 21 e 27) e Manchesterunited1234 (FC Versailles 78 x AS Nancy-Lorraine, 08/03/2024, trecho 157); nenhum quadro é reproduzido aqui. Dados de treino: football-players-detection e football-ball-detection do Roboflow Universe, CC BY 4.0. Modelos: RF-DETR e SigLIP (Apache-2.0), ByteTrack via supervision (MIT). Os diagramas são do próprio projeto. Não é um sistema de VAR nem é comparado com um. Rascunhos e a fonte de cada número: [github.com/ricardocunha/ensaios › articles/2027-01-sportsvision-offside](https://github.com/ricardocunha/ensaios/tree/main/articles/2027-01-sportsvision-offside).*
+*Projeto: [github.com/ricardocunha/sportsvision](https://github.com/ricardocunha/sportsvision) (Apache-2.0), incluindo os [benchmarks](https://github.com/ricardocunha/sportsvision/blob/main/docs/benchmarks.md), a [página de avaliação](https://github.com/ricardocunha/sportsvision/blob/main/docs/evaluation.md) e os [registros de decisão](https://github.com/ricardocunha/sportsvision/blob/main/docs/adr/README.md). Vídeos: três trechos do Wikimedia Commons, CC BY-SA 4.0, de NaBUru38 (Copa do Mundo Feminina Sub-17 da FIFA de 2018, Nova Zelândia x Canadá, trechos 21 e 27) e Manchesterunited1234 (FC Versailles 78 x AS Nancy-Lorraine, 08/03/2024, trecho 157); nenhum quadro é reproduzido aqui. Dados de treino: football-players-detection e football-ball-detection do Roboflow Universe, CC BY 4.0. Modelos: RF-DETR e SigLIP (Apache-2.0), ByteTrack via supervision (MIT). Os diagramas são do próprio projeto. Não é um sistema de VAR nem é comparado com um. Rascunhos e a fonte de cada número: [github.com/ricardocunha/ensaios › articles/2027-01-sportsvision-offside](https://github.com/ricardocunha/ensaios/tree/main/articles/2027-01-sportsvision-offside).*

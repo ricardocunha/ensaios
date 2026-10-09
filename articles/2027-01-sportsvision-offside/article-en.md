@@ -32,7 +32,7 @@ The design is that split:
 
 - **Perception** (Python) is the only layer that runs a neural network: an RF-DETR detector finds players, goalkeepers, referees and the ball, one video segment at a time.
 - **State** (Python) sees the whole video: ByteTrack tracks, teams by clustering appearance embeddings, the ball trajectory, and positions in metres through a homography.
-- **Decision** (Go) is deterministic. It finds possession, kicks and passes, draws the line, and maps a confidence to an outcome. Its tests need no GPU, no network and no Python.
+- **Decision** (Go) is deterministic. It finds possession, kicks and passes, draws the line, and maps a confidence to an outcome. Its tests need no network, no files and no Python.
 
 No layer answers a question that belongs to a later one. The detector never outputs "offside"; the tracker never outputs "pass".
 
@@ -56,7 +56,7 @@ Benchmark of 2026-09-16, on an Apple M4 Pro with CPU-only inference in the clust
 
 Perception costs more than 4,000 times the decision it feeds.
 
-Three caveats. The 0.023 s is the whole `rules` stage as the worker observes it, not a microbenchmark of the engine, and it comes from runs that produced zero events, so the stage had nothing to render or store. These medians were taken with the 640 px COCO-pretrained detector; the fine-tuned model that replaced it runs at 384 px, so the table is not comparable to later runs. And "videos per hour" describes one laptop.
+Three caveats. The 0.023 s is the whole `rules` stage as the worker observes it, not a microbenchmark of the engine, and it comes from runs that produced zero events, so the stage had no evidence to render and no event to store. These medians were taken with the 640 px COCO-pretrained detector; the fine-tuned model that replaced it runs at 384 px, so the table is not comparable to later runs. And "videos per hour" describes one laptop.
 
 The part that doesn't depend on the laptop: across the five burst runs, all 30 jobs finished, with 0 failures, 0 dead letters, 0 restarts and 0 OOM kills.
 
@@ -72,11 +72,11 @@ That design has a hole, and this article is about it. The three outcomes exist o
 
 ## The footage
 
-The project uses three Creative Commons clips from Wikimedia Commons (CC BY-SA 4.0). Everything below was measured on one: 39 seconds of an under-17 women's international, 1280×720 at 29.97 fps, 1,170 frames, from a low camera behind the goal line that pans across half the pitch. The cluster demo uses a 20-second cut of it. None of the clips has labelled passes.
+The project uses three Creative Commons clips from Wikimedia Commons (CC BY-SA 4.0). Everything below was measured on one: 39 seconds of an under-17 women's international, 1280×720 at 29.97 fps, 1,170 frames, from a low camera behind the goal line that pans across half the pitch. The prototype processes every frame of it. The cluster demo uses a 20-second cut (599 frames) and processes every second frame. None of the clips has labelled passes.
 
 ## Fix 1: fine-tune the player detector
 
-The first runs used a COCO checkpoint, which has no goalkeeper or referee class, and the engine needs the goalkeeper. On 2026-09-25 I fine-tuned RF-DETR on a public four-class football dataset. On its validation split it reached mAP@50-95 0.372 (mAP@50 0.742). That is a detection figure, not an offside figure.
+The first runs used a COCO checkpoint, which has no goalkeeper or referee class, and the engine needs the goalkeeper. On 2026-09-25 I fine-tuned RF-DETR on a public four-class football dataset. On the dataset's validation split its best figures were mAP@50-95 0.372 and mAP@50 0.742. Those are detection figures, not offside figures.
 
 Players and team clustering visibly improved. Events: 0. The ball was visible in 547 of 1,170 frames (47 %), in a trajectory broken into 34 pieces, and 60 detected kicks became no event at all.
 
@@ -110,15 +110,15 @@ The tracker now carries the last accepted ball position forward and rejects an o
 
 The visibility drop is the cost: 380 observations rejected, and more of the clip marked as unknown.
 
-That one kick became the project's first event, at frame 282: `INCONCLUSIVE`, reason `RECEIVER_MISSING`. The engine found a kick, a passer, a receiver, their team and the attacking direction, and then declined, because the receiver had no position near the kick. It isn't a verdict. It showed the pass path could run, on the prototype, which processes every frame.
+That one kick became the project's first event, at frame 282: `INCONCLUSIVE`, reason `RECEIVER_MISSING`. The engine found a kick, a passer, a receiver, their team and the attacking direction, and then declined, because the receiver had no known position at the kick. It isn't a verdict. It showed the pass path could run, on the prototype, which processes every frame.
 
 Review found two bugs in the gate. A frame with no homography was treated like a ball off the pitch, which rejected all 36 detections in an uncalibrated test fixture; the clip I measured on has a valid homography in every frame, so it could never have shown this. And the allowed radius grew with the age of the last accepted position, so a detector bouncing between two objects was rejected for about a second and then accepted: the gate switched itself off in the one case it was written for.
 
-In the same decision record I wrote down a remedy I refused: loosening the possession thresholds until events appeared. With nothing labelled, I couldn't tell a correct event from a confident accident. Keep that in mind for fix 5.
+The same decision record names a remedy I deliberately did not take: loosening the possession thresholds until events appeared. With nothing labelled, nothing could tell a correct event from a confident accident. Keep that in mind for fix 5.
 
 ## Fix 4: deploy what I had trained
 
-On 2026-10-08 I found that the fine-tuned detector had never been exported. The Helm chart still pointed at the COCO model, and the trained checkpoint sat on disk while every cluster run used the old one. The missing work was an export and an upload.
+Until 2026-10-08 the fine-tuned detector had never been exported. The Helm chart still pointed at the COCO model, and the checkpoint trained on 2026-09-25 sat on disk while every cluster run used the old one. The missing work was an export and an upload.
 
 With it deployed, on the 20-second clip: 152 tracks, a 65/64 team split, 11 goalkeeper assignments, 16 kicks. Events: 0. The ball was visible in 34.7 % of processed frames, in 26 fragments whose median length was one frame.
 
@@ -144,7 +144,7 @@ Possession stayed at exactly 0.
 
 **The count was wrong.** `min_frames: 3` required three consecutive video frames. The cluster runs perception on every second frame (`SV_FRAME_STRIDE=2`), and the frames in between are filled with empty placeholders so that indexing by frame number stays cheap. Candidates therefore alternated between a track id and nothing. No run could exceed length 1. Possession was impossible at any stride above 1, for any radius.
 
-The engine's test suite was green the whole time, so nothing in it ran possession at a stride above 1, and the prototype processes every frame. The fix counts a run in observations: frames the pipeline never looked at neither break a run nor add to it.
+Neither the tests nor the prototype could show it: before the fix, no test in the rules package built a video with the gaps a stride leaves, and the prototype processes every frame. The fix counts a run in observations: frames the pipeline never looked at neither break a run nor add to it.
 
 | On the artifacts of the last cluster run | Before | After (`rules-1.1.0`) |
 |---|---|---|
@@ -164,7 +164,7 @@ Those are the first verdicts the engine has produced on real footage. What they 
 - Whether "onside" is right at either frame is unknown. There is no ground truth.
 - Both are `PASS` events, the type used when Law 11.1 settles the call without a line (the receiver is in their own half, or level with or behind the ball). The system has still never called an offside.
 - The 0.71 clears a detection threshold of 0.7 that has never been calibrated.
-- Ten days after refusing to loosen possession thresholds, I changed one. What I can say for it: the radius alone produced nothing, and the cause that mattered was a bug. The radius is still provisional.
+- Ten days after recording that I would not loosen the possession thresholds, I changed one. What I can say for it: the new radius was argued from the error budget, it produced nothing by itself, and the cause that mattered was a bug. The radius is still provisional.
 
 A regression test now covers both sides of `min_frames` at stride 2.
 
@@ -172,17 +172,17 @@ A regression test now covers both sides of `min_frames` at stride 2.
 
 **A stall the benchmark caused.** One burst run was discarded because a job that normally takes about 135 s took about 13 minutes while the cluster sat idle. `sv api` scales on request rate, and the load generator polls each job every two seconds: about three requests per second for six videos, enough to scale the API up and down three times in thirty minutes. One scale-down killed a replica holding a fan-in message, which stayed invisible until its visibility timeout expired. Nothing was lost, and no alert fired, because the stall was shorter than the alert threshold. The benchmark was driving the autoscaler it was measuring. The benchmark page names the three excluded runs and why.
 
-**A CPU cap Kubernetes couldn't see.** A demo run took 457 s against 214 s published. The vision worker held a flat 1.00 core of its 2-core limit with 0 throttle events in 3,741 cgroup periods. The cause was a `docker update --cpus=1` left on the kind node that hosts the vision pods. The node still advertised all 14 CPUs, and the pod's own counters stayed clean. A thread sweep on the capped node said one thread beat two, so I changed threads and batch size along with the scaling trigger, and the next run took 637 s. That slower run exposed the cap. Uncapped, two threads are 1.87 times one (564 against 1,056 ms per frame). It cost a day. And `docker update --cpus=0` does not clear the cap; `--cpu-quota=-1` does.
+**A CPU cap Kubernetes couldn't see.** A demo run took 457 s against 214 s published. The vision worker held a flat 1.00 core of its 2-core limit with 0 throttle events in 3,741 cgroup periods. The cause was a `docker update --cpus=1` left on the kind node that hosts the vision pods. The node still advertised all 14 CPUs, and the pod's own counters stayed clean. A thread sweep on the capped node said one thread beat two, so I changed threads and batch size along with the scaling trigger, and the next run took 637 s. That slower run exposed the cap. Uncapped, two threads are 1.87 times one (564 against 1,056 ms per frame). It cost a day of misdiagnosis. And `docker update --cpus=0` does not clear the cap; `--cpu-quota=-1` does.
 
 **The host.** A demo failed right after its preflight passed: the worker's startup probe timed out 25 times over 11 minutes with 76 % of host RAM free, while macOS Photos analysis used 314 % CPU. Later, restoring the observability stack moved inference from 564 to 856 ms per frame. Since then I compare per-frame rates inside one run, not wall-clock times across runs.
 
 ## Other things that broke
 
 - **Team clustering with k=2** split "players" from "everyone else": 228 of 243 tracks in one team. Kit purity was 0.57 with k=2 and 0.95 with k=3, so the default is now teams + 1.
-- **ONNX Runtime on CPU was slower than torch on CPU** on macOS with default session options: 26.1 against 41.1 fps.
+- **ONNX Runtime on CPU was slower than torch on CPU** on macOS with default session options: 26.1 against 41.1 detector fps, measured on the prototype.
 - **The first run on kind failed silently.** A vision worker was OOM-killed, and a killed process records nothing: no error row, no log line, no span. The job sat in `SEGMENTED` with a null error while its messages drained into a dead-letter queue nobody read. The dead-letter watcher and the alerts come from that run.
 - **Missing IAM permissions were invisible locally.** The Go services resolve every dead-letter queue at startup, and the policy only granted the source queues. On AWS none of them would have started. Floci enforces no IAM.
-- **The chaos scripts check node provider IDs**, not just the context name. During that work, my current kube context was a production EKS cluster the whole time. Four of the five experiments pass; the poison-message one has not completed a full run.
+- **The chaos scripts check node provider IDs**, not just the context name. They delete pods and restart StatefulSets, so each one refuses to run unless every node carries a `kind://` provider ID. The reliability page records why: during that work, the current context in the kubeconfig was a production EKS cluster the whole time. The guard fails closed. Four of the five experiments pass; the poison-message one has not completed a full run.
 
 ## What this does not show
 
@@ -191,10 +191,10 @@ No accuracy. No labelled clips exist, so there is no precision, no recall and no
 ## What I'd tell a team building this
 
 1. **Make "nothing happened" explain itself.** My uncertainty design covered confirmed passes and nothing before them, so a run that emits nothing looked the same as a run with nothing to emit. Counting why each kick was dropped found both causes. Had those counts been on every run's result, the first run would have shown them, before the detour through the detector, the tiling and the ball model.
-2. **Test the deterministic layer at the sampling the deployed pipeline uses.** The engine has many tests, and none of them ran possession at stride 2.
-3. **Measure what the next stage consumes.** Ball visibility went up twice without helping: once because the new detections were wrong, once because they were scattered. Precision and continuity were what mattered.
+2. **Test the deterministic layer at the sampling the deployed pipeline uses.** The engine has many tests, and before the fix none of them built a video with the gaps stride 2 leaves.
+3. **Measure what the next stage consumes.** Ball visibility rose without helping: with the first ball model because the new detections were wrong, with slicing because they were scattered. Precision and continuity were what mattered.
 4. **Check what is deployed.** A trained model sat on disk for almost two weeks while the cluster ran the old one.
-5. **Name the runs you exclude, and check whether your harness is steering the system.** The discarded stall is where the scalability page's open design question comes from.
+5. **Name the runs you exclude, and check whether your harness is steering the system.** The discarded stall is now an open design question in the project's backlog.
 6. **On kind, read the node's cgroup before believing a throughput number.** Kubernetes will not tell you a node is capped.
 7. **Without labels, a verdict is a milestone, not a result.** Two events after four weeks of none is progress on the plumbing. It says nothing yet about offside.
 

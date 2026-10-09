@@ -4,7 +4,9 @@ Where every number and factual claim in the drafts comes from. All paths are in
 [ricardocunha/sportsvision](https://github.com/ricardocunha/sportsvision) at commit `6d694fd`
 (2026-10-08), read on 2026-10-09. `file:line` is a line in that commit; a bare hash is a commit
 message (`git show -s <hash>`). Nothing was re-run for this article: the drafts only report what the
-repository already records.
+repository already records. The proofread of 2026-10-09 rechecked every reference against the
+repository at `2abb0df` (2026-10-09); the only files changed since `6d694fd` are `docs/demo.md` and
+`scripts/demo.sh`, so the line numbers below still hold.
 
 The same numbers are used in `article-en.md`, `article-en-medium.md`, `article-pt-br.md` and the two
 LinkedIn posts (PT-BR with decimal commas).
@@ -15,7 +17,7 @@ LinkedIn posts (PT-BR with decimal commas).
 |---|---|
 | Output per pass: offside line, margin in metres, frames used, recomputable confidence | `README.md:10-12`, `README.md:77-81` |
 | Three layers: Perception (Python, only layer with a neural network, per segment), State (Python, whole video), Decision (Go, deterministic); no layer answers a later layer's question | `docs/adr/0006-perception-state-decision-boundaries.md:17-23` |
-| Engine tests need no GPU, network or Python | `docs/adr/0006-…:43`, `README.md:152-154` |
+| Engine tests need no network, no files and no Python | `docs/adr/0006-…:43`, `README.md:151-153` |
 | Five deployables, six queues, six dead-letter queues, PostgreSQL, object store | `README.md:43-44`, `docs/adr/README.md:16` |
 | kind with 1 control-plane + 2 workers ("three-node") | `docs/benchmarks.md:133`, `docs/adr/README.md:17` |
 | Floci emulates S3/SQS and is provisioned by the real Terraform AWS provider | `README.md:50-52`, `docs/adr/0001-local-first-cloud-emulation.md:11` |
@@ -63,6 +65,7 @@ runs, cold start included).
 | Three Wikimedia Commons clips, CC BY-SA 4.0; authors NaBUru38 (clips 21, 27) and Manchesterunited1234 (clip 157) | `eval/DATA_SOURCES.md:11-13` |
 | Main clip: 39 s, 1280×720, 29.97 fps, 1,170 frames, low camera behind the goal line, pans across half the pitch | `eval/DATA_SOURCES.md:11`, `eval/reports/README.md:12-14` |
 | Cluster demo uses a 20 s cut (two segments, 300 processed frames at stride 2) | `docs/benchmarks.md:215`, `docs/adr/0020-…:9` |
+| The 20 s cut is 599 frames, of which the cluster processes every second one (300) | `3f05894` ("104 of 300 frames", "frames=599"); `870b2f5` |
 | No labelled clips | `docs/evaluation.md:11` |
 | "Four weeks": first prototype run with zero events 2026-09-10; first verdicts 2026-10-08 | `eval/reports/README.md:8,138`; `870b2f5` |
 
@@ -70,8 +73,8 @@ runs, cold start included).
 
 | # | Claim | Source |
 |---|---|---|
-| 1 | Player fine-tune: val mAP@50-95 0.372; a detection figure on the Roboflow validation split, not an offside figure | `docs/evaluation.md:12`; `92738a3` |
-| 1 | mAP@50 0.742; trained on 2026-09-25 | `3f05894`; `deploy/helm/sportsvision/values.yaml:45` |
+| 1 | Player fine-tune: best val mAP@50-95 0.372; a detection figure on the Roboflow validation split, not an offside figure | `docs/evaluation.md:12`; `92738a3` |
+| 1 | Best val mAP@50 0.742; trained on 2026-09-25. The two figures are each the run's best and come from different epochs (see section 9), so the drafts say "best figures", not one checkpoint's pair | `3f05894`; `deploy/helm/sportsvision/values.yaml:45` |
 | 1 | Players and team clustering visibly improved; still zero events; ball visible in 547 of 1,170 frames; 60 kicks, no event | `92738a3`; `docs/adr/0019-…:13-19` |
 | 2 | Ball dataset of 4,948 images | `eval/DATA_SOURCES.md:48`, `docs/adr/0019-…:11` |
 | 2 | Ball visible 547 (47 %) → 1,086 (93 %); fragments 34 → 2; kicks 60 → 86; events 0 → 0 | `docs/adr/0019-…:13-19`; `5dceef8` |
@@ -100,6 +103,7 @@ runs, cold start included).
 | 5 | Frame 460 `PASS REVIEW_REQUIRED ONSIDE` conf 0.60; frame 472 `PASS DETECTED ONSIDE` conf 0.71 | `870b2f5` |
 | 5 | Verified with `sv rules --local` on the artifacts of the last cluster run; no ground truth; correctness unknown | `870b2f5` |
 | 5 | Regression test `TestPossessionSurvivesFrameStride` at stride 2 | `870b2f5`; `internal/rules/components_test.go:745` |
+| 5 | Before the fix, no test in the rules package built a video with stride gaps | `git grep -i stride 870b2f5^ -- internal/rules` returns nothing; `870b2f5` ("the engine's own scenario tests" build a `Video` without `NewVideo`) |
 | 5 | "Ten days after": ADR-0019 dated 2026-09-28, fix committed 2026-10-08 | `docs/adr/0019-…:4`; `870b2f5` |
 
 ## 6. Discarded runs and machine faults
@@ -111,11 +115,12 @@ runs, cold start included).
 | A replica holding a `segment.perceived` delivery was killed; the message waited out its visibility timeout; no loss, no dead letter | `docs/scalability.md:239-244` |
 | No alert fired because the stall was below the threshold | `docs/scalability.md:260-264` |
 | Three burst runs excluded by name | `docs/benchmarks.md:199-202`, `:340-344` |
+| The stall is an open design question in the backlog (not on the scalability page, which analyses it) | `docs/benchmarks.md:341-343`; `docs/backlog.md:15`, `:24` |
 | 457 s against 214 s published | `docs/adr/0020-one-segment-per-vision-replica.md:9` |
 | Flat 1.00 core of a 2-core limit, 0 throttle events in 3,741 cgroup periods; `docker update --cpus=1` on the vision kind node; node still advertises 14 CPUs | `docs/adr/0020-…:34-45` |
 | Capped sweep favoured one thread; threads, batch and trigger changed; 637 s; that run exposed the cap | `docs/adr/0020-…:47-57`, `:125-137` |
 | Uncapped: 564 ms vs 1,056 ms per frame, 1.87× | `docs/adr/0020-…:53-57` |
-| "It cost a day" | `docs/adr/0020-…:106-107`; `docs/backlog.md:18` |
+| "It cost a day of misdiagnosis" | `docs/adr/0020-…:106-107`; `docs/backlog.md:18` |
 | `--cpus=0` does not clear the cap, `--cpu-quota=-1` does | `docs/adr/0020-…:62-63` |
 | Demo failed after preflight passed: startup probe timed out 25 times over 11 minutes, 76 % of host RAM free, macOS Photos analysis at 314 % CPU | `a1bfe97` |
 | Restoring the observability stack moved inference from 564 to 856 ms per frame | `docs/adr/0021-balanced-keyframe-segment-cuts.md:175-180` |
@@ -125,11 +130,11 @@ runs, cold start included).
 | Claim | Source |
 |---|---|
 | KMeans(2) put 228 of 243 tracks in one team; kit purity 0.57 (k=2) vs 0.95 (k=3); default k = teams + 1 | `eval/reports/README.md:95-99` |
-| ONNX Runtime CPU 26.1 fps vs torch CPU 41.1 fps on macOS, default session options | `eval/reports/README.md:44-46`, `:55-57` |
+| ONNX Runtime CPU 26.1 fps vs torch CPU 41.1 fps (detector fps, 150-frame prototype excerpt) on macOS, default session options | `eval/reports/README.md:44-46`, `:55-57` |
 | First kind run failed silently: OOM-killed vision worker, no step row, no log, no span; job stayed `SEGMENTED` with `last_error` null; messages went to the dead-letter queue | `docs/adr/0018-dead-letter-handling-and-job-failure-semantics.md:9`; `README.md:253-256` |
 | Dead-letter watcher and alerts exist because of it | `docs/adr/0018-…:17-21`; `7fa46e3` |
 | Missing dead-letter IAM permissions; Go roles resolve every dead-letter queue at startup; invisible because Floci enforces no IAM | `9b558cc`; `docs/reliability.md:174-186` |
-| Chaos scripts check `kind://` providerIDs; the current context was a production EKS cluster the whole time | `docs/reliability.md:123-128` |
+| Chaos scripts delete pods and restart StatefulSets and refuse to run unless every node carries a `kind://` providerID; "during this wave the current context was in fact a production EKS cluster the whole time"; the guard fails closed | `docs/reliability.md:123-128` |
 | Four of five chaos experiments pass; poison-message not completed | `docs/reliability.md:134-140`, `:165-173` |
 
 ## 8. Limits
@@ -149,7 +154,7 @@ runs, cold start included).
 | "Zero events" | `README.md:28`, `:217` and `docs/benchmarks.md:55` say every run produced zero events. ADR-0019 (one `INCONCLUSIVE`, prototype) and `870b2f5` (two verdicts, `--local`) are newer. | The newer records, each with its own conditions. |
 | "Never emitted an event on real footage" (`870b2f5`) vs the frame-282 event (ADR-0019) | Both true for their path: the frame-282 event came from the host-native prototype at stride 1; the cluster path had emitted none. | Drafts call frame 282 "the project's first event … on the prototype" and frames 460/472 "the first verdicts". |
 | Fragments / gaps after fix 1 | `92738a3` says 108 runs, 34 gaps over the limit, "roughly 35 pieces"; ADR-0019 table says 33 gaps and 34 fragments. | ADR-0019 table (34 → 2). Gap counts left out. |
-| Training length of the player model | `docs/evaluation.md:12` says early-stopped after epoch 46; `3f05894` and `values.yaml:45` say 111 epochs. | Left out. |
+| Training length of the player model | `docs/evaluation.md:12` says early-stopped after epoch 46; `3f05894` and `values.yaml:45` say 111 epochs. The git-ignored `data/models/rfdetr-football/metrics.csv` on the author's machine has 111 rows covering epochs 0-46, so 111 looks like a row count. In it `val/ema_mAP_50_95` peaks at 0.372 (epoch 45) and `val/ema_mAP_50` at 0.742 (epoch 43). | Epoch counts left out. The two mAP figures are given as the run's best figures, not as one checkpoint's pair. |
 | Peak ball speed | 185 m/s (engine kinematics) vs 364 m/s (raw diagnostic), `docs/adr/0019-…:24-36`. The ADR says not to compare them. | Only the engine figure (185 m/s, 666 km/h), in fix 2. The gate's 363.9 → 48.8 m/s is left out. |
 | Homography drift in pixels | 455 px / 164 px (`eval/reports/README.md:107-108`) vs 484 px / 144.9 px (`docs/adr/0019-…:48`), different runs. | No number; "drifts while the camera pans". |
 | Player position from the box | "bottom-centre" (`docs/adr/0011-…:9`) vs "centroid rather than their feet" (`870b2f5`). | "from a bounding box", no further detail. |
@@ -164,8 +169,8 @@ runs, cold start included).
 | Whether `ONSIDE` is correct at frames 460 and 472 | Unknown: no labelled footage (`870b2f5`). | "Whether 'onside' is right at either frame is unknown." |
 | A full cluster run with `rules-1.1.0` | Not done; the figures are from `sv rules --local` on saved cluster artifacts (`870b2f5`). | Said in the short version, in fix 5 and in the limits. |
 | The 0.023 s stage "had nothing to render or store" | Inferred: the stage includes rendering and upserts (`docs/benchmarks.md:283-285`) and those runs had zero events (`:55`). | Stated as a consequence of zero events. |
-| "The engine's test suite was green … nothing in it ran possession at a stride above 1" | Deduced: the bug existed while `go test ./...` passed, and the regression test was added with the fix (`870b2f5`). No coverage report was read. | Stated as a deduction ("so nothing in it ran…"). |
-| "My current kube context was a production EKS cluster" | Stated in `docs/reliability.md:126-128`. The brief's lead that the scripts *ran against* the wrong context is **not** in the repo; the repo says the guard exists because of that risk. | The drafts say only what the doc says. |
+| What the engine's tests covered before the fix | Checked in code, not deduced: at `870b2f5^` nothing under `internal/rules` mentions a stride, and the scenario tests build a `Video` without `NewVideo`. That the suite was "green the whole time" is not recorded anywhere. | "before the fix, no test in the rules package built a video with the gaps a stride leaves". The "green the whole time" sentence was cut. |
+| The production EKS kube context | Stated in `docs/reliability.md:126-128` as "the current context", not as "my" context. The brief's lead that the scripts *ran against* the wrong context is **not** in the repo; the repo says the guard exists because of that risk and that it fails closed. | The full EN and PT-BR articles quote the doc's wording next to the guard, so it cannot be read as the scripts having run against production. Not used in the Medium version or on LinkedIn. |
 | The dedicated ball model's sidecar had `label_names ['ball', 'ball']` (`3f05894`), and it was deployed the same day (`821cf32`) with no note on whether that was resolved | Unresolved in the repo. | Left out of the drafts. |
 | The `model_version` collision fix has unit coverage but no cluster run behind it (`821cf32`) | Stated in the commit. | Left out for length; the limits say the verdicts have no full cluster run behind them. |
 | 300 s visibility timeout vs a stall of about 780 s (`docs/scalability.md:242`, `:261`) | The doc gives both and does not explain the difference. | "until its visibility timeout expired", no number. |
@@ -174,3 +179,50 @@ runs, cold start included).
 | "A wrong tuning decision that I had to revert" (Medium) | `SV_ORT_THREADS` and `SV_BATCH_SIZE` were changed to 1 and changed back (`docs/adr/0020-…:84-85`). | As stated. |
 
 No VERIFY or RESULT placeholders are left in the drafts.
+
+## Proofread 2026-10-09
+
+An independent pass over every draft against the sportsvision repository at `2abb0df`.
+
+Facts corrected:
+
+- Engine tests: "no GPU, no network and no Python" became "no network, no files and no Python",
+  which is what ADR-0006 and the README say (EN, PT-BR).
+- Player fine-tune: "reached mAP@50-95 0.372 (mAP@50 0.742)" read as one checkpoint's pair. The two
+  are each the run's best figure, from different epochs, so the drafts now say "best figures" (EN,
+  Medium table, PT-BR, README).
+- Lesson 5 said the stall's open design question is on the scalability page. It is in the backlog;
+  the scalability page analyses the stall (EN, PT-BR).
+- Lesson 3 said ball visibility "went up twice". It rose three times with no event (47 → 93 %,
+  34.7 → 38.0 %, 34.7 → 59.0 %); the lesson now names the two cases it draws on and gives no count
+  (EN, Medium, PT-BR).
+- ONNX against torch: the 26.1 and 41.1 fps are detector fps on the prototype, now said (EN, PT-BR).
+- README: 80.2 videos/hour is for a burst of six 8 s videos, and the benchmark used the older 640 px
+  COCO detector; both now said. The `INCONCLUSIVE` event is marked as a prototype result.
+- Medium: "all measured on one clip" hid that fixes 4 and 5 ran on the cluster's 20 s cut (599
+  frames, every second frame). Now said. The full EN and PT-BR say where the 599 comes from.
+- The frame-282 event: "no position near the kick" became "no known position at the kick" (the
+  gate is a window of frames, not a distance).
+
+Voice and overclaiming:
+
+- "The engine's test suite was green the whole time, so nothing in it ran possession at a stride
+  above 1" was an inference. Replaced by what the code shows (see section 10).
+- "On 2026-10-08 I found that…" (the commit does not say when it was found) became "Until
+  2026-10-08…".
+- "a remedy I refused" became "a remedy I deliberately did not take", ADR-0019's wording.
+- "It cost a day" became "a day of misdiagnosis", the record's wording; Medium's "a wrong tuning
+  decision that I had to revert" became "a tuning change that was made and then reverted".
+- The production-EKS line was reworded to the reliability page's own statement, next to the guard.
+- LinkedIn (both): the 0.023 s line now says the runs emitted no events, and the first event is
+  marked "not a verdict".
+
+PT-BR: the same changes; the section "As imagens" and the footer label became "Os vídeos" /
+"Vídeos" (no images of the footage exist in the article); "1,87 vez uma" and "A máquina hospedeira"
+were reworded.
+
+Checked and left as they were: every other number in sections 2 to 8, the "four weeks" (2026-09-10
+to 2026-10-08, 28 days), "almost two weeks" (13 days), "ten days" (2026-09-28 to 2026-10-08), "more
+than 4,000 times" (100.2 / 0.023 ≈ 4,357), "halved" (56 → 27 frames), 3.2 times (273 / 85), the
+footage attribution against `eval/DATA_SOURCES.md:11-13`, and the two SVGs, which are byte-identical
+to the project's `docs/architecture/diagrams/svg/` files and embed no raster image.

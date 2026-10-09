@@ -6,11 +6,11 @@ I built a pipeline that takes football video and should return, for every pass, 
 
 What I found:
 
-→ Deciding is cheap, seeing is expensive: in the benchmark, the rules stage took 0.023 s and perception 100.2 s on the same 10 s video.
+→ Deciding is cheap, seeing is expensive: in the benchmark, the rules stage took 0.023 s and perception 100.2 s on the same 10 s video (on runs that emitted no events).
 
 → A dedicated ball model took ball visibility from 47% to 93%. Still zero events: the trajectory hit 666 km/h. The detector was confidently wrong.
 
-→ A motion gate cut the worst ball jump from 12.14 m to 1.63 m. First event ever: "inconclusive".
+→ A motion gate cut the worst ball jump from 12.14 m to 1.63 m. First event ever: "inconclusive". Not a verdict.
 
 → The fine-tuned detector had sat on disk for almost two weeks while the cluster ran the old one.
 

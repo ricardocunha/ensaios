@@ -6,13 +6,13 @@ Montei um pipeline que recebe vídeo de futebol e deveria devolver, para cada pa
 
 O que encontrei:
 
-→ Decidir é barato, enxergar é caro: no benchmark, as regras levaram 0,023 s e a percepção 100,2 s no mesmo vídeo de 10 s.
+→ Decidir é barato, enxergar é caro: no benchmark, as regras levaram 0,023 s e a percepção 100,2 s no mesmo vídeo de 10 s (em execuções que não emitiram nenhum evento).
 
-→ Um modelo dedicado levou a visibilidade da bola de 47% para 93%. Zero eventos: a trajetória chegava a 666 km/h. O detector errava com confiança.
+→ Um modelo dedicado levou a visibilidade da bola de 47% para 93%. Ainda zero eventos: a trajetória chegava a 666 km/h. O detector errava com confiança.
 
-→ Um filtro de movimento reduziu o pior salto da bola de 12,14 m para 1,63 m. Primeiro evento: "inconclusivo".
+→ Um filtro de movimento reduziu o pior salto da bola de 12,14 m para 1,63 m. Primeiro evento: "inconclusivo". Não é um veredito.
 
-→ O detector treinado ficou quase duas semanas no disco enquanto o cluster rodava o antigo.
+→ O detector com ajuste fino ficou quase duas semanas no disco enquanto o cluster rodava o antigo.
 
 → O último bloqueio estava na camada barata e determinística: a posse exigia 3 quadros consecutivos, e o cluster só olha um a cada dois. 0 de 599 quadros, com qualquer raio de posse.
 
