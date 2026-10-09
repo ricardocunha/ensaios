@@ -26,7 +26,7 @@ Every number here comes from the project's docs, decision records (ADRs) and com
 
 ## What the system is
 
-![Three boundaries. Perception (Python, GPU or CPU) turns video segments into detections, embeddings and pitch keypoints. State (Python, CPU) turns those into tracks, team clusters and pitch coordinates in metres. Decision (Go, deterministic) runs pass detection, the offside line and the confidence-to-outcome mapping, and writes events and evidence to PostgreSQL and S3.](images/02-perception-state-decision.svg)
+![Three boundaries. Perception (Python, GPU or CPU) turns video segments into detections, embeddings and pitch keypoints. State (Python, CPU) turns those into tracks, team clusters and pitch coordinates in metres. Decision (Go, deterministic) runs pass detection, the offside line and the confidence-to-outcome mapping, and writes events and evidence to PostgreSQL and S3.](images/02-perception-state-decision.en.svg)
 
 The design is that split:
 
@@ -62,7 +62,7 @@ The part that doesn't depend on the laptop: across the five burst runs, all 30 j
 
 ## "I can't tell" is an answer, with nine reasons
 
-![Outcomes of an offside check. Every confirmed pass becomes a PASS or an OFFSIDE_CHECK. A check is DETECTED when margin and confidence clear both thresholds, REVIEW_REQUIRED when the margin is inside the review band or the confidence sits between the two thresholds, and INCONCLUSIVE when a gate fires.](images/07-event-outcomes.svg)
+![Outcomes of an offside check. Every confirmed pass becomes a PASS or an OFFSIDE_CHECK. A check is DETECTED when margin and confidence clear both thresholds, REVIEW_REQUIRED when the margin is inside the review band or the confidence sits between the two thresholds, and INCONCLUSIVE when a gate fires.](images/07-event-outcomes.en.svg)
 
 Every confirmed pass produces one event with one of three statuses. `DETECTED`: a verdict the engine stands behind. `REVIEW_REQUIRED`: a verdict a person should confirm, because the margin is under 0.3 m or the confidence is in the middle band. `INCONCLUSIVE`: the engine declines, with one of nine machine-readable reasons: `NO_HOMOGRAPHY`, `BALL_NOT_VISIBLE`, `RECEIVER_MISSING`, `DIRECTION_UNKNOWN`, `DEFENDER_MISSING`, `GOALKEEPER_MISSING`, `SET_PIECE`, `TEAM_UNASSIGNED`, `LOW_CONFIDENCE`.
 

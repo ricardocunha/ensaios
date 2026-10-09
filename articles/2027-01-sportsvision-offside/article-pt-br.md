@@ -26,7 +26,7 @@ Todos os números vêm da documentação, dos registros de decisão (ADRs) e das
 
 ## O que é o sistema
 
-![Três fronteiras. A Percepção (Python, GPU ou CPU) transforma segmentos de vídeo em detecções, embeddings e pontos-chave do campo. O Estado (Python, CPU) transforma isso em tracks, times e coordenadas do campo em metros. A Decisão (Go, determinística) faz a detecção de passes, a linha de impedimento e o mapeamento de confiança para resultado, e grava eventos e evidências no PostgreSQL e no S3.](images/02-perception-state-decision.svg)
+![Três fronteiras. A Percepção (Python, GPU ou CPU) transforma segmentos de vídeo em detecções, embeddings e pontos-chave do campo. O Estado (Python, CPU) transforma isso em tracks, times e coordenadas do campo em metros. A Decisão (Go, determinística) faz a detecção de passes, a linha de impedimento e o mapeamento de confiança para resultado, e grava eventos e evidências no PostgreSQL e no S3.](images/02-perception-state-decision.pt-br.svg)
 
 O projeto é essa divisão:
 
@@ -62,7 +62,7 @@ A parte que não depende do laptop: nas cinco execuções em rajada, os 30 jobs 
 
 ## "Não sei dizer" é uma resposta, com nove motivos
 
-![Resultados de uma checagem de impedimento. Todo passe confirmado vira um PASS ou um OFFSIDE_CHECK. A checagem é DETECTED quando margem e confiança passam dos dois limiares, REVIEW_REQUIRED quando a margem está dentro da faixa de revisão ou a confiança fica entre os dois limiares, e INCONCLUSIVE quando um dos gates dispara.](images/07-event-outcomes.svg)
+![Resultados de uma checagem de impedimento. Todo passe confirmado vira um PASS ou um OFFSIDE_CHECK. A checagem é DETECTED quando margem e confiança passam dos dois limiares, REVIEW_REQUIRED quando a margem está dentro da faixa de revisão ou a confiança fica entre os dois limiares, e INCONCLUSIVE quando um dos gates dispara.](images/07-event-outcomes.pt-br.svg)
 
 Todo passe confirmado produz um evento com um de três status. `DETECTED`: um veredito que o motor sustenta. `REVIEW_REQUIRED`: um veredito que uma pessoa deveria confirmar, porque a margem é menor que 0,3 m ou a confiança está na faixa intermediária. `INCONCLUSIVE`: o motor se recusa a julgar, com um de nove motivos legíveis por máquina: `NO_HOMOGRAPHY`, `BALL_NOT_VISIBLE`, `RECEIVER_MISSING`, `DIRECTION_UNKNOWN`, `DEFENDER_MISSING`, `GOALKEEPER_MISSING`, `SET_PIECE`, `TEAM_UNASSIGNED`, `LOW_CONFIDENCE`.
 

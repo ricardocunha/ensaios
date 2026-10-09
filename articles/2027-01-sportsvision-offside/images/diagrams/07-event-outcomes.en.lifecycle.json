@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Offside check outcomes",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [
+      980,
+      630
+    ]
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Every confirmed pass"
+    },
+    {
+      "id": "review",
+      "label": "Close or uncertain"
+    },
+    {
+      "id": "terminal",
+      "label": "Engine declines"
+    }
+  ],
+  "states": [
+    {
+      "id": "pass_confirmed",
+      "type": "start",
+      "label": "PASS",
+      "sublabel": "P to R",
+      "lane": "main",
+      "col": 0,
+      "tag": "same team",
+      "width": 104
+    },
+    {
+      "id": "offside_check",
+      "type": "decision",
+      "label": "OFFSIDE_CHECK",
+      "sublabel": "gates · geometry",
+      "tag": "rules.yaml",
+      "lane": "main",
+      "col": 1,
+      "width": 130
+    },
+    {
+      "id": "detected",
+      "type": "success",
+      "label": "DETECTED",
+      "sublabel": "verdict ONSIDE or OFFSIDE",
+      "tag": "OFFSIDE event if offside",
+      "lane": "main",
+      "col": 4,
+      "width": 200
+    },
+    {
+      "id": "review_required",
+      "type": "waiting",
+      "label": "REVIEW_REQUIRED",
+      "sublabel": "verdict ONSIDE or OFFSIDE",
+      "tag": "OFFSIDE event if offside · flagged",
+      "lane": "review",
+      "col": 2,
+      "width": 200
+    },
+    {
+      "id": "inconclusive",
+      "type": "neutral",
+      "label": "INCONCLUSIVE",
+      "sublabel": "verdict UNKNOWN + reason",
+      "tag": "no OFFSIDE event",
+      "lane": "terminal",
+      "col": 2,
+      "width": 200
+    }
+  ],
+  "transitions": [
+    {
+      "from": "pass_confirmed",
+      "to": "offside_check",
+      "route": "straight",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "offside_check",
+      "to": "detected",
+      "label": "|margin_m| >= review_margin, conf >= c_det",
+      "variant": "emphasis",
+      "route": "straight",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "offside_check",
+      "to": "review_required",
+      "label": "|margin_m| < review_margin or c_review <= conf < c_det",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "from": "offside_check",
+      "to": "inconclusive",
+      "label": "a gate fires, incl. conf < c_review",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "left"
+    }
+  ]
+}

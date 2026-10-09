@@ -19,6 +19,8 @@ The short version: four fixes upstream of the rules each worked by their own mea
 
 ## The system
 
+![Three boundaries. Perception (Python, GPU or CPU) turns video segments into detections, embeddings and pitch keypoints. State (Python, CPU) turns those into tracks, team clusters and pitch coordinates in metres. Decision (Go, deterministic) runs pass detection, the offside line and the confidence-to-outcome mapping, and writes events and evidence to PostgreSQL and S3.](images/02-perception-state-decision.en.png)
+
 Three layers, and no layer answers a question that belongs to a later one:
 
 - **Perception** (Python): an RF-DETR detector finds players, goalkeepers, referees and the ball.
@@ -34,6 +36,8 @@ Benchmark of 2026-09-16 (Apple M4 Pro, CPU inference in the cluster, median of 5
 Two caveats. The 0.023 s is the whole rules stage on runs that produced zero events, not a microbenchmark of the engine. And those medians used the older 640 px COCO model, so they are not comparable to later runs.
 
 ## "I can't tell" is an answer
+
+![Outcomes of an offside check. Every confirmed pass becomes a PASS or an OFFSIDE_CHECK. A check is DETECTED when margin and confidence clear both thresholds, REVIEW_REQUIRED when the margin is inside the review band or the confidence sits between the two thresholds, and INCONCLUSIVE when a gate fires.](images/07-event-outcomes.en.png)
 
 Every confirmed pass produces one event: `DETECTED`, `REVIEW_REQUIRED`, or `INCONCLUSIVE` with one of nine machine-readable reasons (`BALL_NOT_VISIBLE`, `RECEIVER_MISSING`, `GOALKEEPER_MISSING` and so on).
 
