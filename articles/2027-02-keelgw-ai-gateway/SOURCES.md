@@ -23,7 +23,7 @@ Where each number and factual claim in the drafts comes from, so the drafts can 
 | RouteLLM: binary strong/weak; recommended routers call OpenAI's embeddings API for every prompt; self-hosted checkpoints carry no licence; code is Apache-2.0 | `design.md:25`, `design.md:28`; `tasks.md:42` |
 | Decision on 2026-10-03 to train an own four-Tier classifier: no GPU, nothing sent outside, every part under a shippable licence | `design.md:31`; `tasks.md:42`; commit `772e482` |
 | The gateway side was already built against Arch-Router's interface when the licence blocker was found | `tasks.md:40` (2026-09-28 note: "the mock answers in Arch-Router's format"); diff of `772e482` ("built against Arch-Router's interface") |
-| "about 26 hours from the first data-generation commit to the committed model" | derived (D1): commits `1e50dc6` (2026-10-05 11:56 -0300) and `e522c85` (2026-10-06 14:15 -0300) |
+| "about 26 hours from the first commit of the data-generation script to the committed model" | derived (D1): commits `1e50dc6` (2026-10-05 11:56 -0300, the first version of `router/dataset.py`) and `e522c85` (2026-10-06 14:15 -0300) |
 
 ## Router: classifier
 
@@ -63,7 +63,7 @@ Where each number and factual claim in the drafts comes from, so the drafts can 
 | Of 1,474 prompts written as reasoning, the relabeller called 549 reasoning and 537 medium | derived (D4) |
 | Example prompt (`OperationalError: (1215, ...)`), its generator note, relabelled medium, adjudicated medium with confidence | `router/data/prompts.jsonl`, row `id` `d181cfa494beba32` |
 | Round 1 vs round 2 agreement: reasoning 28.9 % → 38.7 %, complex 44.8 % → 58.3 % | derived (D5) |
-| The labelled set has 505 reasoning prompts | derived (D4): rows with `tier == "reasoning"` in train, val or eval |
+| The generator wrote 1,474 prompts as reasoning; the labelled set has 505 reasoning prompts | derived (D4): 1,474 distinct prompts with `generated_tier == "reasoning"` (96 cells × 16 = 1,536 requested, 1,480 returned, 1,474 after deduplication); 505 rows with `tier == "reasoning"` in train, val or eval (498 agreed, 5 written as reasoning and adjudicated reasoning, 2 written as complex) |
 | Opus chose the relabeller's Tier in 1,516 of 2,006 (75.6 %), the generator's in 360 (17.9 %), both in 58, neither in 188 | derived (D6) |
 | Opus was confident on 1,003 of 2,006 | `tasks.md:67`; derived (D4) |
 | Unsure example: a bare `java.lang.NullPointerException` stack trace with no question | `router/data/prompts.jsonl`, row `id` `0783dd35b6c65101` (`split` `unsure`) |
@@ -83,7 +83,7 @@ Where each number and factual claim in the drafts comes from, so the drafts can 
 | Per-Tier recall 0.82 / 0.77 / 0.76 / 0.85 (the file's `accuracy` field is recall, see `train.py:159-163`), precision 0.8913 / 0.6471 / 0.7917 / 0.914, F1 0.8542 / 0.7032 / 0.7755 / 0.8808 (rounded to three decimals in the drafts) | `metrics.json:100-125` |
 | Confusion matrix | `metrics.json:126-158` |
 | Target: at least 80 % accuracy and p95 at most 800 ms on a c7i.xlarge; not measured there | `tasks.md:11`, `:72`; `metrics.json:176-180`; `router/README.md:54`, `:62` |
-| Medium predicted 119 times, right 77 | derived (D8) |
+| Medium predicted 119 times, right 77; the 42 wrong ones are more than half of the 80 errors (52.5 %) | derived (D8) |
 | 80 errors: 63 adjacent, 16 two Tiers apart, 1 three apart; 44 predicted lower than the label, 36 higher; the named cells | derived (D8) |
 | Quote "almost every error is a neighbouring Tier" | `tasks.md:69` |
 | Latency p50 7.3 ms, p95 20.9 ms, n = 210, Apple M4 Pro, 2 threads, one request at a time | `metrics.json:161-173` |
@@ -108,37 +108,37 @@ Where each number and factual claim in the drafts comes from, so the drafts can 
 
 | Claim | Source |
 |---|---|
-| First-party Go streaming reverse proxy | `docs/adr/0003-own-go-gateway-instead-of-agentgateway-or-litellm.md:3` |
+| First-party Go streaming reverse proxy | ADR 0003 (`docs/adr/0003-*.md`) `:3` |
 | Never translates between protocols; bodies forwarded byte for byte apart from `model`; `cache_control` kept intact | ADR 0003 `:12-13`; `openspec/changes/add-gateway-core/design.md:20`, `:138` |
 | Pipeline of 13 steps (the list) | `add-gateway-core/design.md:40-54` |
 | Zitadel federates each Organization's Google or Microsoft sign-in; the gateway validates one issuer | `docs/adr/0004-zitadel-as-platform-authorization-server.md:3` |
 | Money as integer micro-dollars everywhere | `docs/roadmap.md:92`; `add-gateway-core/design.md:74-76` |
 | Reserve-then-settle Quota: one Lua script in Valkey checks the Member's Quota and the Org Cap and reserves an upper-bound estimate atomically; a second settles | `openspec/changes/add-quota-enforcement/design.md:44-64`; `deploy/apps/valkey/values.yaml:1` |
-| Exhausted Quota returns 403, not 429, because the clients retry 429s | `add-quota-enforcement/design.md:99-106`; `docs/roadmap.md:83` |
+| Exhausted Quota returns 403, not 429, because (as the design notes say) Claude Code and Codex retry 429s automatically | `add-quota-enforcement/design.md:99-106`; `docs/roadmap.md:83` |
 | Request Log through SQS to a daily-partitioned Postgres table; 10,000-record buffer per pod, then unready, never dropping | `add-gateway-core/design.md:93-96`, `:145` |
 | Local stack: kind, floci emulating AWS APIs, a mock provider with canned Anthropic and OpenAI responses and fault injection | `docs/adr/0006-local-dev-on-kind-and-floci-with-split-infra-layers.md:3`, `:7`; `docs/local-development.md:3`, `:105-123` |
 | Streaming load test table (all eight rows) | `gateway/loadtest/RESULTS.md:7-12` |
 | floci's SQS: a batch of 10 in 1.1 s, about 8 s on the KMS-encrypted queue with a backlog, roughly 30 records a second; the wait is the long tail | `RESULTS.md:14-16` |
 | Median overhead about 0.6 ms at 20 streams | `RESULTS.md:17` |
-| Fixes: 16 senders instead of one; buffer drains on shutdown within 45 s | `RESULTS.md:18-20`; commit `f3bda53` |
+| Two fixes ("Two fixes came out of these runs"): 16 concurrent senders instead of one; buffer drains on shutdown within a 45 s grace period | `RESULTS.md:18-20`; commit `f3bda53` |
 | MCP: first runs p95 2 to 10 s at 20 calls/s, OOMKilled at 100 calls/s; goroutine profile showed calls waiting on S3 PutObject | `RESULTS.md:35` |
 | MCP fixes: uploads off the request path, pooled upstream connections | `RESULTS.md:37-38`; commit `8f2e550` |
 | MCP after: p95 2.10 ms through the gateway vs 1.39 ms direct, +0.7 ms, at 100 calls/s | `RESULTS.md:30-33` |
 | `auto` at 50 requests/s: p95 3.88 ms (named Model) vs 9.71 ms; p99 11.99 ms vs 101.6 ms; about 6 ms; the mock stands in for the Router | `RESULTS.md:47-54`, `:58` |
-| Targets: p99 overhead under 25 ms to first byte at 500 streams; at most 300 ms added by `auto` at p95; both open, for staging | `RESULTS.md:22`, `:58`; `add-gateway-core/design.md:22`; `add-auto-model-routing/tasks.md:32` |
+| Targets: p99 overhead under 25 ms to first byte at 500 streams, against staging; at most 300 ms added by `auto` at p95, to be measured once the real Router is deployed; both open | `RESULTS.md:22`, `:58`; `add-gateway-core/design.md:22`; `add-auto-model-routing/tasks.md:32` |
 
 ## Project status
 
 | Claim | Source |
 |---|---|
 | 178 commits, 9 active days, 2026-09-24 to 2026-10-06 | derived (D11) |
-| 139 commits carry a coding agent's co-author trailer | derived (D11) |
+| 39 of the 178 commits are merges; all 139 others carry a coding agent's co-author trailer | derived (D11) |
 | 19 OpenSpec changes; 242 tasks checked, 59 open | derived (D12) |
 | "Most of the open ones wait for a real environment" | derived (D12): 41 of the 59 open tasks name staging, AWS, prod, a pilot, a live or real system, or a deployment (keyword match, a lower bound) |
 | Quote: "planned, not executed. The AWS account doesn't exist yet and nothing has been applied" | `docs/runbooks/environment-buildout.md:5` |
 | Real Claude Code and Codex CLI sessions ran through the local gateway against the mock | `openspec/changes/add-gateway-core/tasks.md:20`; commit `12f8357` |
 | README still says "planning. Nothing is implemented yet." | `README.md:5` |
-| No real provider has answered a request; no customer | live-provider tests are open (`add-gateway-core/tasks.md:18-19`, `add-gateway-core/design.md:154`); pilot tasks open (`add-auto-model-routing/tasks.md:48`); see Not verified, item 1 |
+| No real provider has answered a request through the gateway; no customer | live-provider tests are open (`add-gateway-core/tasks.md:18-19`, `add-gateway-core/design.md:154`); pilot tasks open (`add-auto-model-routing/tasks.md:48`); see Not verified, item 1 |
 
 ## Derivations
 
@@ -154,8 +154,8 @@ All run from the keelgw repo root on tracked files, with `python3 -I`.
 - **D8. Confusion matrix.** From `metrics.json` `eval.confusion.matrix` `M` (rows true, columns predicted, order simple, medium, complex, reasoning): errors = sum of off-diagonal cells = 80; adjacent = cells with `abs(i - j) == 1` = 16 + 7 + 10 + 20 + 2 + 8 = 63; two apart = 2 + 6 + 2 + 6 = 16; three apart = 0 + 1 = 1; predicted lower than the label (`j < i`) = 44; higher = 36; column sums = 92, 119, 96, 93. 63 / 80 = 78.75 %.
 - **D9. Wilson interval.** `p = 320/400`, `z = 1.96`, centre `(p + z²/2n) / (1 + z²/n)`, half-width `z·sqrt(p(1−p)/n + z²/4n²) / (1 + z²/n)`: 0.7580 to 0.8363. (The normal approximation gives 0.7608 to 0.8392.) 79.3 % of 400 is about 317 prompts; 80.0 % is 320. The two runs share one eval set, so this interval describes the sampling uncertainty of one score; it is not a paired test of the difference.
 - **D10. Review file.** `csv.DictReader(open("router/data/review.csv"))`: 150 rows; `owner_tier.strip()` is empty in all 150; `label` counts: medium 47, complex 42, simple 34, reasoning 27 (100 confident rows at 25 per Tier plus 50 unsure).
-- **D11. Commits.** `git log --oneline | wc -l` = 178 (39 of them merges, `git log --merges --oneline | wc -l`). `git log --format=%ad --date=short | sort -u` gives 9 dates: 2026-09-24, -25, -28, -29, -30, 2026-10-02, -03, -05, -06. `git log --format=%b | grep -c 'Co-Authored-By: Claude'` = 139.
-- **D12. OpenSpec.** 14 active changes in `openspec/changes/` plus 5 in `openspec/changes/archive/` = 19. `cat openspec/changes/add-*/tasks.md openspec/changes/archive/*/tasks.md | grep -c '^- \[x\]'` = 242; the same with `'^- \[ \]'` = 59. Open tasks in active changes matching `staging|AWS|prod\b|pilot|real |live|c7i|ArgoCD|EKS|deploy` (case-insensitive): 41.
+- **D11. Commits.** `git log --oneline | wc -l` = 178 (39 of them merges, `git log --merges --oneline | wc -l`). `git log --format=%ad --date=short | sort -u` gives 9 dates: 2026-09-24, -25, -28, -29, -30, 2026-10-02, -03, -05, -06. `git log --format=%b | grep -c 'Co-Authored-By: Claude'` = 139; none of the 39 merges has the trailer, so every non-merge commit does.
+- **D12. OpenSpec.** 14 active changes in `openspec/changes/` plus 5 in `openspec/changes/archive/` = 19. `cat openspec/changes/add-*/tasks.md openspec/changes/archive/*/tasks.md | grep -c '^- \[x\]'` = 242; the same with `'^- \[ \]'` = 59. Open tasks in active changes (58 of the 59; one is in an archived change) matching `staging|AWS|prod\b|pilot|real |live|c7i|ArgoCD|EKS|deploy` (case-insensitive): 41. Several of the 17 that don't match are also AWS infrastructure tasks (state bucket, VPC, RDS, ECR, CloudFront).
 
 ## Conflicts and stale statements in the project's docs, and the value used
 
@@ -177,7 +177,7 @@ All run from the keelgw repo root on tracked files, with `python3 -I`.
 
 ## Not verified, and how the drafts word it
 
-1. **"Never called a real model provider, never served a customer."** The repo shows the live-provider and pilot tasks as open and says the AWS account doesn't exist. It cannot prove that no real key was ever tried locally (the local design allows a contributor to add one). The author should confirm before publishing.
+1. **"The gateway never sent a request to a real model provider, never served a customer."** The repo shows the live-provider and pilot tasks as open and says the AWS account doesn't exist. It cannot prove that no real key was ever tried locally (the local design allows a contributor to add one). The author should confirm before publishing. The data pipeline did call a real API (the Haiku and Opus labelling batches), so the drafts say "the gateway", and say so in the banner.
 2. **The 79.2 % / 79.3 % run.** Only `tasks.md:67` records it; no metrics file from that run is tracked. Reproducing it needs `TRAIN_ON_UNSURE = True` and a retrain.
 3. **$1.88.** From the task notes and a commit message. The spend ledger (`router/data/state.json`) is git-ignored and was not read.
 4. **The budget actually passed to the paid phases.** Only the default (3 dollars) is in tracked code; the drafts say "3 dollars by default".
@@ -195,12 +195,35 @@ Each is stated in the drafts only as the project's documents record it, with the
 | Arch-Router-1.5B (katanemo) is under the Katanemo licence, which requires a separate commercial licence from DigitalOcean for any commercial use, including offering the model as a service | `add-auto-model-routing/tasks.md:41` (2026-09-30); `design.md:27` | all articles, LinkedIn (as "as I read its licence") |
 | RouteLLM: binary strong/weak routing; its recommended routers (`mf`, `sw_ranking`) call OpenAI's embeddings API for every prompt; the self-hosted checkpoints (`bert`, `causal_llm`) carry no licence; its code is Apache-2.0 | `design.md:25`, `:28`; `tasks.md:42` (2026-10-03) | full articles, Medium |
 | intfloat/multilingual-e5-small: MIT per its model card's licence metadata; 384 dimensions; reads 512 tokens | `router/README.md:7`; `design.md:60` | all articles |
-| Qwen2.5-Coder-32B is Apache-2.0 | `router/README.md:75` | footers |
+| Qwen2.5-Coder-32B is Apache-2.0 | `router/README.md:75` | footers (as "per my project notes") |
 | Jev is a hosted classifier from TypeSafe AI, reached with the Organization's own key | `design.md:3`, `:34` | full articles (one sentence, no performance figures) |
-| Claude Code and Codex retry HTTP 429 automatically | `add-quota-enforcement/design.md:106`; `docs/roadmap.md:83` | full articles, Medium ("coding clients retry 429s") |
+| Claude Code and Codex retry HTTP 429 automatically | `add-quota-enforcement/design.md:106`; `docs/roadmap.md:83` | full articles, Medium (as "by my design notes") |
 | Zitadel federates Google Workspace and Microsoft Entra sign-in as an OIDC authorization server | ADR 0004 `:3` | full articles |
 | floci emulates AWS APIs; the SQS and S3 speeds are the project's own local measurements of it | ADR 0006 `:3`; `RESULTS.md:15`, `:41` | full articles, Medium |
 | Prompt caching depends on `cache_control` passing through untouched | ADR 0003 `:13` | full articles |
 | Model names "Claude Haiku 4.5" and "Claude Opus 5.5" | `router/README.md:76-78`; `dataset.py:84`, `:88` | everywhere |
 
-Not used on purpose: any figure about Jev's published benchmark, LiteLLM, agentgateway, SkillOpt, provider prices or AWS costs, although the project's documents mention them.
+Not used on purpose: any figure about Jev's published benchmark, any other gateway or tool the project's documents compare against, provider prices or AWS costs.
+
+## Proofread 2026-10-09
+
+An independent pass over all drafts against the keelgw repo at `4fc8d21`, tracked files only.
+
+**Recomputed, all matching the drafts.** The dataset was rebuilt from `generated-raw.jsonl`, `relabels.jsonl` and `adjudications.jsonl` (IDs by the hash rule, first occurrence wins, round 1 before round 2) and compared with `prompts.jsonl`: same 4,412 IDs, no mismatch in Tier written for or relabel. From that rebuild: the per-Tier agreement table and 54.5 %; 549 / 537 (and 315 complex, 73 simple) for prompts written as reasoning; round 1 vs round 2 (214/740, 284/734, 328/732, 419/719); adjudicator 1,516 / 360 / 58 / 188; confident 1,003 of 2,006; splits 2,706 / 303 / 400 / 1,003; 505 reasoning prompts; eval 319 + 81; median length 208. From `metrics.json`: 63 / 16 / 1, 44 / 36, column sums, per-Tier precision and F1 recomputed from the matrix, the L2 curve. Wilson interval with z = 1.959964: 0.7580 to 0.8363. 1,003 / 2,706 = 37.1 %; 1,003 / 4,412 = 22.7 %. Latency sample 200 + 10 (`train.py:248`, `:265`). Commits 178 / 9 days / 139; 26 h 18 min and 3 h 33 min. OpenSpec 19 / 242 / 59 over the 19 tracked `tasks.md`. Both example prompts exist verbatim with the labels described. Every cell of the load-test table and every figure of that section against `gateway/loadtest/RESULTS.md`.
+
+**Changed in the drafts.**
+
+1. "I asked for 1,474 reasoning prompts" was wrong: 1,536 were requested and 1,474 distinct ones were written. Now "The generator wrote 1,474 prompts as reasoning". Full EN and PT-BR.
+2. "Every number below comes from a laptop" and "never called a real model provider" overlooked the labelling batches, which called a real API. The banner now says "the keelgw gateway", "every measurement", and names the labelling batches. "No real provider has answered a request" gained "through the gateway". All articles and the README.
+3. "When it's unsure, it says medium" had no support (nothing measures the classifier's confidence). Now: the 42 wrong medium predictions are more than half of the 80 errors. Full EN and PT-BR.
+4. "139 of them carry a co-author trailer" is now "39 are merges, and all 139 others carry" it; the Medium version said "most".
+5. The load tests "found two real problems / bugs" is now "led to two fixes", as `RESULTS.md` puts it. The targets sentence no longer says the 300 ms target "is for staging": the file says it waits for the real Router to be deployed.
+6. "80.0 % on 400 held-out prompts" now says "synthetic" in the short version of every draft. "Agreed on 54.5 %" now says what agreed means (same Tier, relabeller confident) where the table isn't next to it; same-Tier agreement regardless of confidence is 2,504 (56.8 %) and is not used.
+7. The Medium draft put "they train but never measure" in quotation marks; the commit subject is "unsure adjudications train but never measure". The marks are gone.
+8. Third-party wording: the subtitle now carries "as I read its licence"; "A hosted gateway is exactly that" became conditional; the notes are dated "September and October 2026" (the Arch-Router note is from 2026-09-30); the 429 retry behaviour is attributed to the design notes and names Claude Code and Codex; Qwen's licence is "per my project notes"; the footers list every third-party project the notes cover.
+9. Voice: "I asked again" (second round) is now "the script asked again", and the quoted hint is identified as the reasoning one, the only one that holds it. "Members write in other languages" is "will write" (there are no Members yet). "In production the gateway appends earlier turns" is "When it serves a conversation" (there is no production).
+10. Caveat 3 no longer concludes that no human judged the labels: the record can't tell an unreviewed file from a review without corrections. It now says the labels come from agreement between models "with at most a 150-row human check behind them".
+11. LinkedIn: "for $1.88" is "on $1.88 of API spend"; PT-BR trimmed to under 1,400 characters of body.
+12. This file: the rows for the items above, and the names of tools the drafts don't discuss were removed from a file path and from the "not used" line.
+
+**Left for the author.** Whether he reviewed the 150-row sample himself; whether he read the Arch-Router licence himself on 2026-09-30 (the drafts say "as I read"); whether a real provider key was ever tried locally; the title's "for $1.88" (API spend for labels only; the article says so in its first bullet). Nothing in `router/` or `openspec/changes/add-auto-model-routing/` records a check of whether the provider's terms allow training a classifier on Claude Haiku 4.5 and Claude Opus 5.5 labels; the drafts make no claim either way.

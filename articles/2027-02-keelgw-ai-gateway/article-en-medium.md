@@ -1,6 +1,6 @@
 ---
 title: "A prompt router for $1.88: what synthetic labels buy, and what they don't"
-subtitle: "I needed a four-Tier prompt classifier for an AI gateway, the open model I had planned on turned out not to be usable, and I trained my own on CPU in about a day from synthetic data. It hit its 80 % target. Here is everything that number leaves out."
+subtitle: "I needed a four-Tier prompt classifier for an AI gateway, the open model I had planned on turned out, as I read its licence, not to be usable in a hosted product, and I trained my own on CPU in about a day from synthetic data. It hit its 80 % target. Here is everything that number leaves out."
 platforms: Medium (short version; the full version is article-en.md, for dev.to / Hashnode)
 status: DRAFT — numbers final (each one is mapped to the keelgw repo in SOURCES.md); third-party claims to re-verify before publishing
 repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2027-02-keelgw-ai-gateway
@@ -8,17 +8,17 @@ repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2027-02-keelgw-
 
 # A prompt router for $1.88: what synthetic labels buy, and what they don't
 
-> **Built and verified locally only.** As of the last commit described here (2026-10-06), keelgw has never run in a real AWS account, called a real model provider or served a customer. Every number below comes from a laptop.
+> **Built and verified locally only.** As of the last commit described here (2026-10-06), the keelgw gateway has never run in a real AWS account, sent a request to a real model provider or served a customer. Every measurement below was taken on a laptop. The only calls to a real API were the labelling batches for the training data.
 
 I've been building [keelgw](https://github.com/ricardocunha/keelgw) (Keel Gateway), a multi-tenant AI gateway for small businesses: which Models each Member may reach, through which Clients (Claude Code, Claude Cowork, Codex), at what USD Spend, on the Organization's own provider accounts.
 
-One feature is `model: auto`: the gateway classifies the prompt into one of four Tiers (**simple, medium, complex, reasoning**), and a Tier Map says which allowed Model serves each Tier. That needs a prompt router. I had picked an open router model, then read its licence properly. So I trained my own small CPU classifier from synthetic data, in about 26 hours from the first data-generation commit to the committed model.
+One feature is `model: auto`: the gateway classifies the prompt into one of four Tiers (**simple, medium, complex, reasoning**), and a Tier Map says which allowed Model serves each Tier. That needs a prompt router. I had picked an open router model, then read its licence properly. So I trained my own small CPU classifier from synthetic data, in about 26 hours from the first commit of the data-generation script to the committed model.
 
-The short version: the data cost **$1.88** in API spend. The classifier scores **80.0 %** on 400 held-out prompts, exactly its target, after one training decision I made while looking at that set. The gateway has never called it, and nothing measures whether it saves Spend or keeps answers good.
+The short version: the data cost **$1.88** in API spend. The classifier scores **80.0 %** on 400 held-out synthetic prompts, exactly its target, after one training decision I made while looking at that set. The gateway has never called it, and nothing measures whether it saves Spend or keeps answers good.
 
 ## The plan that didn't survive a licence check
 
-The design first named Arch-Router-1.5B, "on the belief that it was Apache-2.0", as the design doc now puts it. On 2026-09-30 I recorded a blocker: as I read the model's licence that day, it is the Katanemo licence, which requires a separate commercial licence from DigitalOcean for any commercial use, including offering the model as a service. The fallback, RouteLLM, didn't fit either, by my notes: two classes where I needed four, recommended routers that call OpenAI's embeddings API for every prompt, and self-hosted checkpoints with no licence. These are my notes from October 2026 about other people's projects; check them before relying on them.
+The design first named Arch-Router-1.5B, "on the belief that it was Apache-2.0", as the design doc now puts it. On 2026-09-30 I recorded a blocker: as I read the model's licence that day, it is the Katanemo licence, which requires a separate commercial licence from DigitalOcean for any commercial use, including offering the model as a service. The fallback, RouteLLM, didn't fit either, by my notes: two classes where I needed four, recommended routers that call OpenAI's embeddings API for every prompt, and self-hosted checkpoints with no licence. These are my notes from September and October 2026 about other people's projects; check them before relying on them.
 
 So: my own classifier, on CPU, sending nothing outside the gateway.
 
@@ -47,7 +47,7 @@ So: my own classifier, on CPU, sending nothing outside the gateway.
 
 ## A decision I reversed the same day
 
-What about the 1,003 unsure verdicts? At 10:42 on 2026-10-06 I committed "they train but never measure". Three and a half hours later I committed the opposite:
+What about the 1,003 unsure verdicts? At 10:42 on 2026-10-06 I committed the first answer: they train but never measure. Three and a half hours later I committed the opposite:
 
 | Training set | Val accuracy | Eval accuracy |
 |---|---|---|
@@ -84,11 +84,11 @@ What the synthetic labels did buy: a reproducible pipeline, a classifier whose e
 
 ## The rest of the gateway, and its load tests
 
-The data plane is a first-party Go streaming proxy that never translates between protocols, so request bodies pass byte for byte apart from the `model` field. One pipeline of 13 fixed steps. Spend is integer micro-dollars, with reserve-then-settle Quota in Valkey. An exhausted Quota returns 403, not 429, because coding clients retry 429s. Everything runs on a laptop: kind, floci emulating AWS, and a mock provider.
+The data plane is a first-party Go streaming proxy that never translates between protocols, so request bodies pass byte for byte apart from the `model` field. One pipeline of 13 fixed steps. Spend is integer micro-dollars, with reserve-then-settle Quota in Valkey. An exhausted Quota returns 403, not 429, because, by my design notes, Claude Code and Codex retry 429s. Everything runs on a laptop: kind, floci emulating AWS, and a mock provider.
 
-The worst local load-test number, a **29.4 s p99** at 500 concurrent streams, measured the emulator: its SQS took 1.1 s to accept a batch of 10 (longer on the encrypted queue), roughly 30 records a second, so the gateway's buffer filled and it waited rather than drop a Request Log record, as designed. At 20 streams the median overhead was about 0.6 ms. The tests still found real bugs: one queue sender became 16, the buffer now drains on shutdown, and an MCP path that was OOMKilled at 100 calls a second got its uploads moved off the request path (then +0.7 ms at p95). `auto` added about 6 ms at p95 against a mock router.
+The worst local load-test number, a **29.4 s p99** at 500 concurrent streams, measured the emulator: its SQS took 1.1 s to accept a batch of 10 (longer on the encrypted queue), roughly 30 records a second, so the gateway's buffer filled and it waited rather than drop a Request Log record, as designed. At 20 streams the median overhead was about 0.6 ms. The tests still led to real fixes: one queue sender became 16, the buffer now drains on shutdown, and an MCP path that was OOMKilled at 100 calls a second got its uploads moved off the request path (then +0.7 ms at p95). `auto` added about 6 ms at p95 against a mock router.
 
-None of this says the gateway is fast in production. There is no staging run. The repo has 178 commits over 9 active days, most co-authored with a coding agent, and its runbook says: "The AWS account doesn't exist yet and nothing has been applied."
+None of this says the gateway is fast in production. There is no staging run. The repo has 178 commits over 9 active days, every non-merge one co-authored with a coding agent, and its runbook says: "The AWS account doesn't exist yet and nothing has been applied."
 
 ## What I'd tell a team
 
@@ -103,6 +103,6 @@ None of this says the gateway is fast in production. There is no staging run. Th
 
 **Project:** [github.com/ricardocunha/keelgw](https://github.com/ricardocunha/keelgw) · **Drafts and the source of every number:** [github.com/ricardocunha/ensaios › articles/2027-02-keelgw-ai-gateway](https://github.com/ricardocunha/ensaios/tree/main/articles/2027-02-keelgw-ai-gateway)
 
-*Models: intfloat/multilingual-e5-small (MIT per its model card); Qwen2.5-Coder-32B (Apache-2.0) on Ollama; Claude Haiku 4.5 and Claude Opus 5.5 for labels. Statements about Arch-Router and RouteLLM are my notes as recorded in the project's design documents in September and October 2026.*
+*Models: intfloat/multilingual-e5-small (MIT per its model card); Qwen2.5-Coder-32B (Apache-2.0 per my project notes) on Ollama; Claude Haiku 4.5 and Claude Opus 5.5 for labels. Statements about other projects (Arch-Router, RouteLLM, floci, the licences above, and how Claude Code and Codex retry) are my notes as recorded in the project's documents in September and October 2026; check them before relying on them.*
 
 #AI #LLM #MachineLearning #Evaluation #SyntheticData #OpenSource #AIGateway
