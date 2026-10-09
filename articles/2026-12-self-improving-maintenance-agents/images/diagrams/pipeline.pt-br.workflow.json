@@ -1,0 +1,215 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Do SCADA ao ciclo de memória com gate",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "hidden"
+    }
+  },
+  "lanes": [
+    {
+      "id": "detect",
+      "label": "Detecção"
+    },
+    {
+      "id": "agent",
+      "label": "Agente"
+    },
+    {
+      "id": "memory",
+      "label": "Memória"
+    }
+  ],
+  "mainPath": [
+    "scada",
+    "temps",
+    "nbm",
+    "iforest",
+    "episode",
+    "agent",
+    "diagnosis"
+  ],
+  "nodes": [
+    {
+      "id": "scada",
+      "lane": "detect",
+      "col": 0,
+      "type": "database",
+      "label": "SCADA",
+      "sublabel": "dados de 10 min",
+      "width": 96
+    },
+    {
+      "id": "temps",
+      "lane": "detect",
+      "col": 1,
+      "type": "backend",
+      "label": "Temperaturas",
+      "sublabel": "horárias, menos ambiente",
+      "width": 128
+    },
+    {
+      "id": "nbm",
+      "lane": "detect",
+      "col": 2,
+      "type": "backend",
+      "label": "Modelo normal",
+      "sublabel": "um por sinal",
+      "width": 120
+    },
+    {
+      "id": "iforest",
+      "lane": "detect",
+      "col": 3,
+      "type": "backend",
+      "label": "Isolation Forest",
+      "sublabel": "retreinado a cada 30 d",
+      "width": 146
+    },
+    {
+      "id": "episode",
+      "lane": "detect",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Episódio",
+      "sublabel": "só o 1º dia de alarme",
+      "width": 152
+    },
+    {
+      "id": "toolset",
+      "lane": "agent",
+      "col": 3,
+      "type": "external",
+      "label": "Ferramentas",
+      "sublabel": "resíduos · contexto · livro",
+      "tag": "cortadas na decisão",
+      "width": 146
+    },
+    {
+      "id": "agent",
+      "lane": "agent",
+      "col": 4,
+      "type": "frontend",
+      "label": "Agente",
+      "sublabel": "Pydantic AI · Qwen3-8B",
+      "tag": "local",
+      "width": 152
+    },
+    {
+      "id": "diagnosis",
+      "lane": "agent",
+      "col": 5,
+      "type": "backend",
+      "label": "Diagnóstico",
+      "sublabel": "componente, ação, …",
+      "width": 124
+    },
+    {
+      "id": "logbook",
+      "lane": "memory",
+      "col": 3,
+      "type": "external",
+      "label": "Livro",
+      "sublabel": "desfecho, quando conhecido",
+      "width": 146
+    },
+    {
+      "id": "gate",
+      "lane": "memory",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Gate",
+      "sublabel": "conhecido · parecido · recente",
+      "tag": "mesma turbina ou grupo",
+      "width": 152
+    },
+    {
+      "id": "store",
+      "lane": "memory",
+      "col": 5,
+      "type": "database",
+      "label": "Memória",
+      "sublabel": "situação + desfecho",
+      "width": 124
+    }
+  ],
+  "edges": [
+    {
+      "id": "scada-temps",
+      "from": "scada",
+      "to": "temps",
+      "variant": "emphasis"
+    },
+    {
+      "id": "temps-nbm",
+      "from": "temps",
+      "to": "nbm",
+      "variant": "emphasis"
+    },
+    {
+      "id": "nbm-iforest",
+      "from": "nbm",
+      "to": "iforest",
+      "label": "resíduos",
+      "variant": "emphasis"
+    },
+    {
+      "id": "iforest-episode",
+      "from": "iforest",
+      "to": "episode",
+      "label": "dias de alarme",
+      "variant": "emphasis"
+    },
+    {
+      "id": "episode-agent",
+      "from": "episode",
+      "to": "agent",
+      "variant": "emphasis"
+    },
+    {
+      "id": "tools-agent",
+      "from": "toolset",
+      "to": "agent",
+      "variant": "default"
+    },
+    {
+      "id": "agent-diagnosis",
+      "from": "agent",
+      "to": "diagnosis",
+      "variant": "emphasis"
+    },
+    {
+      "id": "diagnosis-store",
+      "from": "diagnosis",
+      "to": "store",
+      "variant": "default"
+    },
+    {
+      "id": "store-gate",
+      "from": "store",
+      "to": "gate",
+      "variant": "default",
+      "role": "return"
+    },
+    {
+      "id": "gate-agent",
+      "from": "gate",
+      "to": "agent",
+      "label": "no máximo 3",
+      "variant": "default",
+      "role": "return"
+    },
+    {
+      "id": "logbook-store",
+      "from": "logbook",
+      "to": "store",
+      "label": "desfecho",
+      "variant": "default",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "route": "bottom-channel"
+    }
+  ]
+}

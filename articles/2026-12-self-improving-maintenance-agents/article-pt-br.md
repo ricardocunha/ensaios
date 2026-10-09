@@ -24,18 +24,7 @@ O que é público fica um nível acima. O ONS publica a geração por usina, hor
 
 ## A montagem
 
-```
-SCADA 10 min ─► temperaturas horárias menos a ambiente ─► modelo de comportamento normal por sinal ─► resíduos
-                                                                                                  │
-                  Isolation Forest nos resíduos, retreinado a cada 30 dias ─► dias de alarme ─► episódios
-                                                                                                  │
-  episódio (só o 1º dia de alarme) ─► agente (Pydantic AI, Qwen3-8B local) ─► Diagnosis{componente, ação, …}
-          ▲                                  │ ferramentas: série de resíduos · contexto · livro de manutenção (tudo cortado no momento da decisão)
-          │                                  ▼
-  memória: (situação, diagnóstico, desfecho) ◄── desfecho vindo do livro, visível só quando já seria conhecido
-          │
-     gate: desfecho conhecido · parecido · recente · mesma turbina ou mesmo grupo de componentes · no máximo 3
-```
+![Diagrama do pipeline. Detecção: o SCADA de 10 minutos vira temperaturas horárias menos a ambiente, um modelo de comportamento normal por sinal gera resíduos, um Isolation Forest retreinado a cada 30 dias os transforma em dias de alarme, e esses viram episódios (só o primeiro dia de alarme); cada episódio vai para um agente local (Pydantic AI, Qwen3-8B) com três ferramentas (série de resíduos, contexto, livro de manutenção), todas cortadas no momento da decisão, e ele devolve um diagnóstico com componente e ação; na memória, o diagnóstico e o desfecho vindo do livro, visível só quando já seria conhecido, são guardados; um gate (desfecho conhecido, parecido, recente, mesma turbina ou mesmo grupo de componentes, no máximo 3) decide quais memórias voltam para o agente.](images/pipeline.pt-br.svg)
 
 O agente responde a cada alarme com um diagnóstico tipado: qual componente do livro de manutenção está falhando (ou nenhum), e *inspecionar*, *monitorar* ou *ignorar*.
 

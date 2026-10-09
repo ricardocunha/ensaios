@@ -1,0 +1,215 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "From SCADA to a gated memory loop",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "hidden"
+    }
+  },
+  "lanes": [
+    {
+      "id": "detect",
+      "label": "Detection"
+    },
+    {
+      "id": "agent",
+      "label": "Agent"
+    },
+    {
+      "id": "memory",
+      "label": "Memory"
+    }
+  ],
+  "mainPath": [
+    "scada",
+    "temps",
+    "nbm",
+    "iforest",
+    "episode",
+    "agent",
+    "diagnosis"
+  ],
+  "nodes": [
+    {
+      "id": "scada",
+      "lane": "detect",
+      "col": 0,
+      "type": "database",
+      "label": "SCADA",
+      "sublabel": "10-min data",
+      "width": 96
+    },
+    {
+      "id": "temps",
+      "lane": "detect",
+      "col": 1,
+      "type": "backend",
+      "label": "Temperatures",
+      "sublabel": "hourly, minus ambient",
+      "width": 128
+    },
+    {
+      "id": "nbm",
+      "lane": "detect",
+      "col": 2,
+      "type": "backend",
+      "label": "Normal model",
+      "sublabel": "one per signal",
+      "width": 120
+    },
+    {
+      "id": "iforest",
+      "lane": "detect",
+      "col": 3,
+      "type": "backend",
+      "label": "Isolation Forest",
+      "sublabel": "retrained every 30 d",
+      "width": 146
+    },
+    {
+      "id": "episode",
+      "lane": "detect",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Episode",
+      "sublabel": "first alarm day only",
+      "width": 152
+    },
+    {
+      "id": "toolset",
+      "lane": "agent",
+      "col": 3,
+      "type": "external",
+      "label": "Tools",
+      "sublabel": "residuals · context · log",
+      "tag": "cut at decision time",
+      "width": 146
+    },
+    {
+      "id": "agent",
+      "lane": "agent",
+      "col": 4,
+      "type": "frontend",
+      "label": "Agent",
+      "sublabel": "Pydantic AI · Qwen3-8B",
+      "tag": "local",
+      "width": 152
+    },
+    {
+      "id": "diagnosis",
+      "lane": "agent",
+      "col": 5,
+      "type": "backend",
+      "label": "Diagnosis",
+      "sublabel": "component, action, …",
+      "width": 124
+    },
+    {
+      "id": "logbook",
+      "lane": "memory",
+      "col": 3,
+      "type": "external",
+      "label": "Logbook",
+      "sublabel": "outcome, once known",
+      "width": 146
+    },
+    {
+      "id": "gate",
+      "lane": "memory",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Gate",
+      "sublabel": "known · similar · recent",
+      "tag": "same turbine or group",
+      "width": 152
+    },
+    {
+      "id": "store",
+      "lane": "memory",
+      "col": 5,
+      "type": "database",
+      "label": "Memory",
+      "sublabel": "situation + outcome",
+      "width": 124
+    }
+  ],
+  "edges": [
+    {
+      "id": "scada-temps",
+      "from": "scada",
+      "to": "temps",
+      "variant": "emphasis"
+    },
+    {
+      "id": "temps-nbm",
+      "from": "temps",
+      "to": "nbm",
+      "variant": "emphasis"
+    },
+    {
+      "id": "nbm-iforest",
+      "from": "nbm",
+      "to": "iforest",
+      "label": "residuals",
+      "variant": "emphasis"
+    },
+    {
+      "id": "iforest-episode",
+      "from": "iforest",
+      "to": "episode",
+      "label": "alarm days",
+      "variant": "emphasis"
+    },
+    {
+      "id": "episode-agent",
+      "from": "episode",
+      "to": "agent",
+      "variant": "emphasis"
+    },
+    {
+      "id": "tools-agent",
+      "from": "toolset",
+      "to": "agent",
+      "variant": "default"
+    },
+    {
+      "id": "agent-diagnosis",
+      "from": "agent",
+      "to": "diagnosis",
+      "variant": "emphasis"
+    },
+    {
+      "id": "diagnosis-store",
+      "from": "diagnosis",
+      "to": "store",
+      "variant": "default"
+    },
+    {
+      "id": "store-gate",
+      "from": "store",
+      "to": "gate",
+      "variant": "default",
+      "role": "return"
+    },
+    {
+      "id": "gate-agent",
+      "from": "gate",
+      "to": "agent",
+      "label": "at most 3",
+      "variant": "default",
+      "role": "return"
+    },
+    {
+      "id": "logbook-store",
+      "from": "logbook",
+      "to": "store",
+      "label": "outcome",
+      "variant": "default",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "route": "bottom-channel"
+    }
+  ]
+}

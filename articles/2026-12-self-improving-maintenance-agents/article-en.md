@@ -24,18 +24,7 @@ What is public is one level up. ONS publishes generation per plant every hour, a
 
 ## The setup
 
-```
-10-min SCADA ─► hourly temperatures minus ambient ─► normal-behaviour model per signal ─► residuals
-                                                                                       │
-                     Isolation Forest on residuals, retrained every 30 days ─► alarm days ─► episodes
-                                                                                       │
-  episode (first alarm day only) ─► agent (Pydantic AI, Qwen3-8B local) ─► Diagnosis{component, action, …}
-          ▲                               │ tools: residual series · context · maintenance log (all cut at decision time)
-          │                               ▼
-  memory: (situation, diagnosis, outcome) ◄── outcome from the logbook, visible only once it would be known
-          │
-     gate: outcome known · similar · recent · same turbine or component group · at most 3
-```
+![Pipeline diagram. Detection: 10-minute SCADA becomes hourly temperatures minus ambient, a normal-behaviour model per signal produces residuals, an Isolation Forest retrained every 30 days turns them into alarm days, and those become episodes (first alarm day only); each episode goes to a local agent (Pydantic AI, Qwen3-8B) with three tools (residual series, context, maintenance log), all cut at decision time, and it returns a diagnosis with component and action; in memory, the diagnosis and the outcome from the logbook, visible only once it would be known, are stored; a gate (outcome known, similar, recent, same turbine or component group, at most 3) decides which memories go back to the agent.](images/pipeline.en.svg)
 
 The agent answers each alarm with a typed diagnosis: which logbook component is failing (or none), and *inspect*, *monitor* or *ignore*.
 
