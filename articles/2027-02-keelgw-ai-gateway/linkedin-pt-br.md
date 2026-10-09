@@ -2,7 +2,7 @@
 
 Treinei um roteador de prompts com US$ 1,88 de API. Ele bateu a meta de 80%. Eis o que esse número deixa de fora.
 
-Estou construindo o keelgw, um gateway de IA para pequenas empresas. No `model: auto` ele classifica cada prompt em 4 faixas, de simple a reasoning. O modelo aberto que eu tinha escolhido, pela minha leitura da licença, não servia para um produto hospedado. Treinei então um classificador pequeno em CPU, em cerca de um dia, com dados sintéticos.
+Estou construindo o keelgw, um gateway de IA para pequenas empresas. No `model: auto` ele classifica cada prompt em 4 faixas, de simple a reasoning. O modelo aberto que eu tinha escolhido, pelas anotações do projeto sobre a licença, não servia para um produto hospedado. Treinei então um classificador pequeno em CPU, em cerca de um dia, com dados sintéticos.
 
 O que vi:
 

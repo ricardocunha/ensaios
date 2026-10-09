@@ -1,6 +1,6 @@
 ---
 title: "A prompt router for $1.88: what synthetic labels buy, and what they don't"
-subtitle: "I needed a four-Tier prompt classifier for an AI gateway, the open model I had planned on turned out, as I read its licence, not to be usable in a hosted product, and I trained my own on CPU in about a day from synthetic data. It hit its 80 % target. Here is everything that number leaves out."
+subtitle: "I needed a four-Tier prompt classifier for an AI gateway, the open model I had planned on turned out, by my project notes on its licence, not to be usable in a hosted product, and I trained my own on CPU in about a day from synthetic data. It hit its 80 % target. Here is everything that number leaves out."
 platforms: Medium (short version; the full version is article-en.md, for dev.to / Hashnode)
 status: DRAFT — numbers final (each one is mapped to the keelgw repo in SOURCES.md); third-party claims to re-verify before publishing
 repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2027-02-keelgw-ai-gateway
@@ -12,13 +12,13 @@ repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2027-02-keelgw-
 
 I've been building [keelgw](https://github.com/ricardocunha/keelgw) (Keel Gateway), a multi-tenant AI gateway for small businesses: which Models each Member may reach, through which Clients (Claude Code, Claude Cowork, Codex), at what USD Spend, on the Organization's own provider accounts.
 
-One feature is `model: auto`: the gateway classifies the prompt into one of four Tiers (**simple, medium, complex, reasoning**), and a Tier Map says which allowed Model serves each Tier. That needs a prompt router. I had picked an open router model, then read its licence properly. So I trained my own small CPU classifier from synthetic data, in about 26 hours from the first commit of the data-generation script to the committed model.
+One feature is `model: auto`: the gateway classifies the prompt into one of four Tiers (**simple, medium, complex, reasoning**), and a Tier Map says which allowed Model serves each Tier. That needs a prompt router. I had picked an open router model, and then a licence check went against it. So I trained my own small CPU classifier from synthetic data, in about 26 hours from the first commit of the data-generation script to the committed model.
 
 The short version: the data cost **$1.88** in API spend. The classifier scores **80.0 %** on 400 held-out synthetic prompts, exactly its target, after one training decision I made while looking at that set. The gateway has never called it, and nothing measures whether it saves Spend or keeps answers good.
 
 ## The plan that didn't survive a licence check
 
-The design first named Arch-Router-1.5B, "on the belief that it was Apache-2.0", as the design doc now puts it. On 2026-09-30 I recorded a blocker: as I read the model's licence that day, it is the Katanemo licence, which requires a separate commercial licence from DigitalOcean for any commercial use, including offering the model as a service. The fallback, RouteLLM, didn't fit either, by my notes: two classes where I needed four, recommended routers that call OpenAI's embeddings API for every prompt, and self-hosted checkpoints with no licence. These are my notes from September and October 2026 about other people's projects; check them before relying on them.
+The design first named Arch-Router-1.5B, "on the belief that it was Apache-2.0", as the design doc now puts it. On 2026-09-30 I recorded a blocker: according to my project notes from that day, the model is under the Katanemo licence, which requires a separate commercial licence from DigitalOcean for any commercial use, including offering the model as a service. The fallback, RouteLLM, didn't fit either, by my notes: two classes where I needed four, recommended routers that call OpenAI's embeddings API for every prompt, and self-hosted checkpoints with no licence. These are my notes from September and October 2026 about other people's projects; check them before relying on them.
 
 So: my own classifier, on CPU, sending nothing outside the gateway.
 
@@ -75,10 +75,11 @@ Eval, 400 prompts: **accuracy 80.0 %, macro-F1 0.8034**. The target was at least
 
 1. **It was selected on the eval set.** With 320 of 400 correct, the 95 % Wilson interval is 75.8 % to 83.6 %. The 0.7-point gap between the two training choices is about three prompts.
 2. **Train and eval come from the same generator and grid.** Exact duplicates are removed; nothing checks for near-duplicates.
-3. **The labels are models' labels.** The pipeline writes a 150-row sample for me to review. The review file in the repo has no recorded corrections or labels.
+3. **The labels are models' labels.** The pipeline writes a 150-row sample for me to review, and I haven't reviewed it yet. No human has checked the labels.
 4. **Eval leaves out the hard cases by construction.** The unsure prompts are 22.7 % of the data.
 5. **The gateway has never called this classifier.** Locally its configuration points at a mock router.
 6. **Nothing measures what the router is for.** No Spend comparison, no check of answer quality. I can't claim it saves money or preserves quality.
+7. **Whether I may train on these labels is open.** They come from Claude Haiku 4.5 and Claude Opus 5.5, and I haven't yet checked whether Anthropic's terms allow training a classifier on them. That has to be settled before the router ships.
 
 What the synthetic labels did buy: a reproducible pipeline, a classifier whose errors I can read in a table, a measurement of where my own Tier definitions are ambiguous, and a baseline to beat when real, consented traffic exists.
 

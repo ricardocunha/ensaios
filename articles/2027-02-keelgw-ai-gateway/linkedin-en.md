@@ -2,7 +2,7 @@
 
 I trained a prompt router on $1.88 of API spend. It hit its 80% target. Here is what that number leaves out.
 
-I'm building keelgw, an AI gateway for small businesses. For `model: auto` it classifies each prompt into 4 tiers, from simple to reasoning. The open router model I had planned on turned out, as I read its licence, not to be usable in a hosted product. So I trained a small CPU classifier in about a day, from synthetic data.
+I'm building keelgw, an AI gateway for small businesses. For `model: auto` it classifies each prompt into 4 tiers, from simple to reasoning. The open router model I had planned on turned out, by my project notes on its licence, not to be usable in a hosted product. So I trained a small CPU classifier in about a day, from synthetic data.
 
 What I found:
 

@@ -1,6 +1,6 @@
 ---
 title: "Um roteador de prompts por US$ 1,88: o que rótulos sintéticos compram, e o que não compram"
-subtitle: "Eu precisava de um classificador de prompts em quatro Tiers para um gateway de IA, o modelo aberto que eu tinha escolhido se mostrou, pela minha leitura da licença, inutilizável num produto hospedado, e treinei o meu em CPU, em cerca de um dia, com dados sintéticos. Ele bateu a meta de 80%. Aqui está tudo o que esse número deixa de fora."
+subtitle: "Eu precisava de um classificador de prompts em quatro Tiers para um gateway de IA, o modelo aberto que eu tinha escolhido se mostrou, pelas anotações do projeto sobre a licença, inutilizável num produto hospedado, e treinei o meu em CPU, em cerca de um dia, com dados sintéticos. Ele bateu a meta de 80%. Aqui está tudo o que esse número deixa de fora."
 platforms: Medium, LinkedIn Articles, TabNews, dev.to (pt)
 status: RASCUNHO — números finais (cada um está mapeado para o repositório do keelgw em SOURCES.md); afirmações sobre terceiros a reconferir antes de publicar
 repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2027-02-keelgw-ai-gateway
@@ -12,7 +12,7 @@ repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2027-02-keelgw-
 
 Venho construindo o [keelgw](https://github.com/ricardocunha/keelgw) (Keel Gateway), um gateway de IA multi-tenant para pequenas empresas. Ele controla quais Models cada Member de uma Organization pode usar, por quais Clients (Claude Code, Claude Cowork, Codex) e com que Spend em dólares, sempre nas contas de provedor da própria Organization.
 
-Uma das funções é o `model: auto`: o gateway classifica o prompt em um de quatro Tiers (simple, medium, complex, reasoning), e um Tier Map diz qual Model permitido atende cada Tier. Para isso é preciso um roteador de prompts. Eu tinha escolhido um modelo aberto de roteamento, e aí li a licença com atenção. Então treinei meu próprio classificador pequeno, em CPU, com dados sintéticos, em cerca de 26 horas entre o primeiro commit do script de geração de dados e o commit do modelo treinado.
+Uma das funções é o `model: auto`: o gateway classifica o prompt em um de quatro Tiers (simple, medium, complex, reasoning), e um Tier Map diz qual Model permitido atende cada Tier. Para isso é preciso um roteador de prompts. Eu tinha escolhido um modelo aberto de roteamento, e aí uma checagem de licença pesou contra ele. Então treinei meu próprio classificador pequeno, em CPU, com dados sintéticos, em cerca de 26 horas entre o primeiro commit do script de geração de dados e o commit do modelo treinado.
 
 Resumindo:
 
@@ -34,7 +34,7 @@ Se o Router embutido não responde em 1.500 ms, a requisição usa o Tier de fal
 
 ## O plano que não passou pela leitura da licença
 
-O projeto original apontava o Arch-Router-1.5B, um modelo generativo pequeno que compara o prompt com políticas escritas em linguagem natural, "on the belief that it was Apache-2.0" (acreditando que era Apache-2.0), como o documento de design diz hoje. Em 30/09/2026 registrei um bloqueio: pela minha leitura da licença do modelo naquele dia, ela é a licença Katanemo, que exige uma licença comercial separada da DigitalOcean para qualquer uso comercial, inclusive oferecer o modelo como serviço. Um gateway hospedado que sirva o modelo seria exatamente isso.
+O projeto original apontava o Arch-Router-1.5B, um modelo generativo pequeno que compara o prompt com políticas escritas em linguagem natural, "on the belief that it was Apache-2.0" (acreditando que era Apache-2.0), como o documento de design diz hoje. Em 30/09/2026 registrei um bloqueio: segundo as anotações do projeto daquele dia, o modelo está sob a licença Katanemo, que exige uma licença comercial separada da DigitalOcean para qualquer uso comercial, inclusive oferecer o modelo como serviço. Um gateway hospedado que sirva o modelo seria exatamente isso.
 
 A alternativa prevista era o RouteLLM. O documento de design registra por que também não servia: ele roteia entre duas classes (forte e fraco), e eu precisava de quatro; os roteadores recomendados chamam a API de embeddings da OpenAI a cada prompt; e os checkpoints para hospedar por conta própria não trazem licença, embora o código seja Apache-2.0. São anotações minhas sobre projetos de outras pessoas, escritas em setembro e outubro de 2026. Confira antes de se apoiar nelas.
 
@@ -82,6 +82,8 @@ avaliação 400 (100 por Tier) · validação 303 · treino 2.706
 **Arbitragem.** Um prompt conta como concordante quando o segundo rótulo bate com o Tier para o qual ele foi escrito e o rotulador estava confiante. Os outros 2.006 foram para o Claude Opus 5.5, que viu as duas sugestões e foi avisado de que qualquer uma podia estar errada.
 
 **Custo.** A geração foi local e gratuita. A segunda rotulagem e a arbitragem custaram, juntas, US$ 1,88. O script se recusa a iniciar uma fase paga cuja estimativa leve o total além do orçamento, de 3 dólares por padrão.
+
+**Uma coisa que ainda não verifiquei.** Os rótulos vêm do Claude Haiku 4.5 e do Claude Opus 5.5, e o classificador é treinado com eles. Num artigo anterior desta série, deixei as saídas do Claude fora de um conjunto de treino, porque os termos da Anthropic restringem o uso delas para treinar modelos de IA. Ainda não verifiquei se esses termos permitem treinar uma pequena cabeça de classificação com rótulos do Claude para um produto como este. Isso precisa ser resolvido antes de o roteador entrar em produção. Se a resposta for não, as etapas de segunda rotulagem e de arbitragem precisam de um modelo cuja licença permita isso.
 
 ## Onde os modelos discordaram
 
@@ -142,12 +144,13 @@ Avaliação, 400 prompts, 100 por Tier: **acurácia de 80,0%, macro-F1 de 0,8034
 
 1. **Ele foi selecionado no conjunto de avaliação.** Com 320 acertos em 400, o intervalo de Wilson de 95% vai de 75,8% a 83,6%. A diferença de 0,7 ponto entre as duas escolhas de treino equivale a cerca de três prompts, bem dentro desse intervalo. "Bate a meta de 80%" é verdade pela largura de um prompt.
 2. **Treino e avaliação vêm do mesmo gerador e da mesma grade.** Duplicatas exatas são removidas (o ID de um prompt é um hash do texto normalizado), mas nada verifica quase duplicatas. Dois prompts da mesma célula, um no treino e outro na avaliação, podem ser a mesma ideia com outras palavras.
-3. **Os rótulos são rótulos de modelos.** O pipeline escreve uma amostra de 150 linhas para eu revisar: 25 prompts confiantes por Tier e 50 em dúvida. Minhas anotações da tarefa dizem que ela "came back without corrections" (voltou sem correções). O arquivo de revisão no repositório não tem correções nem rótulos registrados: a coluna `owner_tier` está vazia nas 150 linhas. De um jeito ou de outro, os rótulos vêm da concordância entre modelos de linguagem, com no máximo uma conferência humana de 150 linhas por trás.
+3. **Os rótulos são rótulos de modelos.** O pipeline escreve uma amostra de 150 linhas para eu revisar: 25 prompts confiantes por Tier e 50 em dúvida. Ainda não fiz essa revisão: a coluna `owner_tier` está vazia nas 150 linhas. Ou seja, os rótulos vêm da concordância entre modelos de linguagem, sem nenhuma conferência humana por trás.
 4. **A avaliação deixa de fora os casos difíceis por construção.** Os 1.003 prompts em que o árbitro não teve certeza são 22,7% dos dados. O tráfego real não vai deixar os prompts ambíguos de fora.
 5. **A cabeça foi treinada com prompts isolados.** Quando atende uma conversa, o gateway também envia os turnos anteriores. Nenhuma linha de treino ou de avaliação tem esse contexto.
 6. **A curva de validação ainda estava subindo.** O macro-F1 na validação subiu a cada passo da grade de L2, de 0,7604 a 0,8201, e o valor escolhido é o maior da grade. Não testei um maior.
 7. **O gateway nunca chamou este classificador.** Localmente o serviço do roteador roda e um script de ponta a ponta o verifica, mas a configuração do gateway aponta para um mock que responde com o Tier que o teste pede.
 8. **Nada mede aquilo para que o roteador serve.** A tarefa que compara o Spend por requisição de uma Organization piloto antes e depois está aberta, e nada verifica se um prompt mandado para um Model mais barato recebeu uma resposta boa o bastante. Não posso afirmar que este roteador economiza dinheiro nem que preserva a qualidade.
+9. **Se posso treinar com esses rótulos é uma questão em aberto.** A pergunta sobre os termos do provedor para os rótulos do Claude, descrita acima, não está respondida.
 
 O que os rótulos sintéticos compraram, sim: um pipeline reproduzível, um classificador cujos erros consigo ler numa tabela, uma medida de onde as minhas próprias definições de Tier são ambíguas, e uma linha de base a superar quando existir tráfego real, com consentimento.
 
@@ -192,7 +195,7 @@ Sessões reais do Claude Code e do Codex CLI passaram pelo gateway local, contra
 
 ## O que eu diria a um time construindo isso
 
-1. **Leia a licença antes de projetar em torno de um modelo.** Descobri que o meu, pela minha leitura, não servia para um produto hospedado quando o lado do gateway já estava construído para a interface daquele modelo.
+1. **Leia a licença antes de projetar em torno de um modelo.** O meu, pelas minhas anotações, não servia para um produto hospedado quando o lado do gateway já estava construído para a interface daquele modelo. E ainda preciso ler eu mesmo essa licença, e os termos por trás dos meus rótulos (veja acima), antes de confiar em qualquer um dos dois.
 2. **Use a divergência entre rótulos como medida.** Duas famílias de modelos concordaram em 54,5% dos prompts, e a taxa por Tier (de 84,2% até 33,8%) mostrou onde as minhas definições de Tier são vagas antes de existir qualquer classificador.
 3. **Não confie num gerador para acertar uma classe difícil.** Quando pedi prompts de reasoning, o modelo local escreveu prompts que outro modelo chamou de medium quase tantas vezes quanto de reasoning. Uma segunda rodada mais rígida aumentou a concordância em cerca de 10 pontos. Não resolveu.
 4. **Mais rótulos podem ser rótulos piores.** Acrescentar 1.003 veredictos em dúvida custou 3 pontos na validação. Teste dos dois jeitos, e decida só pela validação.

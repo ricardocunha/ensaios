@@ -227,3 +227,14 @@ An independent pass over all drafts against the keelgw repo at `4fc8d21`, tracke
 12. This file: the rows for the items above, and the names of tools the drafts don't discuss were removed from a file path and from the "not used" line.
 
 **Left for the author.** Whether he reviewed the 150-row sample himself; whether he read the Arch-Router licence himself on 2026-09-30 (the drafts say "as I read"); whether a real provider key was ever tried locally; the title's "for $1.88" (API spend for labels only; the article says so in its first bullet). Nothing in `router/` or `openspec/changes/add-auto-model-routing/` records a check of whether the provider's terms allow training a classifier on Claude Haiku 4.5 and Claude Opus 5.5 labels; the drafts make no claim either way.
+
+## Author decisions, 2026-10-09
+
+Applied to the drafts after the proofread, from the author's answers. No project code was touched.
+
+- **Claude labels and provider terms:** named openly. New paragraph "One thing I haven't checked" after the cost paragraph (EN, PT-BR), caveat 9 (EN, PT-BR) and caveat 7 (Medium). No claim either way about what the terms allow. The reference to "an earlier article in this series" is the CNH article (`articles/2026-10-cnh-ocr-smithtune`, section "Then I changed the Teacher"). **To settle before publishing:** read Anthropic's terms on training with model outputs.
+- **150-row label review:** the author has not reviewed the sample yet. Caveat 3 now says so in every version; the task note "came back without corrections" (`openspec/changes/add-auto-model-routing/tasks.md:71`) is no longer quoted. The project note itself is unchanged and still says that.
+- **Arch-Router licence:** the note of 2026-09-30 was found by the coding agent, not read by the author. "As I read its licence" became "by my project notes" everywhere (subtitles, intro, body, lesson 1, LinkedIn, README). **To do before publishing:** the author reads the licence himself.
+- **Real provider through the gateway:** author confirms never. Banner unchanged.
+- **Earlier `auto` load-test run (2.2 s p95, 586 dropped):** left out by the author's choice.
+- **Length:** kept.

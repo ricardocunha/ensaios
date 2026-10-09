@@ -1,6 +1,6 @@
 ---
 title: "A prompt router for $1.88: what synthetic labels buy, and what they don't"
-subtitle: "I needed a four-Tier prompt classifier for an AI gateway, the open model I had planned on turned out, as I read its licence, not to be usable in a hosted product, and I trained my own on CPU in about a day from synthetic data. It hit its 80 % target. Here is everything that number leaves out."
+subtitle: "I needed a four-Tier prompt classifier for an AI gateway, the open model I had planned on turned out, by my project notes on its licence, not to be usable in a hosted product, and I trained my own on CPU in about a day from synthetic data. It hit its 80 % target. Here is everything that number leaves out."
 platforms: Medium, dev.to, Hashnode
 status: DRAFT — numbers final (each one is mapped to the keelgw repo in SOURCES.md); third-party claims to re-verify before publishing
 repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2027-02-keelgw-ai-gateway
@@ -12,7 +12,7 @@ repo: https://github.com/ricardocunha/ensaios/tree/main/articles/2027-02-keelgw-
 
 I've been building [keelgw](https://github.com/ricardocunha/keelgw) (Keel Gateway), a multi-tenant AI gateway for small businesses. It governs which Models each Member of an Organization may reach, through which Clients (Claude Code, Claude Cowork, Codex), and at what USD Spend, always on the Organization's own provider accounts.
 
-One feature is `model: auto`: the gateway classifies the prompt into one of four Tiers (simple, medium, complex, reasoning), and a Tier Map says which allowed Model serves each Tier. That needs a prompt router. I had picked an open router model, then read its licence properly. So I trained my own small classifier, on CPU, from synthetic data, in about 26 hours from the first commit of the data-generation script to the committed model.
+One feature is `model: auto`: the gateway classifies the prompt into one of four Tiers (simple, medium, complex, reasoning), and a Tier Map says which allowed Model serves each Tier. That needs a prompt router. I had picked an open router model, and then a licence check went against it. So I trained my own small classifier, on CPU, from synthetic data, in about 26 hours from the first commit of the data-generation script to the committed model.
 
 The short version:
 
@@ -34,7 +34,7 @@ If the built-in Router doesn't answer within 1,500 ms, the request uses the Prof
 
 ## The plan that didn't survive a licence check
 
-The design first named Arch-Router-1.5B, a small generative model that matches a prompt against policies written in natural language, "on the belief that it was Apache-2.0", as the design doc now puts it. On 2026-09-30 I recorded a blocker: as I read the model's licence that day, it is the Katanemo licence, which requires a separate commercial licence from DigitalOcean for any commercial use, including offering the model as a service. A hosted gateway that serves the model would be exactly that.
+The design first named Arch-Router-1.5B, a small generative model that matches a prompt against policies written in natural language, "on the belief that it was Apache-2.0", as the design doc now puts it. On 2026-09-30 I recorded a blocker: according to my project notes from that day, the model is under the Katanemo licence, which requires a separate commercial licence from DigitalOcean for any commercial use, including offering the model as a service. A hosted gateway that serves the model would be exactly that.
 
 The fallback candidate was RouteLLM. The design doc records why it didn't fit either: it routes between two classes (strong and weak) and I needed four; its recommended routers call OpenAI's embeddings API for every prompt; and its self-hosted checkpoints carry no licence, although its code is Apache-2.0. These are my notes about other people's projects, written in September and October 2026. Check them before relying on them.
 
@@ -82,6 +82,8 @@ eval 400 (100 per Tier) · val 303 · train 2,706
 **Adjudication.** A prompt counts as agreed when the relabel matches the Tier it was written for and the relabeller was confident. The other 2,006 went to Claude Opus 5.5, which saw both suggestions and was told either may be wrong.
 
 **Cost.** Generation was local and free. The relabel and the adjudication together cost $1.88. The script refuses to start a paid phase whose estimate would take the total past its budget, 3 dollars by default.
+
+**One thing I haven't checked.** The labels come from Claude Haiku 4.5 and Claude Opus 5.5, and the classifier is trained on them. In an earlier article in this series I kept Claude's outputs out of a training set, because Anthropic's terms restrict using them to train AI models. I have not yet checked whether those terms allow training a small classification head on Claude's labels for a product like this one. That has to be settled before this router ships. If the answer is no, the relabel and adjudication steps need a model whose licence allows it.
 
 ## Where the models disagreed
 
@@ -142,12 +144,13 @@ Eval, 400 prompts, 100 per Tier: **accuracy 80.0 %, macro-F1 0.8034**. The targe
 
 1. **It was selected on the eval set.** With 320 of 400 correct, the 95 % Wilson interval is 75.8 % to 83.6 %. The 0.7-point gap between the two training choices is about three prompts, well inside that interval. "Meets the 80 % target" is true by the width of one prompt.
 2. **Train and eval come from the same generator and the same grid.** Exact duplicates are removed (a prompt's ID is a hash of its normalised text), but nothing checks for near-duplicates. Two prompts from the same cell, one in train and one in eval, can be the same idea in different words.
-3. **The labels are models' labels.** The pipeline writes a 150-row sample for me to review: 25 confident prompts per Tier and 50 unsure ones. My task notes say it "came back without corrections". The review file in the repo has no recorded corrections or labels: its `owner_tier` column is empty in all 150 rows. Either way, the labels come from agreement between language models, with at most a 150-row human check behind them.
+3. **The labels are models' labels.** The pipeline writes a 150-row sample for me to review: 25 confident prompts per Tier and 50 unsure ones. I haven't done that review yet: the `owner_tier` column is empty in all 150 rows. So the labels come from agreement between language models, with no human check behind them.
 4. **Eval leaves out the hard cases by construction.** The 1,003 prompts the adjudicator wasn't sure of are 22.7 % of the data. Real traffic won't leave its ambiguous prompts out.
 5. **The head was trained on single prompts.** When it serves a conversation, the gateway also sends the earlier turns. No training or eval row has that context.
 6. **The validation curve was still rising.** Macro-F1 on validation rose with every step of the L2 grid, from 0.7604 to 0.8201, and the chosen value is the grid's largest. I didn't try a larger one.
 7. **The gateway has never called this classifier.** Locally the router service runs and an end-to-end script checks it, but the gateway's configuration points at a mock that answers with the Tier the test asks for.
 8. **Nothing measures what the router is for.** The task that compares a pilot Organization's Spend per request before and after is open, and nothing checks whether a prompt sent to a cheaper Model got a good enough answer. I can't claim this router saves money or preserves quality.
+9. **Whether I may train on these labels is open.** The provider-terms question for Claude's labels, described above, isn't answered.
 
 What the synthetic labels did buy: a reproducible pipeline, a classifier whose errors I can read in a table, a measurement of where my own Tier definitions are ambiguous, and a baseline to beat when real, consented traffic exists.
 
@@ -192,7 +195,7 @@ Real Claude Code and Codex CLI sessions ran through the local gateway, against t
 
 ## What I'd tell a team building this
 
-1. **Read the licence before you design around a model.** I found mine, as I read it, unusable in a hosted product after the gateway side was already built against that model's interface.
+1. **Read the licence before you design around a model.** Mine turned out, by my notes, to be unusable in a hosted product after the gateway side was already built against that model's interface. And I still have to read that licence myself, and the terms behind my labels (see above), before relying on either.
 2. **Use label disagreement as a measurement.** Two model families agreed on 54.5 % of the prompts, and the rate per Tier (84.2 % down to 33.8 %) showed where my Tier definitions are vague before any classifier existed.
 3. **Don't trust a generator to hit a hard class.** Asked for reasoning prompts, the local model wrote prompts that another model called medium about as often as reasoning. A stricter second round raised agreement by about 10 points. It didn't fix it.
 4. **More labels can be worse labels.** Adding 1,003 unsure verdicts cost 3 points on validation. Try it both ways, and decide on validation only.
