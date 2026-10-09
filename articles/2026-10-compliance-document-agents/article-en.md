@@ -16,15 +16,7 @@ Every number below comes from the repo's `docs/RESULTS.md`. Every bug I hit is i
 
 ## The setup
 
-```
-PNCP contract PDF ─► Docling (+ Apple Vision OCR, pt-BR) ─► sections, page scores
-                                     │
-                         MCP server: parse_document · get_section · search_document · verify_quote
-                                     │
-          Reviewer (Pydantic AI, one run per rule) ─► Finding{verdict, quote, confidence}
-                                     │
-          Auditor (tries to refute violations) + deterministic checks ─► keep or escalate
-```
+![The pipeline in four stages. A PNCP contract PDF goes through Docling (with Apple Vision OCR, pt-BR), which produces a parsed document with sections and page scores. An MCP server exposes it through four tools: parse_document, get_section, search_document and verify_quote. The Reviewer (Pydantic AI, one run per rule) uses those tools and returns a Finding with verdict, quote and confidence. The Auditor, which tries to refute violations, plus deterministic checks, decides whether to keep or escalate.](images/pipeline.en.svg)
 
 - **Eight rules** from Lei 14.133, each tied to an article I checked against the official text: the object clause, binding to the tender notice (*vinculação*), price and payment, the price-adjustment index (art. 92 § 3º), the budget allocation, the jurisdiction (*foro*) clause (art. 92 § 1º), the guarantee limit (art. 98) and the contract-term limits (arts. 106–107).
 - **Ground truth:** 20 synthetic contracts in the usual structure, with 0–2 **planted violations** each (23 in total). They also include **hard compliant cases**: legal variants that look suspicious, such as an 8% guarantee *with* the justification art. 98 requires, a 60-month term, or a *foro* written as "Comarca de <seat>".

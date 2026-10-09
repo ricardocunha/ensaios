@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Contract review: from scanned PDF to keep or escalate",
+    "quality_profile": "showcase",
+    "viewBox": [
+      860,
+      760
+    ],
+    "legend": {
+      "entries": {
+        "emphasis": {
+          "label": "main path"
+        },
+        "database": {
+          "label": "data produced"
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "label": "Parse"
+    },
+    {
+      "label": "Expose"
+    },
+    {
+      "label": "Review"
+    },
+    {
+      "label": "Audit"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "pdf",
+      "type": "external",
+      "label": "PNCP contract PDF",
+      "stage": 0,
+      "row": 0,
+      "width": 150
+    },
+    {
+      "id": "docling",
+      "type": "backend",
+      "label": "Docling",
+      "sublabel": "+ Apple Vision OCR",
+      "tag": "pt-BR",
+      "stage": 0,
+      "row": 1,
+      "width": 150
+    },
+    {
+      "id": "parsed",
+      "type": "database",
+      "label": "Parsed document",
+      "sublabel": "sections, page scores",
+      "stage": 1,
+      "row": 1,
+      "width": 150
+    },
+    {
+      "id": "mcp",
+      "type": "backend",
+      "label": "MCP server",
+      "sublabel": "parse_document · get_section",
+      "tag": "search_document · verify_quote",
+      "stage": 1,
+      "row": 2,
+      "width": 150
+    },
+    {
+      "id": "reviewer",
+      "type": "backend",
+      "label": "Reviewer",
+      "sublabel": "Pydantic AI",
+      "tag": "one run per rule",
+      "stage": 2,
+      "row": 2,
+      "width": 150
+    },
+    {
+      "id": "finding",
+      "type": "database",
+      "label": "Finding",
+      "sublabel": "verdict, quote, confidence",
+      "stage": 2,
+      "row": 3,
+      "width": 150
+    },
+    {
+      "id": "auditor",
+      "type": "backend",
+      "label": "Auditor",
+      "sublabel": "tries to refute violations",
+      "tag": "+ deterministic checks",
+      "stage": 3,
+      "row": 3,
+      "width": 150
+    },
+    {
+      "id": "outcome",
+      "type": "frontend",
+      "label": "Keep or escalate",
+      "stage": 3,
+      "row": 4,
+      "width": 150
+    }
+  ],
+  "flows": [
+    {
+      "id": "pdf-docling",
+      "from": "pdf",
+      "to": "docling",
+      "label": "PDF",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "docling-parsed",
+      "from": "docling",
+      "to": "parsed",
+      "label": "parses",
+      "variant": "emphasis"
+    },
+    {
+      "id": "parsed-mcp",
+      "from": "parsed",
+      "to": "mcp",
+      "label": "served by",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "mcp-reviewer",
+      "from": "mcp",
+      "to": "reviewer",
+      "label": "tools",
+      "variant": "emphasis"
+    },
+    {
+      "id": "reviewer-finding",
+      "from": "reviewer",
+      "to": "finding",
+      "label": "returns",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "finding-auditor",
+      "from": "finding",
+      "to": "auditor",
+      "label": "audit",
+      "variant": "emphasis"
+    },
+    {
+      "id": "auditor-outcome",
+      "from": "auditor",
+      "to": "outcome",
+      "label": "decision",
+      "variant": "emphasis",
+      "labelDy": 24
+    }
+  ]
+}

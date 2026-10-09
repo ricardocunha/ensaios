@@ -16,15 +16,7 @@ Todos os números abaixo vêm do `docs/RESULTS.md` do repositório. Todos os bug
 
 ## A montagem
 
-```
-PDF do contrato (PNCP) ─► Docling (+ OCR Apple Vision, pt-BR) ─► seções, notas por página
-                                     │
-                         Servidor MCP: parse_document · get_section · search_document · verify_quote
-                                     │
-          Revisor (Pydantic AI, uma execução por regra) ─► Finding{veredito, citação, confiança}
-                                     │
-          Auditor (tenta refutar violações) + checagens determinísticas ─► manter ou escalar
-```
+![O pipeline em quatro etapas. O PDF do contrato (PNCP) passa pelo Docling (com OCR Apple Vision, pt-BR), que produz o documento lido, com seções e notas por página. Um servidor MCP o expõe por quatro ferramentas: parse_document, get_section, search_document e verify_quote. O Revisor (Pydantic AI, uma execução por regra) usa essas ferramentas e retorna um Finding com veredito, citação e confiança. O Auditor, que tenta refutar violações, mais as checagens determinísticas, decide entre manter ou escalar.](images/pipeline.pt-br.svg)
 
 - **Oito regras** da Lei 14.133, cada uma ligada a um artigo que conferi no texto oficial: cláusula de objeto, vinculação ao edital, preço e pagamento, índice de reajuste (art. 92, § 3º), dotação orçamentária, foro (art. 92, § 1º), limite da garantia (art. 98) e limites de vigência (arts. 106 e 107).
 - **Gabarito:** 20 contratos sintéticos na estrutura usual, com 0 a 2 **violações plantadas** cada (23 no total). Também há **casos difíceis em conformidade**: variantes legais que parecem suspeitas, como garantia de 8% *com* a justificativa que o art. 98 exige, vigência de 60 meses ou um foro escrito como "Comarca de <sede>".
