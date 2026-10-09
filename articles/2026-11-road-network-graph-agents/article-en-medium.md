@@ -14,6 +14,8 @@ I built that agent system on Belo Horizonte's real road network and a year of re
 
 Short version: on this problem the solver already makes the plan, a simple heuristic schedules better, and the LLM adds explanation plus a small shift towards streets with more requests. The interesting part is *how* it failed.
 
+![Pipeline diagram. OpenStreetMap (via OSMnx) gives a drive graph that is merged into road sections with sampled betweenness (k=2000); PBH Tapa-Buraco requests are snapped to the sections to give a condition score. Value is condition × criticality × km, with a synthetic cost. A greedy knapsack solver (within 1e-5 of exact) produces the solver plan; the maintenance agent adds or removes sections, each with a reason, and the solver rebuilds the plan; the closure agent puts 15 major works into 3 months with no access-cutting overlaps; the coordinator writes a quarterly plan with trade-offs from a tool-computed fact sheet; an audit with no LLM compares value with the solver, recomputes the schedule and looks up every number in the prose.](images/pipeline.en.png)
+
 ## The graph and the data
 
 Belo Horizonte's OpenStreetMap drive graph has **32,311 nodes and 82,984 edges**. Travel times are OSMnx's free-flow estimates, so every delay below is a lower bound.
