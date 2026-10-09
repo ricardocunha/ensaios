@@ -18,22 +18,7 @@ Every number below comes from the repo's `code/docs/RESULTS.md`.
 
 ## The setup
 
-```
-OpenStreetMap (OSMnx) ─► drive graph ─► road sections ─► betweenness (k=2000)
-PBH "Tapa-Buraco" requests ─► snap to sections ─► condition score
-                                       │
-                 value = condition × criticality × km, synthetic cost
-                                       │
-          knapsack solver (greedy, ≤1e-5 from exact) ─► solver plan
-                                       │
-   Maintenance agent: add / remove sections, each with a reason ─► solver rebuilds the plan
-                                       │
-   Closure agent: 15 major works into 3 months, no access-cutting overlaps
-                                       │
-   Coordinator: quarterly plan with trade-offs, from a tool-computed fact sheet
-                                       │
-   Audit (no LLM): value vs. solver, schedule recomputed, every number in the prose looked up
-```
+![Pipeline diagram. OpenStreetMap (via OSMnx) gives a drive graph that is merged into road sections with sampled betweenness (k=2000); PBH Tapa-Buraco requests are snapped to the sections to give a condition score. Value is condition × criticality × km, with a synthetic cost. A greedy knapsack solver (within 1e-5 of exact) produces the solver plan; the maintenance agent adds or removes sections, each with a reason, and the solver rebuilds the plan; the closure agent puts 15 major works into 3 months with no access-cutting overlaps; the coordinator writes a quarterly plan with trade-offs from a tool-computed fact sheet; an audit with no LLM compares value with the solver, recomputes the schedule and looks up every number in the prose.](images/pipeline.en.svg)
 
 - **Tools** are typed Python functions over NetworkX. They rank sections, solve the budget with forced adds or exclusions, compute what a set of closures does to 1,000 sampled trips and to hospital and school access, and score a whole schedule.
 - **Agents** are Pydantic AI agents with typed outputs. The hand-off between them is plain code, not agent-calls-agent: fewer moving parts for a small model.

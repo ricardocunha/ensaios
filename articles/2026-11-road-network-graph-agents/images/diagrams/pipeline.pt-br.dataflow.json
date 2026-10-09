@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Manutenção de vias: do grafo ao plano auditado",
+    "quality_profile": "showcase",
+    "viewBox": [
+      860,
+      760
+    ],
+    "legend": {
+      "entries": {
+        "emphasis": {
+          "label": "dados principais"
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "label": "Dados"
+    },
+    {
+      "label": "Trechos"
+    },
+    {
+      "label": "Plano"
+    },
+    {
+      "label": "Agenda e auditoria"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "osm",
+      "type": "external",
+      "label": "OpenStreetMap",
+      "sublabel": "grafo viário OSMnx",
+      "stage": 0,
+      "row": 0
+    },
+    {
+      "id": "requests",
+      "type": "external",
+      "label": "Tapa-Buraco",
+      "sublabel": "pedidos da PBH",
+      "stage": 0,
+      "row": 1
+    },
+    {
+      "id": "sections",
+      "type": "backend",
+      "label": "Trechos",
+      "sublabel": "betweenness",
+      "stage": 1,
+      "row": 0,
+      "tag": "k=2000"
+    },
+    {
+      "id": "condition",
+      "type": "backend",
+      "label": "Nota de condição",
+      "sublabel": "pedidos por trecho",
+      "stage": 1,
+      "row": 1,
+      "width": 140
+    },
+    {
+      "id": "value",
+      "type": "backend",
+      "label": "Valor do trecho",
+      "sublabel": "cond. × crit. × km",
+      "stage": 2,
+      "row": 0,
+      "tag": "custo sintético",
+      "width": 140
+    },
+    {
+      "id": "solver",
+      "type": "backend",
+      "label": "Solver de mochila",
+      "sublabel": "guloso",
+      "stage": 2,
+      "row": 1,
+      "tag": "≤1e-5 do exato",
+      "width": 140
+    },
+    {
+      "id": "maint",
+      "type": "backend",
+      "label": "Agente de manutenção",
+      "sublabel": "inclui / tira trechos",
+      "stage": 2,
+      "row": 2,
+      "tag": "motivo de cada um",
+      "width": 156
+    },
+    {
+      "id": "closure",
+      "type": "backend",
+      "label": "Agente de interdição",
+      "sublabel": "15 obras, 3 meses",
+      "stage": 3,
+      "row": 2,
+      "tag": "sem cortar acesso",
+      "width": 156
+    },
+    {
+      "id": "coord",
+      "type": "backend",
+      "label": "Coordenador",
+      "sublabel": "plano trimestral",
+      "stage": 3,
+      "row": 3,
+      "tag": "a partir da ficha"
+    },
+    {
+      "id": "audit",
+      "type": "backend",
+      "label": "Auditoria",
+      "sublabel": "código, sem LLM",
+      "stage": 3,
+      "row": 4,
+      "tag": "números conferidos"
+    }
+  ],
+  "flows": [
+    {
+      "id": "osm-sections",
+      "from": "osm",
+      "to": "sections",
+      "label": "grafo",
+      "variant": "emphasis"
+    },
+    {
+      "id": "requests-condition",
+      "from": "requests",
+      "to": "condition",
+      "label": "associação",
+      "variant": "emphasis"
+    },
+    {
+      "id": "sections-value",
+      "from": "sections",
+      "to": "value",
+      "label": "criticidade",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "id": "condition-value",
+      "from": "condition",
+      "to": "value",
+      "label": "condição",
+      "variant": "emphasis"
+    },
+    {
+      "id": "value-solver",
+      "from": "value",
+      "to": "solver",
+      "label": "valor, custo",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "solver-maint",
+      "from": "solver",
+      "to": "maint",
+      "label": "plano do solver",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "maint-closure",
+      "from": "maint",
+      "to": "closure",
+      "label": "plano refeito",
+      "variant": "emphasis",
+      "labelDy": -23
+    },
+    {
+      "id": "closure-coord",
+      "from": "closure",
+      "to": "coord",
+      "label": "agenda",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "coord-audit",
+      "from": "coord",
+      "to": "audit",
+      "label": "plano + texto",
+      "variant": "emphasis",
+      "labelDy": 24
+    }
+  ]
+}

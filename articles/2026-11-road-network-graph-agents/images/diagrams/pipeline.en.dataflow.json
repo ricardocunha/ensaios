@@ -1,0 +1,191 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Road maintenance: from graph to audited plan",
+    "quality_profile": "showcase",
+    "viewBox": [
+      860,
+      760
+    ]
+  },
+  "stages": [
+    {
+      "label": "Data"
+    },
+    {
+      "label": "Sections"
+    },
+    {
+      "label": "Plan"
+    },
+    {
+      "label": "Schedule and audit"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "osm",
+      "type": "external",
+      "label": "OpenStreetMap",
+      "sublabel": "OSMnx drive graph",
+      "stage": 0,
+      "row": 0
+    },
+    {
+      "id": "requests",
+      "type": "external",
+      "label": "Tapa-Buraco",
+      "sublabel": "PBH requests",
+      "stage": 0,
+      "row": 1
+    },
+    {
+      "id": "sections",
+      "type": "backend",
+      "label": "Road sections",
+      "sublabel": "betweenness",
+      "stage": 1,
+      "row": 0,
+      "tag": "k=2000"
+    },
+    {
+      "id": "condition",
+      "type": "backend",
+      "label": "Condition score",
+      "sublabel": "snapped to sections",
+      "stage": 1,
+      "row": 1,
+      "width": 140
+    },
+    {
+      "id": "value",
+      "type": "backend",
+      "label": "Section value",
+      "sublabel": "cond. × crit. × km",
+      "stage": 2,
+      "row": 0,
+      "tag": "synthetic cost",
+      "width": 140
+    },
+    {
+      "id": "solver",
+      "type": "backend",
+      "label": "Knapsack solver",
+      "sublabel": "greedy",
+      "stage": 2,
+      "row": 1,
+      "tag": "≤1e-5 from exact",
+      "width": 140
+    },
+    {
+      "id": "maint",
+      "type": "backend",
+      "label": "Maintenance agent",
+      "sublabel": "add / remove sections",
+      "stage": 2,
+      "row": 2,
+      "tag": "reason for each",
+      "width": 156
+    },
+    {
+      "id": "closure",
+      "type": "backend",
+      "label": "Closure agent",
+      "sublabel": "15 works, 3 months",
+      "stage": 3,
+      "row": 2,
+      "tag": "no access cuts",
+      "width": 156
+    },
+    {
+      "id": "coord",
+      "type": "backend",
+      "label": "Coordinator",
+      "sublabel": "quarterly plan",
+      "stage": 3,
+      "row": 3,
+      "tag": "from fact sheet"
+    },
+    {
+      "id": "audit",
+      "type": "backend",
+      "label": "Audit",
+      "sublabel": "code, no LLM",
+      "stage": 3,
+      "row": 4,
+      "tag": "numbers checked"
+    }
+  ],
+  "flows": [
+    {
+      "id": "osm-sections",
+      "from": "osm",
+      "to": "sections",
+      "label": "graph",
+      "variant": "emphasis"
+    },
+    {
+      "id": "requests-condition",
+      "from": "requests",
+      "to": "condition",
+      "label": "snap",
+      "variant": "emphasis"
+    },
+    {
+      "id": "sections-value",
+      "from": "sections",
+      "to": "value",
+      "label": "criticality",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "id": "condition-value",
+      "from": "condition",
+      "to": "value",
+      "label": "condition",
+      "variant": "emphasis"
+    },
+    {
+      "id": "value-solver",
+      "from": "value",
+      "to": "solver",
+      "label": "value, cost",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "solver-maint",
+      "from": "solver",
+      "to": "maint",
+      "label": "solver plan",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "maint-closure",
+      "from": "maint",
+      "to": "closure",
+      "label": "rebuilt plan",
+      "variant": "emphasis",
+      "labelDy": -23
+    },
+    {
+      "id": "closure-coord",
+      "from": "closure",
+      "to": "coord",
+      "label": "schedule",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "coord-audit",
+      "from": "coord",
+      "to": "audit",
+      "label": "plan + prose",
+      "variant": "emphasis",
+      "labelDy": 24
+    }
+  ]
+}

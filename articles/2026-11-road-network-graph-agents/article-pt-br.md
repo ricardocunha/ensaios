@@ -18,22 +18,7 @@ Todos os números abaixo vêm do `code/docs/RESULTS.md` do repositório.
 
 ## A montagem
 
-```
-OpenStreetMap (OSMnx) ─► grafo viário ─► trechos ─► betweenness (k=2000)
-Pedidos "Tapa-Buraco" da PBH ─► associados aos trechos ─► nota de condição
-                                       │
-                 valor = condição × criticidade × km, custo sintético
-                                       │
-          solver de mochila (guloso, ≤1e-5 do exato) ─► plano do solver
-                                       │
-   Agente de manutenção: inclui / tira trechos, cada um com motivo ─► o solver refaz o plano
-                                       │
-   Agente de interdições: 15 obras grandes em 3 meses, sem sobreposições que cortem acesso
-                                       │
-   Coordenador: plano trimestral com os prós e contras, a partir de uma ficha calculada pelas ferramentas
-                                       │
-   Auditoria (sem LLM): valor vs. solver, agenda recalculada, cada número do texto conferido
-```
+![Diagrama do pipeline. O OpenStreetMap (via OSMnx) fornece o grafo viário, que é agrupado em trechos com betweenness amostrada (k=2000); os pedidos de Tapa-Buraco da PBH são associados aos trechos e geram uma nota de condição. O valor é condição × criticidade × km, com custo sintético. Um solver de mochila guloso (a até 1e-5 do exato) produz o plano do solver; o agente de manutenção inclui ou tira trechos, cada um com motivo, e o solver refaz o plano; o agente de interdições distribui 15 obras grandes em 3 meses, sem sobreposições que cortem acesso; o coordenador escreve o plano trimestral com os prós e contras, a partir de uma ficha calculada pelas ferramentas; uma auditoria sem LLM compara o valor com o do solver, recalcula a agenda e confere cada número do texto.](images/pipeline.pt-br.svg)
 
 - **Ferramentas** são funções Python tipadas sobre NetworkX. Elas ranqueiam trechos, resolvem o orçamento com inclusões forçadas ou exclusões, calculam o efeito de um conjunto de interdições sobre 1.000 viagens amostradas e sobre o acesso a hospitais e escolas, e pontuam uma agenda inteira.
 - **Agentes** são agentes Pydantic AI com saída tipada. A passagem de um para o outro é código comum, não um agente chamando outro: menos peças móveis para um modelo pequeno.
