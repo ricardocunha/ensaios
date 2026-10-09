@@ -26,6 +26,8 @@ Every one of them got a deterministic check on the model's output, because I did
 
 **Maintenance memory: a filled field, a false reason.** To stop the agent inspecting every alarm, I made it justify an inspection whenever similar past alarms had led to nothing, in a required field. It filled the field. In one episode it wrote that the alarm differed because of "a higher detector score (2.9) compared to past alarms (2.6 and 2.9)" and a residual of "+3.1 vs. +3.3 and +3.8". Both comparisons are false by its own numbers. The validator checked that the field wasn't empty.
 
+![Four rows, one per project, each reading left to right. A quote from the compliance reviewer: the code checked it was verbatim in the contract, and it passed, but it made the wrong point and refuted nothing. A number from the road planners: the code checked a tool had returned it, and it passed, but it was tied to the wrong thing. A station code from the flood alerts: the code checked it was in the input, and it passed, but it was another town's gauge. A justification from the maintenance agent: the code checked the required field was filled, and it passed, but the comparison in it was untrue. Solid arrows mark what each check confirmed; dashed arrows mark what it did not check.](images/existence-vs-correctness.en.svg)
+
 Four domains, one failure: **each check confirmed that something exists (a quote, a number, a code, a justification) and said nothing about whether it was used correctly.** These checks are still worth having: they catch invented quotes, invented numbers and invented stations. But passing them is a floor, not a verdict.
 
 ## What held up: code decides, the model explains
