@@ -178,6 +178,7 @@ Um teste de regressão agora cobre os dois lados de `min_frames` com passo 2.
 
 - **A primeira execução no kind falhou em silêncio.** Um worker de visão foi morto por falta de memória, e um processo morto não registra nada: nem linha de erro, nem log, nem span. O job ficou em `SEGMENTED` com erro nulo enquanto as mensagens dele escoavam para uma fila de mensagens mortas que ninguém lia. O observador dessas filas e os alertas vêm dessa execução.
 - **Permissões de IAM faltando eram invisíveis localmente.** Os serviços em Go resolvem todas as filas de mensagens mortas na inicialização, e a política só liberava as filas de origem. Na AWS nenhum deles teria subido. O Floci não aplica IAM.
+- **Os scripts de caos conferem o providerID dos nós**, não só o nome do contexto. Eles apagam pods e reiniciam StatefulSets, então cada um se recusa a rodar a menos que todos os nós tenham um providerID `kind://`, e, na dúvida, a trava bloqueia a execução. O nome do contexto, sozinho, não prova para qual cluster você está apontando. Quatro dos cinco experimentos passam; o da mensagem envenenada não completou uma execução inteira.
 
 ## O que isto não mostra
 

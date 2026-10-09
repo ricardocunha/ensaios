@@ -178,6 +178,7 @@ A regression test now covers both sides of `min_frames` at stride 2.
 
 - **The first run on kind failed silently.** A vision worker was OOM-killed, and a killed process records nothing: no error row, no log line, no span. The job sat in `SEGMENTED` with a null error while its messages drained into a dead-letter queue nobody read. The dead-letter watcher and the alerts come from that run.
 - **Missing IAM permissions were invisible locally.** The Go services resolve every dead-letter queue at startup, and the policy only granted the source queues. On AWS none of them would have started. Floci enforces no IAM.
+- **The chaos scripts check node provider IDs**, not just the context name. They delete pods and restart StatefulSets, so each one refuses to run unless every node carries a `kind://` provider ID, and the guard fails closed. A context name alone doesn't prove which cluster you're pointed at. Four of the five experiments pass; the poison-message one has not completed a full run.
 
 ## What this does not show
 
