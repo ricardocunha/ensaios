@@ -20,6 +20,8 @@ In 2024 wind produced 107.7 TWh, 14.1 % of Brazil's electricity supply (EPE). Th
 
 Those farms generate exactly what this agent needs: 10-minute SCADA from every turbine and a maintenance log. But what's public is one level up. ONS publishes generation and wind speed per *plant*, not per turbine, and nothing says which component failed. The one public turbine-level SCADA I found from the Northeast, two coastal farms in 2013-14, has no failure log. So the data here is Portuguese, and the question becomes: what would an operator in Ceará or Rio Grande do Norte need to build this, and what should they expect?
 
+![Pipeline diagram. Detection: 10-minute SCADA becomes hourly temperatures minus ambient, a normal-behaviour model per signal produces residuals, an Isolation Forest retrained every 30 days turns them into alarm days, and those become episodes (first alarm day only); each episode goes to a local agent (Pydantic AI, Qwen3-8B) with three tools (residual series, context, maintenance log), all cut at decision time, and it returns a diagnosis with component and action; in memory, the diagnosis and the outcome from the logbook, visible only once it would be known, are stored; a gate (outcome known, similar, recent, same turbine or component group, at most 3) decides which memories go back to the agent.](images/pipeline.en.png)
+
 ## The data, and two traps
 
 The turbines are EDP's "Wind Farm 1" in Portugal: five turbines, January 2016 to November 2017, 10-minute data, from the CARE to Compare benchmark (Wind Farm A) plus EDP's failure logbooks. Both are CC BY-SA 4.0. The logbook has 28 failure rows, merged into **21 incidents**. That is the whole ground truth.
