@@ -1,0 +1,38 @@
+[project]
+name = "eye-rag"
+version = "0.1.0"
+description = "Multimodal RAG for retinal fundus images: BiomedCLIP embeddings, a local Qdrant index, and baselines on RFMiD (research demo, not a medical device)"
+readme = "README.md"
+authors = [
+    { name = "Ricardo Cunha", email = "ricardocunha@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28.1",
+    "huggingface-hub>=1.33.0",
+    "numpy>=2.5.3",
+    "open-clip-torch>=2.24",
+    "opencv-python-headless>=4.10",
+    "pillow>=12.3.0",
+    "pydantic>=2.9",
+    "qdrant-client>=1.12",
+    "scikit-learn>=1.9.1",
+    "torch>=2.4",
+    "tqdm>=4.70.1",
+    "transformers>=4.45",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.18,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+vlm = [
+    "mlx-vlm>=0.7",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["tests"]
