@@ -83,10 +83,7 @@ def cached(
     meta: dict | None = None,
 ) -> np.ndarray:
     """Return vectors for `ids` from `cache/name.npz`, computing and saving them on a miss.
-
-    The cache is valid only if it holds exactly these ids, in this order, for the same
-    model and `meta`; anything else recomputes.
-    """
+    A miss is anything but exactly these ids, in this order, for the same model and `meta`."""
     path = cache / f"{name}.npz"
     meta = {"model": MODEL_ID, **(meta or {})}
     if path.exists():

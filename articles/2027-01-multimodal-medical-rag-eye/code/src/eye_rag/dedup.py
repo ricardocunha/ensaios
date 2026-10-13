@@ -1,27 +1,10 @@
 """Near-duplicate / same-eye audit across the RFMiD splits.
 
-Three signals per image pair:
-
-- **embedding cosine** (BiomedCLIP image vectors, cached by `eye_rag.embed`);
-- **perceptual hash**: a 64-bit DCT hash (pHash) of the fundus disc, after cropping
-  the black surround (bounding box of pixels brighter than `BORDER_LEVEL`);
-- **geometric match** of the retina itself: SIFT keypoints on the green channel
-  (blurred, CLAHE-equalised, inner 85 % of the disc), one-to-one ratio-test matches,
-  and a RANSAC similarity transform. The score is the number of RANSAC inliers,
-  counted only when the transform is a plausible re-photograph of the same eye
-  (scale 0.8-1.25, rotation within +-30 degrees).
-
-Inspecting pairs showed that cosine and pHash can't decide on their own: every
-fundus photo looks alike to them (median pairwise cosine is already high, and
-pHash Hamming <= 2 pairs are mostly different eyes with the disc in the same spot).
-The vessel pattern is what identifies an eye, so the decision is the geometric
-match (`INLIER_THRESHOLD`), checked over **all** pairs, and the two cheaper signals
-are reported next to it. See docs/DATA.md, "Duplicate audit", for how the
-thresholds were set.
-
-The output is an exclusion list: every validation image with a same-eye match in
-train, and every test image with one in train or validation. The official split is
-unchanged; evaluations report "all" and "deduplicated".
+Two images show the same eye when a geometric match of the retina (SIFT + RANSAC)
+has >= `INLIER_THRESHOLD` inliers, checked over **all** pairs; embedding cosine and
+pHash are only reported next to it (see docs/DATA.md, "Duplicate audit"). The output
+excludes each val/test image with a same-eye match in an earlier split; the official
+split is unchanged.
 
     uv run python -m eye_rag.dedup     # writes docs/exclusions.json + runs/dedup_pairs.json
 """

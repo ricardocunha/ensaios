@@ -1,14 +1,8 @@
 """Vision-language diagnosis with typed output.
 
-The model sees one fundus photo (and, for the retrieval arm, the top-k retrieved
-training cases with their label-reports) and must answer with JSON that validates
-against `Diagnosis`: labels from the fixed RFMiD list, or "normal". An invalid
-answer is retried with the validation error appended (greedy decoding is
-deterministic, so a plain retry would repeat the same answer).
-
-Backends implement `VisionModel.generate(parts, max_tokens) -> str`, where `parts`
-is a list of text strings and image paths in reading order. `MlxVlm` runs a local
-model through mlx-vlm on Apple Silicon; tests use a stub.
+The model sees one fundus photo (plus retrieved cases, for the retrieval arm) and must
+answer with JSON that validates against `Diagnosis`. An invalid answer is retried with
+the validation error appended (greedy decoding would repeat a plain retry).
 
 Research demo, not a medical device.
 """

@@ -2,14 +2,10 @@
 
     uv run python -m eye_rag.m4      # -> runs/m4_eval.json
 
-Paired bootstrap over test images (the 609 deduplicated ones every arm answered):
-each resample draws images with replacement and re-scores every arm on the same draw,
-so a difference's interval accounts for the arms sharing images. Macro-F1 in a resample
-averages over the frequent conditions that have at least one positive in it (a condition
-with no positives would otherwise score F1 = 1). Rates over citations resample images,
-not citations, so the several citations of one image move together.
-
-Reads only run files; no model is called.
+Paired bootstrap over the deduplicated test images every arm answered: each resample
+re-scores every arm on the same draw. Macro-F1 averages over the frequent conditions
+with a positive in the resample; citation rates resample images, not citations
+(docs/RESULTS.md, 3). Reads only run files; no model is called.
 """
 
 from __future__ import annotations

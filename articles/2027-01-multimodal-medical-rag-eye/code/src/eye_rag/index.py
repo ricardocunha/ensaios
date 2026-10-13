@@ -1,13 +1,8 @@
 """A local Qdrant index (embedded mode: a folder on disk, no server).
 
-Two collections:
-
-- `rfmid_images`: one point per image, named vector "image" (BiomedCLIP, cosine),
-  payload = {id, split, labels, disease_risk}. Labels are the condition codes, or
-  ["NORMAL"] for a normal image, so a payload filter can select by label.
-- `rfmid_labels`: one point per condition (+ NORMAL), named vector "text" (BiomedCLIP
-  text embedding of "<name>: <description>"), payload = {code, name, description}.
-  Not used by the baselines; it's there for the hybrid search of later milestones.
+Two collections: `rfmid_images` (one point per image; payload labels are the condition
+codes, or ["NORMAL"]) and `rfmid_labels` (one text-embedded point per condition, not
+used by the baselines).
 """
 
 from __future__ import annotations

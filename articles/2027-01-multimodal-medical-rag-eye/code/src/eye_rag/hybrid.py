@@ -1,22 +1,10 @@
 """Hybrid retrieval in Qdrant: dense image vectors + sparse text over per-image reports.
 
-RFMiD has **no free-text reports**, only label columns. Each indexed (training) image
-therefore gets a deterministic "report" built from its labels and the fixed label
-descriptions in `eye_rag.labels` (`vlm.case_report`). The sparse side is a bag of
-words over those reports, scored by Qdrant with its IDF modifier (BM25-like, without
-length normalisation).
-
-The query image has no labels at test time, so the query text has to come from
-somewhere honest. We use two sources, both available at test time:
-
-- `knn`: a report built from the kNN pre-labels (labels whose cosine-weighted share
-  among the k nearest training images is >= t; k and t chosen on validation in M1);
-- `vlm`: a report built from the labels a VLM predicts from the image alone.
-
-Plus one **oracle** (`true`: the query's own labels) that uses test labels and is
-reported only as an upper bound, never as a method.
-
-Dense and sparse result lists are fused with Reciprocal Rank Fusion (Qdrant `Fusion.RRF`).
+RFMiD has **no free-text reports**: each training image gets a "report" built from its
+labels (`vlm.case_report`), and the two result lists are fused with RRF. The query text
+must come from labels available at test time (kNN pre-labels or VLM predictions); the
+query's true labels are an **oracle**, reported only as an upper bound
+(docs/RESULTS.md, 2.2).
 """
 
 from __future__ import annotations

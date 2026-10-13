@@ -4,19 +4,10 @@
     uv run --group vlm python -m eye_rag.explain run --arm shuffled --split test
     uv run python -m eye_rag.explain score
 
-The agent gets the query photo, the retrieved cases (images + recorded findings, as
-the diagnosis saw them) and the diagnosis from eye_rag.diagnose, and must explain
-each diagnosed label: from the photo, from cited cases, or both. `check_citations`
-then verifies, without a model, that
-
-- every diagnosed label is explained exactly once, and nothing else is;
-- every cited case exists (1..k);
-- the source agrees with the citations ("image" cites none, "cases"/"both" cite some);
-- every cited case's recorded findings contain the label it is cited for.
-
-Failed checks go back to the model as a list of problems (up to `retries` times); an
-explanation that still fails is kept and marked unverified. The check proves the
-citations match the *text shown*, not that the label is right: `score` measures both.
+The agent explains each diagnosed label from the photo, from cited cases, or both;
+`check_citations` verifies the answer without a model, and failures are retried, then
+kept as unverified. The check proves the citations match the *text shown*, not that
+the label is right: `score` measures both (docs/RESULTS.md, 2.4).
 
 Research demo, not a medical device.
 """

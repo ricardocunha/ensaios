@@ -4,14 +4,10 @@
     uv run --group vlm python -m eye_rag.diagnose --arm retrieval --split test --retrieval dense
     uv run --group vlm python -m eye_rag.diagnose --arm shuffled --split test --retrieval hybrid_knn
 
-Images: the split minus docs/exclusions.json, shuffled with a fixed seed, first `--n`
-(all when omitted). Resumable: ids already in the output file are skipped. The prompt
-is fixed in eye_rag.vlm; the retrieved cases come from the training split only.
-
-The `shuffled` arm is the faithfulness test: the same retrieved case images as the
-retrieval arm, but each case is shown with the recorded findings of another, random
-training case (see `shuffled_case_labels`). If the answer follows the text, the model
-is reading the labels rather than the photographs.
+Images: the split minus docs/exclusions.json, in a seeded order, first `--n`. Resumable.
+Retrieved cases come from the training split only. The `shuffled` arm is the
+faithfulness test: the retrieval arm's case images with wrong recorded findings
+(see `shuffled_case_labels`).
 """
 
 from __future__ import annotations

@@ -1,9 +1,7 @@
 """The two Milestone 1 baselines, as pure functions on arrays.
 
-(a) kNN: score(label) = similarity-weighted share of the top-k training neighbours that
-    carry the label (or the plain share, for a majority vote); predict when >= threshold.
-(b) Zero-shot BiomedCLIP: per label, a two-way softmax between "fundus with <label>"
-    prompts and "normal fundus" prompts; predict when p >= threshold.
+(a) kNN: the (similarity-weighted) share of the top-k training neighbours with the label.
+(b) Zero-shot BiomedCLIP: per label, "fundus with <label>" vs "normal fundus" prompts.
 """
 
 from __future__ import annotations

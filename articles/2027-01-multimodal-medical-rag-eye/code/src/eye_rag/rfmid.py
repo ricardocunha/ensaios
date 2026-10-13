@@ -1,13 +1,8 @@
 """RFMiD (Retinal Fundus Multi-disease Image Dataset): download and load.
 
-Source: the CC BY 4.0 Hugging Face mirror `ctmedtech/RFMID`, pinned to one revision.
-The official host (IEEE DataPort) needs a free IEEE account; this project doesn't sign
-up for anything, so it reads the mirror and checks every file against the mirror's
-SHA-256 (see docs/DATA.md for what that does and doesn't prove).
-
-The originals are PNGs of 1.5-3 MB (about 8.2 GB for the three splits). We keep a
-downsized JPEG copy of each (long side 1024 px, quality 92) in data/rfmid/<split>/<id>.jpg,
-which is plenty for BiomedCLIP (224 px input) and keeps data/ well under 1 GB.
+Source: the CC BY 4.0 Hugging Face mirror `ctmedtech/RFMID`, pinned to one revision;
+every file is checked against the mirror's SHA-256 (see docs/DATA.md). Only a
+downsized JPEG copy of each image is kept, in data/rfmid/<split>/<id>.jpg.
 
     uv run python -m eye_rag.rfmid download            # all three splits
     uv run python -m eye_rag.rfmid stats               # label counts per split

@@ -1,10 +1,8 @@
 """RFMiD label set: the 45 condition columns of the label CSVs, plus `Disease_Risk`.
 
-The full names follow the RFMiD paper (Pachade et al., Data 2021) as listed in the
-dataset mirrors; see docs/DATA.md. The one-line visual descriptions are ours, written
-only to give the text encoder something richer than an abbreviation (for zero-shot
-prompts and the label-text index). They are textbook-level descriptions of what the
-finding looks like on a fundus photo, not diagnostic criteria.
+The full names follow the RFMiD paper (Pachade et al., Data 2021); see docs/DATA.md.
+The one-line visual descriptions are ours, written for the text encoder and the
+prompts: what the finding looks like on a fundus photo, not diagnostic criteria.
 """
 
 from __future__ import annotations
