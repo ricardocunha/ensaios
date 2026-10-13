@@ -12,7 +12,7 @@ Use the month you plan to publish in. The slug should be short, lowercase and hy
 
 ## 2. Write and build
 
-- Drafts go in `article-en.md` / `article-pt-br.md` / `linkedin-*.md`. Mark anything not yet measured as `[[RESULT: …]]` and anything not yet confirmed as `[[VERIFY: …]]`. Never invent a number to fill a gap.
+- Drafts go in `article-en.md` / `linkedin-en.md`. Mark anything not yet measured as `[[RESULT: …]]` and anything not yet confirmed as `[[VERIFY: …]]`. Never invent a number to fill a gap.
 - Code goes in `code/`, as its own project. Python: `cd code && uv init --lib`. Keep data, model weights and run outputs out of git (`code/.gitignore`).
 - Commit as you go. The branch is the article's history.
 
