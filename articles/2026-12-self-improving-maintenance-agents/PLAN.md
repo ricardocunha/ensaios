@@ -137,4 +137,4 @@ Every number: `code/docs/RESULTS.md` ("Full run, m3 (v2)"). The fixes did not mo
 - **Budget:** local first (M4 Pro 48 GB, mlx / Ollama). The cap for paid APIs is **US$10 per article**, set with `--max-cost` in the code; ask before any paid run.
 - **Data:** public or synthetic only. No personal data. Record every dataset's license in `code/docs/DATA.md` before using it.
 - **Numbers:** every number in the drafts comes from `code/docs/RESULTS.md`. Mark gaps with the RESULT / VERIFY placeholders described in CONTRIBUTING.md.
-- **Deliverables:** EN long version + Medium short version, PT-BR, LinkedIn EN / PT-BR, code with tests + Makefile, `CONTEXT.md` glossary, ADRs for the hard decisions.
+- **Deliverables:** EN long version + Medium short version, LinkedIn post, code with tests + Makefile, `CONTEXT.md` glossary, ADRs for the hard decisions.
