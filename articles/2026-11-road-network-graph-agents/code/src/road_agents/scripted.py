@@ -1,9 +1,7 @@
-"""A scripted stand-in for the LLM (Pydantic AI ``FunctionModel``).
-
-It behaves like a careful agent: one lookup, one what-if, then copies tool
-numbers into the typed output; round-robin sequencing by criticality. Used by
-the tests and by ``scripts/evaluate_agents.py --model scripted`` for a
-no-LLM dry run of the whole pipeline. It is not a baseline for judgment.
+"""A scripted stand-in for the LLM (Pydantic AI ``FunctionModel``): one lookup,
+one what-if, then copies tool numbers into the typed output. Used by the tests
+and by ``scripts/evaluate_agents.py --model scripted`` for a no-LLM dry run.
+It is not a baseline for judgment.
 """
 
 from __future__ import annotations

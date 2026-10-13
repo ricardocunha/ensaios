@@ -1,12 +1,8 @@
 """Per-section condition score and a synthetic repair cost.
 
-Condition comes from Tapa-Buraco request density (see ``potholes.py``). It
-measures *reporting*: where people and inspectors log potholes, which also
-depends on traffic, who lives there and who uses the PBH app, not only on
-pavement state. The repair cost is synthetic, built from explicit
-assumptions (below); it is not a price.
-
-Every assumption is a module constant so the article can quote it.
+Condition comes from Tapa-Buraco request density (see ``potholes.py``): it
+measures *reporting*, not only pavement state. The repair cost is synthetic,
+not a price. Every assumption is a module constant so the article can quote it.
 """
 
 from __future__ import annotations
@@ -102,16 +98,9 @@ def section_table(
     requests: dict[str, int],
     points: dict[str, int],
 ) -> pd.DataFrame:
-    """The tidy per-section table the agents read.
-
-    ``requests`` / ``points``: snapped Tapa-Buraco requests and distinct
-    request locations per section id (missing = 0). The score uses distinct
-    locations, so repeat reports at one address count once.
-
-    ``value = condition * criticality * length_km``: condition times the
-    traffic that drives over the section (flow x length), so a long section
-    is worth more than a short one with the same flow and condition.
-    """
+    """The tidy per-section table the agents read. The score uses ``points``
+    (distinct request locations), so repeat reports at one address count once.
+    ``value = condition * criticality * length_km``."""
     rows = []
     for s in sections:
         lanes = section_lanes(D, s)

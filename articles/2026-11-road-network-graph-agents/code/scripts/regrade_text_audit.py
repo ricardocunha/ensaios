@@ -1,11 +1,6 @@
-"""Re-score the prose-number audit of a finished evaluation, without an LLM.
-
-The evaluation log keeps every tool call's arguments but not the ledger
-itself, so this script rebuilds the ledger by replaying the calls against the
-same deterministic tools (no cache differences: the tools are pure functions
-of the data), checks that the rebuilt ledger has the logged size and that the
-strict audit reproduces the logged counts, then runs
-``audit.audit_text_lenient`` (notation / derived / upstream / unsupported).
+"""Re-score the prose-number audit of a finished evaluation, without an LLM:
+rebuilds the ledger by replaying the logged tool calls, checks it against the
+logged size and strict counts, then runs ``audit.audit_text_lenient``.
 
 Usage:
     nice uv run python scripts/regrade_text_audit.py runs/m3-eval-local.jsonl

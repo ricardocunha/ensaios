@@ -1,11 +1,6 @@
-"""Two static maps from the per-section table (aggregated data only).
-
-1. Top sections by criticality (sampled edge betweenness, flow x length).
-2. Pothole-request density per section (smoothed distinct locations per km).
-
-Reads ``data/<city>-sections.csv`` and ``data/<city>-section-edges.csv``
-(written by ``section_pipeline.py``). Every figure carries the OSM
-attribution. No request point is drawn.
+"""Two static maps from the per-section table (written by ``section_pipeline.py``):
+top sections by criticality and pothole-request density per section. Every
+figure carries the OSM attribution. No request point is drawn.
 
 Usage:
     uv run python scripts/maps.py belo-horizonte --out ../figures

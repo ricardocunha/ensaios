@@ -28,11 +28,8 @@ def edge_criticality(
     weight: str = WEIGHT,
     normalized: bool = True,
 ) -> dict[Edge, float]:
-    """Edge betweenness centrality, weighted by travel time.
-
-    ``k=None`` is exact (one Dijkstra per node). ``k=n`` samples ``n`` source
-    nodes with a fixed ``seed``, so results are reproducible.
-    """
+    """Edge betweenness centrality, weighted by travel time. ``k=None`` is exact;
+    ``k=n`` samples ``n`` source nodes with a fixed ``seed`` (reproducible)."""
     if k is not None and k >= D.number_of_nodes():
         k = None
     return nx.edge_betweenness_centrality(
@@ -133,15 +130,9 @@ def closure_impact(
     od_pairs: Sequence[Edge] | Baseline,
     weight: str = WEIGHT,
 ) -> ClosureImpact:
-    """Shortest-path travel-time deltas for ``od_pairs`` when ``closed`` edges
-    are removed. Pass a ``Baseline`` (see ``compute_baseline``) to reuse the
-    no-closure trips across scenarios.
-
-    Exact, not an estimate: a trip whose baseline shortest path avoids every
-    closed edge keeps the same travel time (removing edges never makes a path
-    shorter, and its old path is still there), so only trips through a closed
-    edge are recomputed.
-    """
+    """Shortest-path travel-time deltas for ``od_pairs`` when ``closed`` edges are
+    removed; pass a ``Baseline`` to reuse the no-closure trips. Exact: only trips
+    whose baseline path uses a closed edge can change, so only those are recomputed."""
     closed = sorted(set(closed))
     missing = [e for e in closed if not D.has_edge(*e)]
     if missing:

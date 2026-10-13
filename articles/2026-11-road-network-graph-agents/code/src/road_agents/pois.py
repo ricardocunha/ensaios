@@ -14,11 +14,8 @@ POI_TAGS = {
 
 
 def load_pois(place: str, kind: str, data_dir: Path | None = None, refresh: bool = False) -> list[dict]:
-    """Return ``[{"osm_id", "name", "lon", "lat"}, ...]`` for ``kind`` in POI_TAGS.
-
-    Polygons (most hospitals and schools are mapped as areas) are reduced to
-    their centroid. Downloads with OSMnx once, then reads the CSV cache.
-    """
+    """Return ``[{"osm_id", "name", "lon", "lat"}, ...]`` for ``kind`` in POI_TAGS
+    (polygons reduced to their centroid). Downloads with OSMnx once, then reads the CSV cache."""
     path = (data_dir or DATA_DIR) / f"{slugify(place)}-{kind}.csv"
     if path.exists() and not refresh:
         with open(path, newline="") as f:

@@ -1,23 +1,8 @@
 """Road sections: chains of OSM edges that a maintenance crew would treat as one job.
 
-Milestone 1 showed that the most critical *edges* are consecutive pieces of
-the same road, so the agents work on *sections* instead:
-
-1. Both directions of a street are one *link* (``frozenset({u, v})``).
-2. Two links that meet at a node continue the same section when they are the
-   *same road*: they share a name (or ``ref`` when unnamed) and the same base
-   highway class, and each is the only same-road link of the other at that
-   node (no fork).
-3. A section also breaks where a road of a strictly *higher* class, not
-   itself the same road, touches the node (a residential street runs through
-   residential crossings but stops at a tertiary avenue; an avenue runs
-   through side streets but stops at a trunk road).
-4. Unnamed links are never merged (each is its own section).
-5. Chains longer than ``max_length_m`` are cut at edge boundaries into
-   ``ceil(L / max_length_m)`` pieces of roughly equal length, so a budget can
-   buy part of a long avenue.
-
-Deterministic: the same graph gives the same section ids.
+Merge rule (docs/DATA.md): links (both directions of a street) chain while they
+are the same road (name or ``ref``, base class) with no fork, break at a strictly
+higher-class road and are cut into pieces of at most ``max_length_m``; unnamed links never merge.
 """
 
 from __future__ import annotations
@@ -189,12 +174,8 @@ def _split(chain: list[Link], infos: dict[Link, LinkInfo], max_length_m: float |
 
 
 def build_sections(D: nx.DiGraph, max_length_m: float | None = 1000.0) -> list[Section]:
-    """Group the edges of ``D`` into sections (see module docstring).
-
-    Every directed edge of ``D`` (except self-loops) is in exactly one section.
-    Section ids are ``S00001``, ... in a deterministic order (by name, class,
-    first link).
-    """
+    """Group the edges of ``D`` into sections (see module docstring). Every directed
+    edge except self-loops is in exactly one section; ids ``S00001``, ... are deterministic."""
     infos = _link_infos(D)
     pieces = [p for ch in _chains(infos) for p in _split(ch, infos, max_length_m)]
 
@@ -237,13 +218,8 @@ def link_to_section(sections: Iterable[Section]) -> dict[Link, str]:
 def section_criticality(
     D: nx.DiGraph, sections: Iterable[Section], scores: dict[Edge, float]
 ) -> dict[str, dict[str, float]]:
-    """Aggregate edge betweenness per section.
-
-    A link's *flow* is the betweenness of both its directions summed. Per
-    section: ``max`` = the highest link flow; ``mean`` = the length-weighted
-    mean link flow (the criticality we rank by: flow over the whole section,
-    not one hot spot).
-    """
+    """Aggregate edge betweenness per section. A link's flow sums both directions;
+    ``max`` = highest link flow, ``mean`` = length-weighted mean (the criticality we rank by)."""
     out = {}
     for s in sections:
         flows, lengths = [], []

@@ -46,13 +46,9 @@ def road(D, u, v, name, hwy, length=100.0, oneway=False, **extra):
 
 @pytest.fixture
 def city() -> nx.DiGraph:
-    """An avenue 0-1-2-3-4 (tertiary) crossed by:
-    - a primary road at node 1 (breaks the avenue),
-    - a residential street at node 3 (does not break it).
-    The residential street 10-3-11 runs through the avenue? No: the avenue
-    is higher class, so the residential street breaks at 3.
-    A residential street 20-21-22-23 has a residential crossing at 21
-    (continues) and forks at 22 (breaks). One unnamed link 23-24.
+    """An avenue 0-1-2-3-4 (tertiary): the primary road at node 1 breaks it, the
+    residential street at node 3 does not. A residential street 20-21-22-23 continues
+    through a residential crossing at 21 and breaks at the fork at 22. One unnamed link 23-24.
 
         10          5
         |           |

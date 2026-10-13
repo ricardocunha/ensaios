@@ -1,10 +1,6 @@
-"""Milestone 3 evaluation: agent pipeline vs. pure solver.
-
-For each budget share: the pure-solver arm (solver plan, naive and heuristic
-schedules of its major works), then ``--runs`` repeated agent pipelines with
-the same inputs, each evaluated deterministically (``road_agents.audit``).
-Rows are appended to a JSONL file as they finish, and finished
-(budget, run) pairs are skipped on restart, so a long run can resume.
+"""Milestone 3 evaluation: agent pipeline vs. pure solver, per budget share,
+evaluated deterministically (``road_agents.audit``). Rows are appended to a
+JSONL file; finished (budget, run) pairs are skipped on restart.
 
 Usage:
     nice uv run python scripts/evaluate_agents.py --model scripted          # no LLM, dry run

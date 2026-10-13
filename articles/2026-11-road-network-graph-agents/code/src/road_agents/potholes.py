@@ -1,12 +1,8 @@
-"""Belo Horizonte "Tapa-Buraco" (pothole repair) requests from BH Digital.
+"""Belo Horizonte "Tapa-Buraco" (pothole repair) requests from BH Digital
+(PBH open data, CC-BY; see docs/DATA.md), cached in ``data/pbh/`` (git-ignored).
 
-Source: PBH open data, "Solicitações dos cidadãos, por meio dos canais de
-atendimento da PBH" (CC-BY; see docs/DATA.md). Monthly/yearly CSVs are
-cached in ``data/pbh/`` (git-ignored).
-
-Privacy rule for this project: request coordinates are only used in memory
-to snap requests to road sections; nothing per request is written out or
-published, only per-section counts.
+Privacy rule: request coordinates are only used in memory to snap requests to
+road sections; nothing per request is written out, only per-section counts.
 """
 
 from __future__ import annotations
@@ -77,14 +73,8 @@ def download(key: str, data_dir: Path | None = None, refresh: bool = False) -> P
 
 
 def read_requests(source: Path | bytes, service: str | None = POTHOLE_SERVICE) -> pd.DataFrame:
-    """Read one BH Digital CSV (either format) into a tidy frame.
-
-    The 2022 file is Latin-1 with ISO dates; the 2023 files are UTF-8 with a
-    BOM and ``dd/mm/yyyy`` dates (although the header says YYYY-MM-DD). Both
-    are ``;``-separated with the same 16 columns. Returns ``ticket, service,
-    created, channel, status, access_level, lat, lon`` (lat/lon NaN when
-    missing), filtered to ``service`` unless it is None.
-    """
+    """Read one BH Digital CSV (either format; see docs/DATA.md) into a tidy frame,
+    filtered to ``service`` unless it is None. lat/lon are NaN when missing."""
     raw = source if isinstance(source, bytes) else Path(source).read_bytes()
     enc = "utf-8-sig" if raw.startswith(b"\xef\xbb\xbf") else "latin-1"
     df = pd.read_csv(io.BytesIO(raw), sep=";", encoding=enc, dtype=str, keep_default_na=False)
@@ -148,15 +138,9 @@ def links_frame(D, links: dict[tuple[int, int], str]) -> gpd.GeoDataFrame:
 def snap_requests(
     requests: pd.DataFrame, links: gpd.GeoDataFrame, max_distance_m: float = 30.0
 ) -> pd.DataFrame:
-    """Nearest link for each request with coordinates.
-
-    Returns one row per input request (same order) with ``section_id`` (None
-    when no link is within ``max_distance_m`` or coordinates are missing) and
-    ``distance_m`` (to the nearest link, searched up to 10x the threshold;
-    NaN beyond that). Coordinates are SIRGAS 2000, treated as WGS 84 (they
-    differ by centimetres). Ties between equidistant links go to the lowest
-    link id, so results are deterministic.
-    """
+    """Nearest link for each request: one row per input request (same order) with
+    ``section_id`` (None when no link is within ``max_distance_m``) and ``distance_m``.
+    SIRGAS 2000 coordinates are treated as WGS 84; ties go to the lowest link id."""
     has = requests["lat"].notna() & requests["lon"].notna()
     out = pd.DataFrame(
         {"section_id": pd.Series([None] * len(requests), dtype=object), "distance_m": np.nan},

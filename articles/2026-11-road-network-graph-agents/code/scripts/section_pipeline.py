@@ -1,14 +1,9 @@
 """Milestone 2: sections, pothole snapping, condition score, knapsack baseline.
 
-Needs the cached graph and a cached betweenness CSV
-(``scripts/cache_betweenness.py``). Writes, all git-ignored:
-
-- ``data/<city>-sections.csv``        tidy per-section table (the agents read this)
-- ``data/<city>-section-edges.csv``   section_id -> directed edges (u, v)
-- ``runs/m2-<city>-k<k>.json``         every number reported in docs/RESULTS.md
-
-No per-request data is written: coordinates are snapped in memory and only
-per-section counts leave this script.
+Needs the cached graph and betweenness CSV (``scripts/cache_betweenness.py``).
+Writes ``data/<city>-sections.csv``, ``data/<city>-section-edges.csv`` and
+``runs/m2-<city>-k<k>.json`` (all git-ignored): per-section counts only, no
+per-request data.
 
 Usage:
     nice uv run python scripts/section_pipeline.py belo-horizonte --k 2000

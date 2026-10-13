@@ -30,11 +30,8 @@ def cache_path(place: str, data_dir: Path | None = None) -> Path:
 def load_graph(
     place: str, data_dir: Path | None = None, refresh: bool = False
 ) -> nx.MultiDiGraph:
-    """Return the drivable graph for ``place`` (a key of CITIES or a geocodable name).
-
-    Downloads with OSMnx on the first call and caches as GraphML; later calls
-    read the cache. Edges get ``speed_kph`` and ``travel_time`` (seconds).
-    """
+    """Drivable graph for ``place`` (a key of CITIES or a geocodable name), downloaded
+    with OSMnx once and cached as GraphML. Edges get ``speed_kph`` and ``travel_time`` (seconds)."""
     import osmnx as ox
 
     query = CITIES.get(place, place)
@@ -51,11 +48,8 @@ def load_graph(
 
 
 def to_simple_digraph(G: nx.MultiDiGraph, weight: str = "travel_time") -> nx.DiGraph:
-    """Collapse parallel edges, keeping the one with the smallest ``weight``.
-
-    The returned edges keep that edge's attributes plus ``key`` (the original
-    multigraph key), so results map back to OSM edges.
-    """
+    """Collapse parallel edges, keeping the one with the smallest ``weight`` and
+    its attributes plus ``key`` (the original multigraph key, to map back to OSM)."""
     D = nx.DiGraph()
     D.add_nodes_from(G.nodes(data=True))
     for u, v, k, data in G.edges(keys=True, data=True):

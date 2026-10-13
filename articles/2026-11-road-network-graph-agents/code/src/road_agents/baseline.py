@@ -1,14 +1,8 @@
 """Pure-optimization maintenance baseline: which sections to repair within a
 budget. The LLM agents (milestone 3) must match or beat this.
 
-Objective: maximize the sum of ``value`` (condition x criticality x length,
-see ``condition.section_table``) subject to sum of ``repair_cost`` <= budget.
-Two solvers:
-
-- ``greedy``: sort by value / cost (ties by id), take each section that
-  still fits. Simple, explainable, usually near-optimal when items are small
-  relative to the budget.
-- ``exact``: 0/1 knapsack as a mixed-integer program (SciPy / HiGHS).
+Maximizes the sum of ``value`` subject to sum of ``repair_cost`` <= budget:
+``greedy`` (by value / cost, ties by id) or ``exact`` (0/1 knapsack MILP, SciPy / HiGHS).
 """
 
 from __future__ import annotations

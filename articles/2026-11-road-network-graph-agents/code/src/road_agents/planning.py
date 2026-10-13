@@ -1,27 +1,8 @@
-"""Deterministic, typed planning tools over road *sections* (milestone 3).
-
-The agents call these; they never do graph math themselves. Everything here
-is deterministic for a given ``PlanningData`` (same graph, same sections,
-same OD pairs), and returns Pydantic models so tool outputs are typed and can
-be audited later.
-
-Definitions used throughout:
-
-- **Solver plan**: greedy value/cost knapsack (``baseline.greedy``) over the
-  candidate sections (``value > 0``) at a budget stated as a share of the
-  candidates' total repair cost. Milestone 2 showed greedy is within 1e-5 of
-  the exact MILP at 5/10/20%.
-- **Closure**: all directed edges of the section(s) removed at the same time.
-- **Trips**: fixed sampled origin-destination pairs (``tools.sample_od_pairs``),
-  exact shortest-path deltas (``tools.closure_impact``).
-- **Access loss**: graph nodes that reach the nearest hospital within
-  ``hospital_s`` (default 600 s = 10 min) before the closure but not after;
-  same for schools with ``school_s`` (default 300 s = 5 min). Includes nodes
-  cut off entirely (reported separately as ``..._cut_off``).
-- **Interaction loss** of a set of simultaneous closures: nodes that lose
-  access only because the closures overlap in time, i.e. lost under the set
-  but under none of its sections closed alone. Sequencing can avoid this;
-  a loss a single section causes alone cannot be avoided by sequencing.
+"""Deterministic, typed planning tools over road *sections* (milestone 3): the
+agents call these and never do graph math themselves.
+Access loss = nodes within ``hospital_s`` / ``school_s`` of a facility before a
+closure but not after. Interaction loss = lost under a set of simultaneous
+closures but under none of its sections alone (sequencing can avoid only this).
 """
 
 from __future__ import annotations
@@ -485,20 +466,9 @@ def pair_conflicts(data: PlanningData, works: Sequence[str]) -> set[frozenset[st
 
 
 def heuristic_schedule(data: PlanningData, works: Sequence[str], n_phases: int = 3) -> dict[int, list[str]]:
-    """Deterministic non-LLM sequencer (the fair comparison for the closure agent).
-
-    1. Pairwise conflicts: pairs of works whose joint closure cuts access that
-       neither cuts alone (``pair_conflicts``).
-    2. Greedy: works in order of single-closure total delay (largest first),
-       each to the month with room that minimizes (conflicts with works already
-       there, the month's summed single-closure delay), ties to the earliest.
-    3. Swap search: swap two works in different months while that lowers
-       (total conflicts, worst month's summed delay).
-
-    Summed single delays are a proxy (joint closures can be super-additive);
-    the schedule is scored afterwards with the exact ``schedule_report``.
-    Conflicts of three or more works together are not searched.
-    """
+    """Deterministic non-LLM sequencer (the fair comparison for the closure agent):
+    greedy by single-closure delay avoiding ``pair_conflicts``, then a swap search.
+    Summed single delays are a proxy; conflicts of three or more works are not searched."""
     works = list(works)
     cap = phase_capacity(len(works), n_phases)
     delay = {w: _closure(data, [w])[0].total_delay_s for w in works}

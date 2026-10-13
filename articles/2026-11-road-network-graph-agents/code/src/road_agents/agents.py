@@ -1,23 +1,8 @@
 """The three LLM agents (Pydantic AI, typed outputs) and the pipeline that
-chains them into a quarterly plan.
-
-- **Maintenance-priority agent**: starts from the solver plan at a budget and
-  proposes *deviations* (add / remove sections), each with a reason. The
-  final plan is rebuilt deterministically: ``solve_budget`` with the adds
-  forced in and the removals excluded, so budget feasibility and the fill-up
-  of the remaining budget are never the LLM's job.
-- **Closure-impact agent**: gets the plan's major works (highest
-  criticality) and assigns them to the quarter's three months, with a
-  per-month capacity, to limit simultaneous impact. It must state each
-  month's combined impact numbers and flag hospital/school access losses.
-- **Planning coordinator**: gets both outputs plus a fact sheet computed by
-  the tools and writes the quarterly plan with the trade-offs spelled out.
-
-Hand-off between agents is programmatic (the pipeline passes typed outputs
-on), not agent-calls-agent: fewer moving parts for an 8B local model.
-
-Every tool call's numeric output is recorded in ``Deps.ledger`` so
-``audit.py`` can check each number the agents cite.
+chains them into a quarterly plan: maintenance (deviations from the solver
+plan, rebuilt by ``solve_budget``), closure (major works over three months)
+and coordinator. Hand-off is programmatic; every tool output's numbers go to
+``Deps.ledger`` so ``audit.py`` can check each number the agents cite.
 """
 
 from __future__ import annotations
@@ -450,10 +435,9 @@ def fact_sheet(
     sched_report: P.ScheduleReport | None,
     agent_text: bool = True,
 ) -> str:
-    """Tool-computed facts for the coordinator. With ``agent_text=False`` the
-    upstream agents' own words (reasons, flag notes) are left out: that is the
-    version whose numbers enter the audit ledger, so an agent's claim never
-    grounds itself."""
+    """Tool-computed facts for the coordinator. ``agent_text=False`` drops the
+    upstream agents' own words: that version feeds the audit ledger, so an
+    agent's claim never grounds itself."""
     lines = ["SOLVER PLAN", P.plan_summary_text(deps.data, deps.solver), "", "FINAL PLAN (after deviations)",
              P.plan_summary_text(deps.data, final), "", "DEVIATIONS"]
     for d in proposal.deviations:

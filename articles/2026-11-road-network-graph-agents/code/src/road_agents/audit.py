@@ -1,26 +1,8 @@
-"""Deterministic evaluation of an agent pipeline run.
-
-Three checks, none of them uses an LLM:
-
-1. **Plan vs. solver**: value captured, budget use, requests covered.
-2. **Schedule**: access-loss violations (a month whose overlapping works cut
-   hospital/school access that no single work cuts alone), peak delay; the
-   agent's schedule vs. a naive priority-order schedule and a deterministic
-   heuristic on the same works.
-3. **Number audit**:
-   - *structured*: every number in a ``Phase`` (trips, delay, access nodes)
-     and every ``AccessFlag`` is recomputed from scratch (no cache) and must
-     match (integers exactly; seconds within 0.05 s, i.e. the tools'
-     rounding to 0.1 s);
-   - *free text*: every number in the agents' prose is looked up in the
-     run's ledger (all numbers the tools returned and the prompts showed).
-     Match = equal after rounding to the digits the agent printed, allowing
-     x100 (shares as %), /60 (s -> min) or /1000 (m -> km). No other
-     tolerance: with thousands of ledger numbers a relative tolerance would
-     match almost anything. Integers from 0 to 12 without decimals are skipped as trivial
-     (months, list numbers, small counts, which the structured audit covers).
-     A ledger match only shows the number came from *some* tool output, not
-     that it is used in the right place; the structured audit is the strict one.
+"""Deterministic evaluation of an agent pipeline run (no LLM): plan vs. solver,
+schedule (access-loss violations and peak delay, vs. naive and heuristic
+schedules) and a number audit (see docs/RESULTS.md). Structured numbers are
+recomputed without cache; prose numbers are looked up in the run's ledger, which
+only shows a number came from *some* tool output, not that it is used correctly.
 """
 
 from __future__ import annotations
@@ -250,22 +232,8 @@ def consistency(evals: list[dict], raws: list[dict]) -> dict:
 
 # --- lenient re-score: notation and simple derived numbers ------------------------------------
 #
-# The strict audit above stays the headline score. This second pass explains
-# what the strict audit misses, one class per number, in this order:
-#   strict    - found by ``grounded`` (unchanged);
-#   notation  - same value, other notation: scientific notation compared at its
-#               real precision (3.789e-6 has 9 decimals, not 3; the strict
-#               pass rounds the ledger to 3 decimals and finds 0);
-#   derived   - 100 - x for a ledger number x (a complement: "gives up 29.76%"),
-#               or a + b / |a - b| where a and b are both ledger-grounded numbers
-#               cited in the *same* text field (the agent shows its work). Pairs
-#               over the whole ledger are not allowed: with hundreds of ledger
-#               numbers almost any value is some difference of two;
-#   upstream  - not in the ledger, but in an earlier agent's own text that this
-#               agent was shown (e.g. a maintenance reason in the coordinator's
-#               fact sheet): traceable, not grounded;
-#   unsupported - none of the above.
-# Grounded with derived numbers = strict + notation + derived.
+# The strict audit above stays the headline score; this pass gives each number the
+# first class of ``LENIENT_CLASSES`` that fits (rules in docs/RESULTS.md).
 
 LENIENT_CLASSES = ("strict", "notation", "derived", "upstream", "unsupported")
 
@@ -317,10 +285,8 @@ def classify_number(n: Num, ledger: list[float], siblings: list[float], upstream
 
 def audit_text_lenient(texts: dict[str, str], ledger: list[float], upstream: dict[str, list[float]] | None = None) -> dict:
     """Same numbers as ``audit_text``, each assigned to one of ``LENIENT_CLASSES``.
-
     ``upstream``: label prefix (e.g. ``"coordinator."``) -> numbers from earlier
-    agents' text that agent was shown. Siblings for the derived check are the
-    strictly or notation-grounded numbers of the same text field."""
+    agents' text that agent was shown."""
     uniq = sorted(set(ledger))
     upstream = upstream or {}
     counts = dict.fromkeys(LENIENT_CLASSES, 0)
