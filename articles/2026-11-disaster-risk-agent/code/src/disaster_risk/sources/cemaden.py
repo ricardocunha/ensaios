@@ -1,16 +1,10 @@
 """CEMADEN automatic rain gauges.
 
-Historical data: monthly CSV per state from the "Download de Dados" form at
-https://mapainterativo.cemaden.gov.br/download/download_form.php. The form
-posts to ``download_file.php`` and requires a CAPTCHA (securimage), so it
-cannot be scripted here. To use it, download RS April and May 2024 by hand
-and save them as ``data/cemaden/RS_2024_04.csv`` and ``RS_2024_05.csv``.
-
-The REST API at sws.cemaden.gov.br/PED/rest needs a token
-("O parâmetro token não pode ser vazio!") that requires registration.
-
-What works without a key is the live snapshot behind the interactive map
-(``getJson2.php``): current accumulations only, no history.
+Historical monthly CSVs sit behind a CAPTCHA form ("Download de Dados" at
+https://mapainterativo.cemaden.gov.br/download/download_form.php) and the REST API needs a registered
+token. To use the history, download RS April and May 2024 by hand and save them as
+``data/cemaden/RS_2024_04.csv`` and ``RS_2024_05.csv``. Without a key only the live map snapshot
+(``getJson2.php``) works: current accumulations, no history.
 """
 
 from __future__ import annotations

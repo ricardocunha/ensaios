@@ -1,17 +1,9 @@
 """Reference times for "would it have warned in time", per gauge / municipality.
 
-No machine-readable record of *municipal* alert times (Defesa Civil RS,
-CEMADEN) was found for the 2024 event (docs/DATA.md). What we have:
-
-1. **Official hydrological bulletins** (SGB SACE Taquari): the time of the
-   first extraordinary bulletin for the basin, and the first bulletin that
-   printed a station at or above its flood level. Times from file names
-   (nominal data time and upload time), local UTC-3.
-2. **Flood-level crossing** from ANA telemetry: the first 15-min reading at or
-   above the official flood level (``basin.FLOOD_LEVEL_CM``). This is the
-   fallback "in time" reference: an alert is in time if it precedes this.
-3. **Gauge peak**: the highest reading in the window, with a flag when the
-   gauge stopped reporting before the river did.
+No machine-readable record of *municipal* alert times was found (docs/DATA.md). The references are the
+SGB SACE Taquari bulletins (first bulletin, first one with a station at flood level; local UTC-3) and
+the first ANA reading at or above the official flood level (``basin.FLOOD_LEVEL_CM``): an alert is in
+time if it precedes that crossing.
 
 ``uv run python -m disaster_risk.reference`` prints the table used in RESULTS.md.
 """

@@ -1,14 +1,8 @@
 """Point-in-time access to observations: the no-look-ahead boundary.
 
-Signal adapters never see the dataset directly. They get a :class:`Snapshot`
-taken at time ``t``, which only returns what was *available* at ``t``:
-
-- an hourly row is available at ``hour_end + latency`` (its last reading
-  cannot be known before the hour closes; ``latency`` models transmission);
-- a Copernicus EMS product is available at its delivery (publication) time,
-  not at the time the image was acquired.
-
-Anything the snapshot does not return cannot leak into a signal.
+Signal adapters only get a :class:`Snapshot` taken at time ``t``, which returns what was *available* at
+``t``: an hourly row at ``hour_end + latency``, a Copernicus EMS product at its delivery (publication)
+time, not at acquisition. Anything the snapshot does not return cannot leak into a signal.
 """
 
 from __future__ import annotations

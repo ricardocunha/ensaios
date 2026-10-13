@@ -1,15 +1,10 @@
 """Labels for scoring fusion: did the gauge reach its flood level soon after ``t``?
 
-    H(gauge, t) = 1  if any 15-min level reading in (t - 1 h, t + HORIZON] is >= the flood level
-                = 0  if none is, and the window has at least MIN_COVERAGE of its expected readings
-                = None (unknown) otherwise: a silent gauge cannot give a negative label
-
-Labels look into the future by definition. They are used only to *score*
-(priors from history, Brier score, false alarms), never as input to a signal.
-
-The prior for a place is the share of labelled TRAIN hours with H = 1
-(ANA record 2019-01-01 → 2022-12-31 local; 2023 and 2024 stay out of sample),
-with add-one smoothing: (positives + 1) / (labelled + 2).
+H(gauge, t) = 1 if any 15-min level reading in (t - 1 h, t + HORIZON] is >= the flood level; 0 if none
+is and the window has at least MIN_COVERAGE of its expected readings; None otherwise (a silent gauge
+cannot give a negative label). Labels look into the future by definition: they are used only to
+*score*, never as input to a signal. The prior for a place is the share of labelled TRAIN hours
+(2019-2022, local) with H = 1, with add-one smoothing.
 """
 
 from __future__ import annotations

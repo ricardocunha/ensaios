@@ -1,17 +1,9 @@
 """Rolling rain accumulations → likelihood ratio (shared by ANA gauge rain and INMET).
 
-Rule (fixed, the same for every station; chosen as round numbers before the
-backtest, to be calibrated in milestone 3):
-
-    LR 10  if 24 h >= 150 mm or 72 h >= 300 mm
-    LR  5  if 24 h >= 100 mm or 72 h >= 200 mm
-    LR  2  if 24 h >=  50 mm or 72 h >= 100 mm
-    LR 0.5 if 72 h <   20 mm (dry: evidence against)
-    LR  1  otherwise
-
-Accumulations only sum readings that exist. ``coverage`` (readings received /
-readings expected over 72 h) scales reliability, because a sum with holes is a
-lower bound: a high value is still real evidence, a low one may be an artefact.
+Rule (the same for every station, round numbers chosen before the backtest): LR 10 / 5 / 2 if
+24 h >= 150 / 100 / 50 mm or 72 h >= 300 / 200 / 100 mm; LR 0.5 if 72 h < 20 mm (dry); LR 1 otherwise.
+Accumulations only sum readings that exist; ``coverage`` (readings received / expected over 72 h)
+scales reliability, because a sum with holes is a lower bound.
 """
 
 from __future__ import annotations

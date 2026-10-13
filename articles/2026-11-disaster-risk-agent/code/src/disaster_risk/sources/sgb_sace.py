@@ -1,23 +1,10 @@
 """SGB/CPRM SACE: official hydrological alert bulletins for the Taquari basin.
 
-The Serviço Geológico do Brasil runs the Taquari flood alert system (SAH
-Taquari) and keeps every bulletin it issued as a PDF. The archive page
-``https://www.sgb.gov.br/sace/boletins.php?idbacia=9`` lists them; each file
-name carries two times, both local (UTC-3):
-
-    boletins/Taquari/20240430_06-20240430 - 075404.pdf
-                     ^^^^^^^^^^^ nominal time of the data (30/04 06h)
-                                 ^^^^^^^^^^^^^^^^^ upload time (07:54:04)
-
-The PDF has a table per station: 24 h rain, current level (cm), 24 h change,
-the station's flood level ("Nível de Inundação", cm) and a forecast. We read
-the text with ``pdftotext`` (poppler) when it is installed; the listing alone
-is enough for the bulletin times. No key needed.
-
-Python's own CA bundle rejects the SGB certificate chain ("self-signed
-certificate in certificate chain", 2026-09-30) while ``curl`` with the system
-trust store accepts it, and plain HTTP redirects to HTTPS. So this source
-downloads with ``curl`` (TLS verification stays on).
+The archive page ``https://www.sgb.gov.br/sace/boletins.php?idbacia=9`` lists every bulletin PDF. A
+file name such as ``20240430_06-20240430 - 075404.pdf`` carries the nominal time of the data (30/04
+06h) and the upload time (07:54:04), both local (UTC-3). The station table is read with ``pdftotext``
+(poppler) when it is installed. Downloads use ``curl``: Python's own CA bundle rejects the SGB
+certificate chain, the system trust store accepts it (TLS verification stays on).
 """
 
 from __future__ import annotations

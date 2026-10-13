@@ -1,22 +1,9 @@
 """ANA telemetry adapter: river level (per-station thresholds) and gauge rain.
 
-Level rule (per station, explicit):
-
-    thresholds: p90, p99 of the station's own 2019-01 → 2024-04-19 record
-                (see thresholds.py) and the official flood level when one is
-                known (basin.FLOOD_LEVEL_CM); without an official level, the
-                historical p99.9 takes its place.
-
-    LR 10  level >= flood level (or p99.9)
-    LR  4  level >= p99
-    LR 1.5 level >= p90
-    LR 0.5 below p90
-    x2     if the level rose >= 100 cm over the 6 h before the reading (capped at 20)
-
-The level used is the latest real reading available at ``t``, however old; its
-age goes into ``freshness_h`` and lowers ``reliability`` (see signals.staleness).
-A station with no historical record (Usina do Gasômetro started reporting on
-2024-05-03) gets LR 1: we do not know what its numbers mean.
+Level rule (per station): LR 10 at or above the official flood level (the historical p99.9 when there
+is none), LR 4 >= p99, LR 1.5 >= p90, LR 0.5 below p90; x2 if the level rose >= 100 cm over the 6 h
+before the reading (capped at 20). The level used is the latest real reading available at ``t``,
+however old; its age lowers ``reliability``. A station with no historical record gets LR 1.
 """
 
 from __future__ import annotations

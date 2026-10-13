@@ -1,15 +1,8 @@
 """The 2019 → 2024-04 record as an hourly dataset, replayed with the same adapters.
 
-Used for three things in milestone 3: priors, the calibrated likelihood-ratio
-table (fitted on TRAIN only) and false alarms in quiet periods (TEST, plus the
-whole record for the hand-set rules, which were not fitted).
-
-- ANA: the same 15-min telemetry files as the thresholds (2019-01-01 → 2024-04-19 local).
-- INMET: yearly bulk files 2019 → 2024 (``sources.inmet.download_year``), all 7 stations.
-
-The replay runs in chunks of ``CHUNK`` with ``CHUNK_WARMUP`` of earlier rows in
-each chunk's store; adapters only look back 80 h, so a chunked replay equals an
-unchunked one (tested), and each snapshot stays small.
+Used for priors, the calibrated likelihood-ratio table (fitted on TRAIN only) and false alarms in quiet
+periods (TEST). The replay runs in chunks of ``CHUNK`` with ``CHUNK_WARMUP`` of earlier rows; adapters
+only look back 80 h, so a chunked replay equals an unchunked one (tested).
 """
 
 from __future__ import annotations

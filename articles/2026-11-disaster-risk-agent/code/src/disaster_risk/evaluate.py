@@ -1,28 +1,12 @@
 """Milestone 3: fusion backtest, false alarms, calibration and ablations.
 
-``uv run python -m disaster_risk.evaluate`` (``make evaluate``):
+``uv run python -m disaster_risk.evaluate`` (``make evaluate``) replays the 2024 event and the
+2019-01 → 2024-04-19 record, fits priors and the calibrated LR table on TRAIN (2019-2022, local), fuses
+every hour for every place (hand-set LRs, calibrated table, one run per ablation), prints the tables
+used in RESULTS.md and writes ``runs/m3/`` (``key_hours.json`` is the input for the alert agent).
 
-1. replays 2024-04-20 → 05-20 (the event) and 2019-01 → 2024-04-19 (the record)
-   with the milestone 2 adapters;
-2. fits priors and the calibrated LR table on TRAIN (2019-2022, local);
-3. fuses every hour for every place, with the hand-set LRs and with the
-   calibrated table (plus one run per ablation);
-4. prints the tables used in RESULTS.md and writes ``runs/m3/``:
-   ``fused_2024.csv`` (every place and hour, calibrated fusion),
-   ``summary.json``, ``lr_table.json`` and ``key_hours.json`` (inputs for the
-   alert agent).
-
-Definitions (also in RESULTS.md):
-
-- alert episode: consecutive hours at level >= "alert"; episodes less than
-  ``MERGE_H`` apart are merged.
-- lead time for a flood onset c (first reading >= flood level after 7 days
-  below it): c minus the onset of the episode that contains the first alert
-  hour in [c - 72 h, c + 72 h]. Positive = the alert came first. No alert
-  hour in that range = missed.
-- false alarm: an episode with no reading >= flood level from its onset - 1 h
-  to its end + 24 h, while the gauge did report in that span ("unverifiable"
-  if it did not report at all).
+Alert episodes (merged when less than ``MERGE_H`` apart), lead time and false alarms are defined in
+docs/RESULTS.md.
 """
 
 from __future__ import annotations

@@ -1,29 +1,10 @@
 """The alert agent: an LLM writes the alert text; the numbers come from fusion.
 
-Division of labour:
-
-- ``fusion.fuse`` computes the probability and the risk level. The agent
-  receives them as facts and has no output field for them: the final
-  :class:`Alert` takes ``probability`` and ``level`` from the fused state.
-- The agent (Pydantic AI, typed output :class:`AlertDraft`) writes a headline
-  and an explanation that cite which signals moved the estimate and by how
-  much, and must name every silent gauge.
-- :func:`citation_audit` then checks the text deterministically: every number
-  it prints must appear in the input block the model was given (up to the
-  text's own rounding), every station code and place name must be one of the
-  input's, every silent gauge must be mentioned, and a risk level named in the
-  text must be the fused one.
-
-Model: ``$ALERT_BASE_URL`` / ``$ALERT_MODEL``, by default the local mlx-lm
-server at http://localhost:8088/v1 serving Qwen3-8B as ``default_model``,
-with Qwen3 thinking off (``chat_template_kwargs.enable_thinking = false``).
-
-Language: the alerts are written for Brazilian civil defence, so the default is
-Portuguese (``lang="pt"``): the input block is rendered in pt-BR with decimal
-commas, and the agent is told to answer in pt-BR. ``lang="en"`` reproduces the
-milestone 3 English run. The audit reads numbers in both formats ("3,66 m",
-"3.66 m", "1.355 cm" as a thousands group) and level and silence words in both
-languages.
+``probability`` and ``level`` come from the fused state (the agent has no output field for them);
+:func:`citation_audit` then checks every number, station code, place name, silent gauge and risk level
+in the text against the input block. Default language is pt-BR with decimal commas (``lang="en"``
+reproduces the milestone 3 run). Model: ``$ALERT_BASE_URL`` / ``$ALERT_MODEL``, by default the local
+mlx-lm server with Qwen3 thinking off.
 
 ``uv run python -m disaster_risk.alerts --limit N`` runs the agent on the key
 hours of ``runs/m3/key_hours.json`` (written by ``evaluate``) and appends one
@@ -291,8 +272,7 @@ def _numbers(text: str) -> list[str]:
 def _candidates(tok: str) -> list[tuple[float, int]]:
     """Every reading of a number token as (value, decimals), in English or Brazilian format.
 
-    "3,66" and "3.66" are 3.66; "1.355" and "1,355" are 1.355 *or* 1355 (a thousands group); "1.355,5" is 1355.5.
-    The audit accepts a token if any reading is grounded.
+    "1.355" is 1.355 *or* 1355 (a thousands group); the audit accepts a token if any reading is grounded.
     """
     t = tok.lstrip("+-")
     out = []

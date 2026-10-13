@@ -1,49 +1,9 @@
 """Bayesian fusion of signals into a flood-risk probability per place (plain code, no LLM).
 
-Hypothesis, per place and replay hour ``t``:
-
-    H(place, t) = "the place's river gauge reads at or above its official
-                   flood level at some time in (t - 1 h, t + 24 h]"
-
-Formula (naive Bayes in log-odds, with weights):
-
-    log_odds(t) = logit(prior) + sum_i  w_i * r_i * ln(LR_i)
-    p(t)        = 1 / (1 + exp(-log_odds(t)))
-
-- ``prior``: share of TRAIN hours (ANA record 2019-01-01 → 2022-12-31) for
-  which H was true at that gauge (``labels.historical_prior``).
-- ``LR_i``: the signal's likelihood ratio. Two modes:
-  * ``handset``: the adapter's own LR (milestone 2 rules, round numbers);
-  * ``calibrated`` (default): the adapter's LR only names a *band*; the LR used
-    is the band's empirical ratio P(band | H) / P(band | not H), fitted on the
-    TRAIN years 2019-2022 of the historical replay, pooled across places per
-    (role, source, band) (``calibration.py``).
-  Missing signals have LR 1 and add nothing.
-- ``r_i``: the signal's reliability, which already includes its freshness
-  decay (``signals.staleness``: halves every 6 h once the reading is > 1 h
-  old, zero after 72 h). Ablation ``no_decay`` divides the decay back out.
-- ``w_i``: the weight of the signal's *role* for this place (a priori, not
-  fitted):
-
-      own gauge level             1.0
-      upstream / neighbour level  0.5 each (the river has to travel; evidence is indirect)
-      rain (ANA gauges + INMET)   1.0 for the whole group, split evenly: 1/N per station,
-                                  because rain stations in one storm are strongly correlated
-                                  and naive Bayes would count the same storm N times.
-
-  Ablation ``equal_weights`` sets every w_i = 1.
-
-Risk levels (thresholds on p, fixed before the backtest, read as plain
-statements about H):
-
-    normal     p < 0.10
-    attention  p >= 0.10   ("at least 1 in 10")
-    alert      p >= 0.50   ("more likely than not")
-    emergency  p >= 0.90
-
-A place's gauge that is stale for more than ``SILENT_AFTER_H`` or missing is
-reported as *silent*: its last value still counts, with decayed reliability,
-and the alert text must say so.
+``log_odds(t) = logit(prior) + sum_i w_i * r_i * ln(LR_i)`` for H = "the place's gauge reads at or
+above its official flood level in (t - 1 h, t + 24 h]". The role weights and the risk-level thresholds
+on p are the constants below (fixed before the backtest); every term, the LR modes and the silent-gauge
+rule are in docs/RESULTS.md, "Fusion formula".
 """
 
 from __future__ import annotations
@@ -87,13 +47,8 @@ class Place:
         return None
 
 
-# Station → place mapping (geography, fixed before the backtest):
-# - upstream gauges: the next one or two gauges up the Taquari main stem;
-#   for Porto Alegre, the Taquari outlet gauge and the two other Guaíba gauges;
-# - rain: the place's own ANA gauge rain, the next gauge upstream, and the INMET
-#   stations in the catchment above the place (upper Taquari-Antas: Bento
-#   Gonçalves, Serafina Corrêa, Soledade, Lagoa Vermelha; lower Taquari:
-#   Teutônia; Guaíba: Porto Alegre and Canela, upper Caí basin).
+# Station → place mapping (geography, fixed before the backtest): upstream = the next gauges up the river;
+# rain = the place's own and next-upstream ANA gauge rain plus the INMET stations in the catchment above.
 _UPPER = (("inmet_rain", "A840"), ("inmet_rain", "A894"), ("inmet_rain", "A837"), ("inmet_rain", "A844"))
 PLACES: dict[str, Place] = {
     "Muçum": Place("Muçum", "86510000", (), (("ana_rain", "86510000"),) + _UPPER),

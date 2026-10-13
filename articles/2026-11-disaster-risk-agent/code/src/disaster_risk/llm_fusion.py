@@ -1,33 +1,10 @@
 """LLM-only fusion: give the model the same per-hour signals the Bayesian fusion sees, ask it for the risk.
 
-The comparison from the evaluation plan ("LLM-only fusion vs Bayesian fusion"):
-
-- **Input** per (place, hour): exactly the warning signals ``fusion.fuse`` uses
-  for that place at that replay hour (``backtest.replay`` → ``store.as_of(t)``,
-  so nothing after ``t``), rendered by :func:`render_snapshot`: value, unit,
-  status, age of the reading, the calibrated LR as used by fusion, reliability
-  (with the freshness decay), the rule that put the signal in its band, the
-  silent gauges, the place's prior and the static thresholds of each level
-  gauge (p90, p99 of 2019-2024-04, official flood level). Not included: the
-  fused probability, the log-odds, the weights, the risk level, anything about
-  later hours, labels or Copernicus EMS products.
-- **Prompt**: :data:`INSTRUCTIONS` + "Signals at this hour:" + the snapshot,
-  identical for every hour (``PROMPT_VERSION``; its SHA-256 is written with the
-  hour set). Fixed before any model call; no tuning on outcomes.
-- **Output**: :class:`LLMRisk` ``{probability, level, reason}`` via a tool call.
-- **Sampling**: temperature 0.7, ``SAMPLES`` = 3 samples per hour, Qwen3-8B
-  4-bit on the local mlx-lm server, thinking off.
-
-Pre-registered hour set (:func:`select_hours`, written to
-``runs/m4/llm_fusion_hours.json`` before the first call):
-
-- *event*: per place, every 3 h from 48 h before to 12 h after the 2024
-  reference crossing (first ANA reading >= flood level), anchored on the
-  replay hour at or before the crossing: 21 hours × 5 places;
-- *quiet_fa*: the onset hour of every false-alarm episode of the calibrated
-  fusion in TEST (2023-01 → 2024-04);
-- *quiet_random*: the same number of hours per place, drawn with a fixed seed
-  from TEST hours with label 0 and no reading >= flood level within ±72 h.
+The model gets :func:`render_snapshot` of the warning signals ``fusion.fuse`` used at replay hour ``t``:
+nothing after ``t`` and nothing fusion computed from them (no fused probability, log-odds, weights or
+level). The prompt (``PROMPT_VERSION``) and the hour set (:func:`prepare`, written to
+``runs/m4/llm_fusion_hours.json``) are fixed before the first model call. Design: docs/RESULTS.md,
+"Milestone 4".
 
 Commands (``make llm-fusion``)::
 

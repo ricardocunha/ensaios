@@ -1,16 +1,9 @@
 """Signal adapters: one module per source, all emitting :class:`Signal`.
 
-A signal is evidence about one hypothesis, "flood risk is elevated here", as
-a likelihood ratio (LR = P(evidence | elevated) / P(evidence | not elevated)).
-LR > 1 pushes towards an alert, LR < 1 away from it, LR = 1 says nothing.
-Fusion (milestone 3) will add ``reliability * log(LR)`` in log-odds space.
-
-Freshness and reliability are separate from the LR on purpose: a gauge that
-went silent six hours ago still reports its last level and LR, but with a
-large ``freshness_h`` and a lower ``reliability``. Nothing is interpolated.
-
-Adapters take an :class:`~disaster_risk.observations.Snapshot` and return
-signals for its time ``t``; they cannot see anything after ``t``.
+A signal is evidence about one hypothesis, "flood risk is elevated here", as a likelihood ratio
+(LR > 1 pushes towards an alert, LR < 1 away from it, LR = 1 says nothing). Freshness and reliability
+are separate from the LR on purpose; nothing is interpolated. Adapters take a
+:class:`~disaster_risk.observations.Snapshot` and cannot see anything after its time ``t``.
 """
 
 from __future__ import annotations
@@ -21,9 +14,8 @@ from typing import Protocol
 
 from ..observations import Snapshot
 
-# Staleness: reliability halves every STALE_HALF_LIFE_H hours once the latest
-# reading is more than FRESH_H old. After MAX_AGE_H the reading is dropped
-# (status "missing", LR 1, reliability 0).
+# Staleness: reliability halves every STALE_HALF_LIFE_H hours once the latest reading is more than
+# FRESH_H old. After MAX_AGE_H the reading is dropped (status "missing", LR 1, reliability 0).
 FRESH_H = 1.0
 STALE_HALF_LIFE_H = 6.0
 MAX_AGE_H = 72.0

@@ -1,13 +1,9 @@
 """S2iD / Atlas Digital de Desastres: historical disaster records.
 
-The consolidated file ("1991 a 2025 - Danos Informados", CC-BY) is listed by
-the MDR open-data CKAN API (``package_show?id=s2id_sedec``), but on
-2026-09-30 every ``/download/`` URL on dadosabertos.mdr.gov.br answered with
-an F5 "Request Rejected" page to scripted requests. Atlas Digital
-(atlasdigital.mdr.gov.br) sits behind a bot-protection script too.
-
-So: list resources with the API (works), and if the download is rejected,
-save the CSV by hand from a browser at ``data/s2id/<resource file name>``.
+The consolidated file ("1991 a 2025 - Danos Informados", CC-BY) is listed by the MDR open-data CKAN
+API, but on 2026-09-30 every ``/download/`` URL answered scripted requests with an F5 "Request
+Rejected" page. If the download is rejected, save the CSV by hand from a browser at
+``data/s2id/<resource file name>``.
 """
 
 from __future__ import annotations

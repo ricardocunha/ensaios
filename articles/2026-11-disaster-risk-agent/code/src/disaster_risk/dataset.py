@@ -3,18 +3,9 @@
 ``uv run python -m disaster_risk.dataset`` builds ``data/cache/hourly.csv`` from
 the raw ANA/INMET files (downloading what is missing) and prints coverage.
 
-Conventions (verified, see docs/DATA.md "Time conventions"):
-
-- Every row covers the hour ``(hour_end - 1 h, hour_end]`` in UTC, the same
-  "hour ending" convention INMET uses.
-- ANA ``DataHora`` is local time (UTC-3); it is shifted to UTC before binning.
-  A 15-min reading stamped ``t`` is counted in the hour that contains ``t``
-  (``t`` exactly on the hour belongs to the hour ending then).
-- Level is the *last* level reading inside the hour, with its own timestamp.
-  An hour with no level reading has ``level_cm = None``. Nothing is carried
-  forward or interpolated; instead every row says when the latest reading
-  was (``level_last_time``) and how old it is at ``hour_end``
-  (``level_age_h``). Same for rain.
+Every row covers ``(hour_end - 1 h, hour_end]`` in UTC ("hour ending", as INMET); ANA local time
+(UTC-3) is shifted to UTC before binning. Level is the *last* reading inside the hour; nothing is
+carried forward, each row says how old the latest reading is. See docs/DATA.md, "Time conventions".
 """
 
 from __future__ import annotations

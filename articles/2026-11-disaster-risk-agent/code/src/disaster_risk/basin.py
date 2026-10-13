@@ -38,8 +38,7 @@ EMS_ACTIVATION = "EMSR720"
 # --- Milestone 2: time conventions and the replay window -------------------
 
 # ANA ``DataHora`` is local legal time, UTC-3 (Brazil has had no DST since
-# 2019). Verified empirically: ANA gauge rain correlates with INMET (UTC)
-# rain at +2.25..+3 h, not at 0 h. See docs/DATA.md, "Time conventions".
+# 2019). Verified empirically: see docs/DATA.md, "Time conventions".
 ANA_UTC_OFFSET = timedelta(hours=-3)
 
 # Backtest window in UTC days (INMET's native clock): 744 hourly steps.
@@ -72,13 +71,9 @@ STATION_PLACE: dict[str, str] = {
 }
 
 # Official flood levels ("cota de inundação", cm, on each gauge's own datum).
-# Taquari stations: printed in every SGB SACE Taquari bulletin of 2024-04-30 →
-# 2024-05-14 (column "Nível de Inundação"); Muçum also in Marcuzzo & Pinto
-# (SGB, SBRH 2023), with attention 500 cm and alert 900 cm.
-# Cais Mauá: 300 cm is the flood level quoted by the press in May 2024;
-# [[VERIFY: primary source for the Cais Mauá 300 cm flood level]].
-# Gasômetro: none confirmed (a secondary site gives 260 cm; the state later
-# used 360 cm) [[VERIFY: Gasômetro flood level]]; Terminal CatSul: none found.
+# Taquari stations: SGB SACE Taquari bulletins (column "Nível de Inundação"); sources in docs/DATA.md.
+# Cais Mauá: [[VERIFY: primary source for the Cais Mauá 300 cm flood level]].
+# Gasômetro: none confirmed [[VERIFY: Gasômetro flood level]]; Terminal CatSul: none found.
 FLOOD_LEVEL_CM: dict[str, float] = {
     "86510000": 1800.0,  # Muçum
     "86720000": 1200.0,  # Encantado

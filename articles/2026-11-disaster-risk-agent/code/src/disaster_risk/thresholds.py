@@ -1,11 +1,8 @@
 """Station-specific river-level thresholds from the historical ANA record.
 
-Each ANA gauge has its own datum (Estrela sits at ~13 m in low water because of
-the lock; Muçum at ~2 m), so a level only means something against that gauge's
-own history. We take quantiles of every 15-min level reading from
-``basin.HISTORY_START`` to ``basin.HISTORY_END`` (2019-01-01 → 2024-04-19,
-i.e. strictly before the event window) and cache them in
-``data/cache/level_thresholds.json``.
+Each ANA gauge has its own datum, so a level only means something against that gauge's own history:
+quantiles of every 15-min level reading from ``basin.HISTORY_START`` to ``basin.HISTORY_END`` (strictly
+before the event window), cached in ``data/cache/level_thresholds.json``.
 
 ``uv run python -m disaster_risk.thresholds`` recomputes and prints them.
 """

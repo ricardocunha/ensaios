@@ -1,13 +1,8 @@
 """Copernicus EMS adapter: EMSR720 flood extent as a *label*, not a warning input.
 
-The first EMSR720 flood delineation was acquired on 2024-05-04 09:48 UTC and
-delivered later, two days after the Taquari peak. It can confirm that an area
-flooded; it cannot have warned anyone. So these signals have
-``kind="label"`` and ``likelihood_ratio=None``: the backtest may use them to
-score alerts, fusion must not use them as evidence.
-
-A product becomes visible only at its delivery time (``version.deliveryTime``
-in the activation JSON), never at acquisition time.
+The flood delineations were delivered after the Taquari peak, so these signals have ``kind="label"``
+and ``likelihood_ratio=None``: the backtest may use them to score alerts, fusion must not use them as
+evidence. A product becomes visible only at its delivery time, never at acquisition time.
 """
 
 from __future__ import annotations

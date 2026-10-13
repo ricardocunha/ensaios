@@ -1,24 +1,9 @@
 """Empirical likelihood ratios per signal band, fitted on the historical replay (TRAIN only).
 
-The milestone 2 rules give each band a round-number LR (level at the flood
-level: 10; 24 h rain >= 150 mm: 10; ...). Those numbers were never checked
-against the record, and with priors of 0.3–1.3 % they cannot move the fused
-probability far enough (RESULTS.md, "hand-set LRs"). Here each band keeps its
-*definition* and gets its LR from the data:
-
-    LR(band) = P(band | H) / P(band | not H)
-             = ((n1 + a) / (N1 + a K)) / ((n0 + a) / (N0 + a K))
-
-per group g = (role, source), pooled across places (a gauge's bands are
-already relative to its own history, so "own gauge at p99" means the same
-thing at Muçum and at Taquari). n1 / n0: (place, hour) records in the band
-with H = 1 / 0; N1 / N0: all records of the group; K: bands seen in the group;
-a = 0.5 (add-half smoothing). Bands with fewer than MIN_RECORDS records keep
-LR 1 (not enough data to say anything), and every LR is clipped to
-[LR_MIN, LR_MAX]. Missing signals are not counted (their LR stays 1).
-
-Only TRAIN hours (2019-01 → 2022-12, local) are used, so the 2023 floods
-(September, November) and 2024 are out of sample.
+Each band keeps its milestone 2 *definition* and gets LR(band) = P(band | H) / P(band | not H) from the
+data, pooled across places per (role, source), with add-half smoothing. Bands with fewer than
+MIN_RECORDS records keep LR 1, every LR is clipped to [LR_MIN, LR_MAX], missing signals are not counted.
+Only TRAIN hours (2019-01 → 2022-12, local) are used, so 2023 and 2024 are out of sample.
 """
 
 from __future__ import annotations
