@@ -1,4 +1,4 @@
-.PHONY: test download scans ocr-eval mcp synth serve review propose-real score-real
+.PHONY: test download scans ocr-eval mcp synth serve review propose-real score-real viewer
 
 test:
 	uv run pytest -q
@@ -39,3 +39,9 @@ propose-real:
 
 score-real:
 	uv run python -m compliance_agents.real_labels score
+
+# React page that walks one contract x rule through the pipeline, from the run files (needs Node) -> http://localhost:5176
+viewer:
+	uv run python -m compliance_agents.viewer
+	npm --prefix viewer install --no-audit --no-fund
+	npm --prefix viewer run dev

@@ -1,0 +1,5 @@
+node_modules/
+dist/
+# written by `python -m compliance_agents.viewer`: model outputs and a link to the synthetic contracts
+public/data.json
+public/synth
