@@ -1,4 +1,4 @@
-.PHONY: install test data data-v1 bid zero-shot train-reader eval-reader report teacher student-data train-student eval-student
+.PHONY: install test data data-v1 bid zero-shot train-reader eval-reader report teacher student-data train-student eval-student viewer
 PY := uv run python -m
 MODELS := paddleocr_vl chandra2 qwen35_9b
 MODEL ?= paddleocr_vl
@@ -98,3 +98,10 @@ eval-student:       ## make eval-student [ADAPTER=runs/student/qwen3_8b-lora] [E
 	  --student-model $(STUDENT_BASE) --data data/synth-v3/test --limit $(EVAL_N) --concurrency 1 \
 	  --project cnh-extractor-student --out runs/extractor/student-$(if $(ADAPTER),tuned,base).jsonl; \
 	kill $$(cat runs/student/server.pid)
+
+# ---- Viewer -------------------------------------------------------------------
+
+viewer:             ## React page that walks one image through the pipeline, from the run files (needs Node) -> http://localhost:5175
+	$(PY) cnh_ocr.viewer
+	npm --prefix viewer install --no-audit --no-fund
+	npm --prefix viewer run dev

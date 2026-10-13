@@ -1,0 +1,5 @@
+node_modules/
+dist/
+# written by `python -m cnh_ocr.viewer`: model outputs and links to the dataset images
+public/data.json
+public/img

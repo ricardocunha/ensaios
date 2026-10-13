@@ -83,6 +83,14 @@ make eval-student                  # untuned base on 100 held-out transcriptions
 make eval-student ADAPTER=runs/student/qwen3_8b-lora
 ```
 
+## Viewer
+
+```bash
+make viewer        # needs Node; opens http://localhost:5175
+```
+
+A small React page (`viewer/`) that reads the run files and walks one image from start to end: the image, the Reader's Transcription (one run at a time, any Reader run on disk), the CNH Gate, the Extractor's input, tool calls and outcome (Teacher, or the two Students side by side), and the result against the ground truth, field by field. It reads `runs/`, `data/` and `docs/RESULTS.md` only: synthetic and BID images, no model, no network. Tool calls are shown for the Golden Trajectories smithtune pulled to disk; the other runs store only their count. `viewer/public/data.json` and the image links are git-ignored.
+
 ## Layout
 
 | Path | What |
@@ -92,6 +100,7 @@ make eval-student ADAPTER=runs/student/qwen3_8b-lora
 | `src/cnh_ocr/reader/` | The three Base OCR Models, mlx-vlm inference, LoRA/QLoRA training (`mlx_lora.py` carries the vision-freeze fix) |
 | `src/cnh_ocr/extractor/` | Extractor agent (LangChain `create_agent`), 8 tools, OCR-noise injector, LangSmith-traced runner with ground-truth feedback |
 | `src/cnh_ocr/evaluation/` | Metrics (tolerant label matching), report, BID loader, smithtune council-vs-ground-truth agreement |
+| `src/cnh_ocr/viewer.py`, `viewer/` | Collects the run files into `viewer/public/data.json` for the React page (`make viewer`) |
 | `smithtune/` | `run.sh` (every smithtune step; paid steps gated) + triage `rubric.md` |
 | `docs/` | ADRs, smithtune field notes, results |
 
