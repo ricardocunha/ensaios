@@ -121,4 +121,4 @@ Numbers from `code/docs/RESULTS.md` ("Milestone 3", "Full evaluation with Qwen3-
 - **Budget:** local first (M4 Pro 48 GB, mlx / Ollama). The cap for paid APIs is **US$10 per article**, set with `--max-cost` in the code; ask before any paid run.
 - **Data:** public or synthetic only. No personal data. Record every dataset's license in `code/docs/DATA.md` before using it.
 - **Numbers:** every number in the drafts comes from `code/docs/RESULTS.md`. Mark gaps with RESULT / VERIFY placeholders in double square brackets.
-- **Deliverables:** EN long version + Medium short version, PT-BR, LinkedIn EN / PT-BR, code with tests + Makefile, `CONTEXT.md` glossary, ADRs for the hard decisions.
+- **Deliverables:** EN long version + Medium short version, LinkedIn post, code with tests + Makefile, `CONTEXT.md` glossary, ADRs for the hard decisions.
