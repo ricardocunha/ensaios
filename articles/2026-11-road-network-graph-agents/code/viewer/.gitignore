@@ -1,0 +1,5 @@
+node_modules/
+dist/
+# written by `python -m road_agents.viewer`: run outputs and a link to ../figures
+public/data.json
+public/figures

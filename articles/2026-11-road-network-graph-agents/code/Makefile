@@ -2,7 +2,7 @@ CITY ?= belo-horizonte
 K ?= 500
 PAIRS ?= 1000
 
-.PHONY: install test smoke bench bench-exact betweenness sections maps agents-dry agents-smoke agents-eval agents-queue agents-regrade
+.PHONY: install test smoke bench bench-exact betweenness sections maps agents-dry agents-smoke agents-eval agents-queue agents-regrade viewer
 
 install:
 	uv sync
@@ -52,3 +52,9 @@ agents-regrade:
 # Same, but waits for the compliance article's queue to finish first (nohup, survives the shell).
 agents-queue:
 	nohup scripts/run_after_queue.sh > runs/m3-queue.log 2>&1 &
+
+# React page that follows one pipeline run from the solver plan to the audit, from the run files (needs Node) -> http://localhost:5178
+viewer:
+	uv run python -m road_agents.viewer
+	npm --prefix viewer install --no-audit --no-fund
+	npm --prefix viewer run dev

@@ -14,7 +14,12 @@ make agents-dry                    # milestone 3 pipeline with a scripted model 
 make agents-smoke                  # one pipeline with Qwen3-8B on the local mlx-lm server
 make agents-eval                   # 3 runs x 5/10/20% budgets (see scripts/run_after_queue.sh)
 make agents-regrade                # re-score the prose audit of runs/m3-eval-local.jsonl (no LLM)
+make viewer                        # React page over the run files; needs Node, http://localhost:5178
 ```
+
+## Viewer
+
+A small React page (`viewer/`) that reads the run files and follows one pipeline run (budget × run number) from start to end: the budget and the solver's plan, the maintenance agent's deviations and their reasons, the closure agent's schedule or its failure, the coordinator's prose, and the audit (plan vs. solver, schedule violations, which prose numbers trace to a tool result). It only reads `runs/m3-eval-local.*` (and the scripted dry run, if present); no model runs, the graph is not loaded and nothing is re-scored. `viewer/public/data.json` and the link to `../figures` are git-ignored.
 
 ## Tools (`src/road_agents/`)
 
@@ -43,6 +48,7 @@ make agents-regrade                # re-score the prose audit of runs/m3-eval-lo
 | `agents.py` | Pydantic AI agents with typed outputs: maintenance-priority (deviations from the solver, each with a reason), closure-impact (month sequencing + access flags), coordinator (quarterly plan, trade-offs). `run_pipeline` chains them. |
 | `audit.py` | Deterministic evaluation: plan vs. solver, schedule violations, a recomputation of every structured number and a ledger lookup of every number in the prose (strict, plus a lenient re-score that classifies misses as notation / derived / upstream / unsupported), consistency across runs. |
 | `scripted.py` | A scripted `FunctionModel` stand-in for tests and dry runs. |
+| `viewer.py` | Collects the milestone-3 run files into `viewer/public/data.json` for the React page (`python -m road_agents.viewer`). |
 
 Model: Qwen3-8B (4-bit MLX) behind `mlx_lm.server`, OpenAI-compatible, thinking
 off. Override with `ROAD_AGENTS_BASE_URL` / `ROAD_AGENTS_MODEL`.
