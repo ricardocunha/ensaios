@@ -33,6 +33,14 @@ make evaluate      # paired bootstrap 95 % intervals from the run files (no mode
 
 `N=…` on the `vlm-*` targets runs a seeded subset of the deduplicated test split.
 
+## Viewer
+
+```bash
+make viewer        # needs Node; opens http://localhost:5174
+```
+
+A small React page (`viewer/`) that reads the run files and walks one test image from start to end: the query photo, the 3 retrieved cases, the model's answer (photo only, with cases, with wrong labels), the citation check and the result against the dataset labels. It only reads what is already in `runs/`; no model runs. `viewer/public/data.json` and the image link are git-ignored.
+
 Embeddings run on Apple Silicon (MPS) when available, else CUDA or CPU. The Qdrant index is a folder (`data/qdrant`), no server.
 
 | Module | What |
@@ -48,6 +56,7 @@ Embeddings run on Apple Silicon (MPS) when available, else CUDA or CPU. The Qdra
 | `eye_rag.m2` | Milestone 2 evaluation: dedup re-score, retrieval precision, three-arm table |
 | `eye_rag.explain` | Explanation agent, deterministic citation check, faithfulness scores |
 | `eye_rag.m4` | Milestone 4 evaluation: paired bootstrap intervals over the 609 deduplicated test images |
+| `eye_rag.viewer` | collects the run files into `viewer/public/data.json` for the React page |
 
 ## Data and licences
 

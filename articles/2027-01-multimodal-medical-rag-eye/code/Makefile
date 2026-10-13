@@ -1,4 +1,4 @@
-.PHONY: test download stats embed baselines dedup m2-baselines retrieval vlm-zero-shot vlm-retrieval m2-score retrieval-vlm vlm-shuffled explain explain-shuffled explain-score evaluate
+.PHONY: test download stats embed baselines dedup m2-baselines retrieval vlm-zero-shot vlm-retrieval m2-score retrieval-vlm vlm-shuffled explain explain-shuffled explain-score evaluate viewer
 
 N ?=            # VLM subset size (empty = the whole deduplicated test split)
 RETRIEVAL ?= dense
@@ -70,3 +70,10 @@ explain-score:
 # Paired bootstrap 95 % intervals for the Milestone 2 numbers (reads run files only) -> runs/m4_eval.json
 evaluate:
 	nice -n 10 uv run python -m eye_rag.m4
+
+# --- Viewer
+# React page that walks one test image through the pipeline, from the run files (needs Node) -> http://localhost:5174
+viewer:
+	uv run python -m eye_rag.viewer
+	npm --prefix viewer install --no-audit --no-fund
+	npm --prefix viewer run dev

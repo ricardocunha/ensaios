@@ -1,0 +1,5 @@
+node_modules/
+dist/
+# written by `python -m eye_rag.viewer`: model outputs and a link to the dataset images
+public/data.json
+public/rfmid
