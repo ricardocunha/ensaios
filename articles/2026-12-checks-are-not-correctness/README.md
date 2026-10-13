@@ -7,8 +7,7 @@ A series post tying together the four agent articles (compliance, disaster risk,
 | | |
 |---|---|
 | Article (EN) | [article-en.md](article-en.md) |
-| Article (PT-BR) | [article-pt-br.md](article-pt-br.md) |
-| LinkedIn | [EN](linkedin-en.md) · [PT-BR](linkedin-pt-br.md) |
+| LinkedIn | [linkedin-en.md](linkedin-en.md) |
 
 ## Sources (all on `main` after their merges)
 
