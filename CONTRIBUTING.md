@@ -20,12 +20,12 @@ Use the month you plan to publish in. The slug should be short, lowercase and hy
 
 Run `scripts/check-article.sh articles/<yyyy-mm>-<slug>` and resolve everything it reports:
 
-- [ ] No `[[RESULT]]` / `[[VERIFY]]` placeholders left in any draft.
+- [ ] No `[[RESULT]]` / `[[VERIFY]]` / `[[LINK]]` placeholders left in any draft. Medium and LinkedIn links do not exist before the posts are live: write "link to be added once the post is live" and fill them in after (step 5).
 - [ ] Every number in the drafts comes from a run you can point to (e.g. the code's `docs/RESULTS.md`).
 - [ ] The code's tests pass and its README quickstart works from a clean checkout.
 - [ ] No secrets (`.env` is never committed), no personal data, no real documents.
 - [ ] Links point to `main` (`…/tree/main/articles/<yyyy-mm>-<slug>`), which is where the article will live after the merge.
-- [ ] The article's row is added to the root README's table.
+- [ ] The article's row is added to the root README's table, with the publication date.
 
 ## 4. Merge
 
@@ -37,6 +37,10 @@ git push && git push --tags
 ```
 
 `--no-ff` keeps each article's work grouped under one merge commit, and the tag marks exactly what was published.
+
+## 5. After the posts are live
+
+Add the Medium and LinkedIn links to the article's README ("Published") and to its row in the root README, and commit that on `main`.
 
 The repository stays **private until the first article is published**. After that first merge:
 

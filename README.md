@@ -6,7 +6,7 @@
 
 | Article | Status | Folder |
 |---|---|---|
-| *No articles published yet.* | | |
+| [My eye-scan RAG cited its sources. It was reading the labels.](articles/2027-01-multimodal-medical-rag-eye/) | published 2026-10-13 | `articles/2027-01-multimodal-medical-rag-eye/` |
 
 <!-- Add one row per article when it's merged into main:
 | [Title](articles/yyyy-mm-slug/) | published YYYY-MM-DD · [Medium](…) · [LinkedIn](…) | `articles/yyyy-mm-slug/` |

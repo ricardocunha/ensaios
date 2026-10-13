@@ -20,6 +20,6 @@ Brazil has a strong dataset for this, BRSET (16k photos, São Paulo), behind cre
 
 One dataset, one model: a research demo, not a medical device.
 
-Full write-up and code: [[LINK]]
+Full write-up and code: https://github.com/ricardocunha/ensaios/tree/main/articles/2027-01-multimodal-medical-rag-eye
 
 #AI #RAG #MedicalAI #Ophthalmology #LLM #Evaluation #Brazil
