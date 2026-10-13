@@ -11,8 +11,7 @@ A field report on **smithtune** (LangSmith Fine-Tuning, v0.1.0, released 2026-09
 |---|---|
 | Article (EN), full: dev.to / Hashnode | [article-en.md](article-en.md) |
 | Article (EN), short: Medium | [article-en-medium.md](article-en-medium.md) |
-| Article (PT-BR) | [article-pt-br.md](article-pt-br.md) |
-| LinkedIn | [EN](linkedin-en.md) · [PT-BR](linkedin-pt-br.md) |
+| LinkedIn | [linkedin-en.md](linkedin-en.md) |
 | Code, results, ADRs, field notes | [code/](code/) · [results](code/docs/RESULTS.md) · [notes](code/docs/SMITHTUNE_NOTES.md) |
 
 ## Artifacts
@@ -30,7 +29,7 @@ A field report on **smithtune** (LangSmith Fine-Tuning, v0.1.0, released 2026-09
 - [ ] Make the Hugging Face repos public:
       `hf repos settings ricardopcunha/synthetic-cnh-br --repo-type dataset --no-private` (and the two model repos)
 - [ ] Merge into `main` (`--no-ff`), tag `published/2026-10-cnh-ocr-smithtune`, make the GitHub repo public
-- [ ] Publish Medium EN → LinkedIn EN → PT-BR article + post → dev.to / Hashnode, then fill in the links below
+- [ ] Publish Medium EN → LinkedIn EN → dev.to / Hashnode, then fill in the links below
 
 ## Published
 

@@ -24,7 +24,7 @@ Target publish date: **2026-10-16** (about 3 weeks after smithtune's 2026-09-24 
 | Q6 | Budget cap about US$150–300 |
 | Q7 | smithtune on **Baseten** with Student **Qwen3.5-9B** |
 | Q8 | Teacher: **Claude Sonnet 5** (`claude-sonnet-5`, adaptive thinking, effort=medium, no temperature) |
-| Q9 | EN article (Medium/dev.to/Hashnode), separate PT-BR version, LinkedIn post in each language |
+| Q9 | EN article (Medium/dev.to/Hashnode), LinkedIn post |
 | Q10 | `ricardocunha/cnh-ocr-smithtune`, private until launch day |
 | Q11 | **Chandra 2** (`datalab-to/chandra-ocr-2`); license caveat goes in the article |
 | Q12 | **PaddleOCR-VL-1.6**. Fallback: Qwen3.5-0.8B/2B |
@@ -52,7 +52,7 @@ Also decided while building: select Golden Trajectories with a **feedback filter
 - [x] Evaluation: metrics (label accuracy, value recall, CER, field accuracy), report, council-agreement script
 - [x] smithtune: `run.sh` (all steps, paid steps gated) + `rubric.md`
 - [x] Repo: README, LICENSE, Makefile, `.env.example`, `.gitignore`, 21 passing tests
-- [x] Article drafts: EN + PT-BR long-form, LinkedIn EN + PT-BR (+ carousel outline)
+- [x] Article drafts: EN long-form, LinkedIn EN (+ carousel outline)
 
 ### Next: free / local
 - [ ] Full dataset built (`make data`), then spot-check 30 images by eye
@@ -72,4 +72,4 @@ Also decided while building: select Golden Trajectories with a **feedback filter
 ### Launch
 - [ ] Publish the synthetic dataset to the HF Hub (dataset card: synthetic, watermark, not a template)
 - [ ] Push adapters (Chandra 2 adapter under Chandra's license terms)
-- [ ] Repo public → Medium EN → LinkedIn EN → PT-BR article + post → dev.to/Hashnode → HF community post
+- [ ] Repo public → Medium EN → LinkedIn EN → dev.to/Hashnode → HF community post
