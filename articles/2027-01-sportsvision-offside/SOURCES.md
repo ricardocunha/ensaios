@@ -8,8 +8,8 @@ repository already records. The proofread of 2026-10-09 rechecked every referenc
 repository at `2abb0df` (2026-10-09); the only files changed since `6d694fd` are `docs/demo.md` and
 `scripts/demo.sh`, so the line numbers below still hold.
 
-The same numbers are used in `article-en.md`, `article-en-medium.md`, `article-pt-br.md` and the two
-LinkedIn posts (PT-BR with decimal commas).
+The same numbers are used in `article-en.md`, `article-en-medium.md` and the LinkedIn
+post.
 
 ## 1. The system and the stack
 
@@ -170,7 +170,7 @@ runs, cold start included).
 | A full cluster run with `rules-1.1.0` | Not done; the figures are from `sv rules --local` on saved cluster artifacts (`870b2f5`). | Said in the short version, in fix 5 and in the limits. |
 | The 0.023 s stage "had nothing to render or store" | Inferred: the stage includes rendering and upserts (`docs/benchmarks.md:283-285`) and those runs had zero events (`:55`). | Stated as a consequence of zero events. |
 | What the engine's tests covered before the fix | Checked in code, not deduced: at `870b2f5^` nothing under `internal/rules` mentions a stride, and the scenario tests build a `Video` without `NewVideo`. That the suite was "green the whole time" is not recorded anywhere. | "before the fix, no test in the rules package built a video with the gaps a stride leaves". The "green the whole time" sentence was cut. |
-| The production EKS kube context | Stated in `docs/reliability.md:126-128` as "the current context", not as "my" context. The brief's lead that the scripts *ran against* the wrong context is **not** in the repo; the repo says the guard exists because of that risk and that it fails closed. | The full EN and PT-BR articles quote the doc's wording next to the guard, so it cannot be read as the scripts having run against production. Not used in the Medium version or on LinkedIn. |
+| The production EKS kube context | Stated in `docs/reliability.md:126-128` as "the current context", not as "my" context. The brief's lead that the scripts *ran against* the wrong context is **not** in the repo; the repo says the guard exists because of that risk and that it fails closed. | The full EN article quotes the doc's wording next to the guard, so it cannot be read as the scripts having run against production. Not used in the Medium version or on LinkedIn. |
 | The dedicated ball model's sidecar had `label_names ['ball', 'ball']` (`3f05894`), and it was deployed the same day (`821cf32`) with no note on whether that was resolved | Unresolved in the repo. | Left out of the drafts. |
 | The `model_version` collision fix has unit coverage but no cluster run behind it (`821cf32`) | Stated in the commit. | Left out for length; the limits say the verdicts have no full cluster run behind them. |
 | 300 s visibility timeout vs a stall of about 780 s (`docs/scalability.md:242`, `:261`) | The doc gives both and does not explain the difference. | "until its visibility timeout expired", no number. |
@@ -187,20 +187,20 @@ An independent pass over every draft against the sportsvision repository at `2ab
 Facts corrected:
 
 - Engine tests: "no GPU, no network and no Python" became "no network, no files and no Python",
-  which is what ADR-0006 and the README say (EN, PT-BR).
+  which is what ADR-0006 and the README say (EN).
 - Player fine-tune: "reached mAP@50-95 0.372 (mAP@50 0.742)" read as one checkpoint's pair. The two
   are each the run's best figure, from different epochs, so the drafts now say "best figures" (EN,
-  Medium table, PT-BR, README).
+  Medium table, README).
 - Lesson 5 said the stall's open design question is on the scalability page. It is in the backlog;
-  the scalability page analyses the stall (EN, PT-BR).
+  the scalability page analyses the stall (EN).
 - Lesson 3 said ball visibility "went up twice". It rose three times with no event (47 → 93 %,
   34.7 → 38.0 %, 34.7 → 59.0 %); the lesson now names the two cases it draws on and gives no count
-  (EN, Medium, PT-BR).
-- ONNX against torch: the 26.1 and 41.1 fps are detector fps on the prototype, now said (EN, PT-BR).
+  (EN, Medium).
+- ONNX against torch: the 26.1 and 41.1 fps are detector fps on the prototype, now said (EN).
 - README: 80.2 videos/hour is for a burst of six 8 s videos, and the benchmark used the older 640 px
   COCO detector; both now said. The `INCONCLUSIVE` event is marked as a prototype result.
 - Medium: "all measured on one clip" hid that fixes 4 and 5 ran on the cluster's 20 s cut (599
-  frames, every second frame). Now said. The full EN and PT-BR say where the 599 comes from.
+  frames, every second frame). Now said. The full EN says where the 599 comes from.
 - The frame-282 event: "no position near the kick" became "no known position at the kick" (the
   gate is a window of frames, not a distance).
 
@@ -214,12 +214,8 @@ Voice and overclaiming:
 - "It cost a day" became "a day of misdiagnosis", the record's wording; Medium's "a wrong tuning
   decision that I had to revert" became "a tuning change that was made and then reverted".
 - The production-EKS line was reworded to the reliability page's own statement, next to the guard.
-- LinkedIn (both): the 0.023 s line now says the runs emitted no events, and the first event is
+- LinkedIn: the 0.023 s line now says the runs emitted no events, and the first event is
   marked "not a verdict".
-
-PT-BR: the same changes; the section "As imagens" and the footer label became "Os vídeos" /
-"Vídeos" (no images of the footage exist in the article); "1,87 vez uma" and "A máquina hospedeira"
-were reworded.
 
 Checked and left as they were: every other number in sections 2 to 8, the "four weeks" (2026-09-10
 to 2026-10-08, 28 days), "almost two weeks" (13 days), "ten days" (2026-09-28 to 2026-10-08), "more
@@ -231,5 +227,5 @@ to the project's `docs/architecture/diagrams/svg/` files and embed no raster ima
 
 Applied to the drafts after the proofread, from the author's answers. No project code was touched.
 
-- **Production EKS sentence:** cut (full EN and PT-BR). The chaos-scripts bullet went with the trim below.
-- **Length:** "Other things that broke" reduced to two items (the silent first run on kind; the IAM permissions the emulator hid), and the host-CPU paragraph ("The host") removed from "What the discarded runs revealed" (EN, PT-BR). The chaos scripts' provider-ID guard was then restored as a third item at the author's request, without the production-context sentence (source: `docs/reliability.md`, the guard paragraph and the experiment results). Removed material, still in the project's docs: team clustering with k=2, ONNX Runtime vs torch on CPU, the macOS Photos / observability-stack contention. Their rows above no longer back any sentence in the drafts.
+- **Production EKS sentence:** cut (full EN). The chaos-scripts bullet went with the trim below.
+- **Length:** "Other things that broke" reduced to two items (the silent first run on kind; the IAM permissions the emulator hid), and the host-CPU paragraph ("The host") removed from "What the discarded runs revealed" (EN). The chaos scripts' provider-ID guard was then restored as a third item at the author's request, without the production-context sentence (source: `docs/reliability.md`, the guard paragraph and the experiment results). Removed material, still in the project's docs: team clustering with k=2, ONNX Runtime vs torch on CPU, the macOS Photos / observability-stack contention. Their rows above no longer back any sentence in the drafts.
