@@ -1,9 +1,8 @@
 """Synthetic contracts with planted violations: ground truth for every (contract, rule).
 
-Parties are fictitious (Faker pt_BR) and every page is marked DOCUMENTO SINTÉTICO. The
-clauses follow the usual structure of Brazilian administrative contracts. Each contract gets
-0-2 planted violations, plus "hard compliant" variants that look suspicious but are legal
-(8% guarantee with the justification art. 98 requires, a 60-month term, "Comarca de <seat>").
+Parties are fictitious (Faker pt_BR) and every page is marked DOCUMENTO SINTÉTICO. Each
+contract gets 0-2 planted violations, plus "hard compliant" variants that look suspicious
+but are legal.
 """
 
 from __future__ import annotations

@@ -1,13 +1,8 @@
 """Uncertainty profile and escalation: when should a finding go to a human?
 
-Groups the reviewer's samples per (contract, rule) and computes signals the model can't
-talk itself out of:
-- agreement: share of samples that agree with the majority verdict;
-- evidence: whether the majority's quote is verbatim in the document (the auditor's check);
-- page quality: Docling's lowest score on the pages the evidence comes from.
-The model's self-reported confidence is recorded but, on this data, carries no information.
-
-Then it compares escalation policies: accuracy on what the agent keeps vs. how much it escalates.
+Groups the reviewer's samples per (contract, rule) into signals from outside the model
+(agreement, verbatim evidence, page quality), then compares escalation policies: accuracy
+on what the agent keeps vs. how much it escalates. See docs/adr/0002-escalation-signals.md.
 """
 
 from __future__ import annotations

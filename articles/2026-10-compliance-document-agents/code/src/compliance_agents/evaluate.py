@@ -1,9 +1,7 @@
 """Score reviewer runs against the synthetic labels.
 
-Primary metric: did the reviewer flag the violations (binary: violation vs. not)? "compliant"
-and "not_applicable" count as the same answer, since both mean "nothing to flag". Also:
-evidence that isn't a verbatim quote (checked like the auditor does) and, per confidence
-threshold, accuracy on what isn't escalated.
+Primary metric is binary (violation vs. not): "compliant" and "not_applicable" both mean
+"nothing to flag". Also reports non-verbatim evidence and accuracy per confidence threshold.
 """
 
 from __future__ import annotations
