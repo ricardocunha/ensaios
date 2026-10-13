@@ -1,8 +1,7 @@
 """Inject realistic OCR errors into a ground-truth Transcription.
 
-Real Reader output is the best Teacher input, but it's slow to produce at scale
-and a well-tuned Reader makes few mistakes. Noise guarantees the Extractor
-sees (and learns to fix) the error types that matter.
+A well-tuned Reader makes few mistakes; noise guarantees the Extractor sees
+(and learns to fix) the error types that matter.
 """
 
 from __future__ import annotations

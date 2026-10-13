@@ -43,9 +43,8 @@ BASETEN_MODEL_API = "https://inference.baseten.co/v1"
 
 
 def teacher_model() -> BaseChatModel:
-    """TEACHER_MODEL from .env. Claude models use the Anthropic API; anything else is an
-    open-weight model on Baseten's OpenAI-compatible Model APIs (the Teacher must be a model
-    whose license allows training on its outputs; see docs/SMITHTUNE_NOTES.md)."""
+    """TEACHER_MODEL from .env: Claude via the Anthropic API, anything else via Baseten.
+    Its license must allow training on its outputs (ADR-0004)."""
     name = os.getenv("TEACHER_MODEL", "deepseek-ai/DeepSeek-V4-Pro-0813")
     if name.startswith("claude"):
         from langchain_anthropic import ChatAnthropic
@@ -65,9 +64,8 @@ def student_model(base_url: str, model: str, api_key: str | None = None) -> Base
     # A local mlx-lm server accepts any key; hosted endpoints need a real one.
     return ChatOpenAI(base_url=base_url, model=model, temperature=0, max_tokens=4000, timeout=300,
                       api_key=api_key or os.getenv("STUDENT_API_KEY") or "local",
-                      # Qwen3: no thinking, matching how the Student was trained. mlx-lm's server ignores
-                      # --adapter-path (0.31.3 looks it up after remapping the model name), so the
-                      # adapter is sent per request; STUDENT_ADAPTER empty = base model.
+                      # No thinking, as the Student was trained. mlx-lm 0.31.3's server ignores
+                      # --adapter-path, so the adapter goes per request; STUDENT_ADAPTER empty = base model.
                       extra_body={"chat_template_kwargs": {"enable_thinking": False},
                                   **({"adapters": os.environ["STUDENT_ADAPTER"]}
                                      if os.environ.get("STUDENT_ADAPTER") else {})})

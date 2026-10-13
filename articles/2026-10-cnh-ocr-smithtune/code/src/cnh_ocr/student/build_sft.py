@@ -2,13 +2,9 @@
 
     uv run python -m cnh_ocr.student.build_sft --prepared runs/smithtune/golden/prepared --out data/student-sft
 
-Plan B (see docs/SMITHTUNE_NOTES.md): smithtune curated and prepared the data, but Fireworks
-credit ran out and Baseten Loops isn't enabled, so the Student is trained locally with mlx-lm
-on exactly the same 214 train / 23 validation trajectories.
-
-Each trajectory becomes one example per assistant turn: the history up to that turn plus the
-tool definitions, trained with --mask-prompt so only that turn is learned. This mirrors
-smithtune's policy ("each assistant target once, with zero loss on history").
+Plan B (see docs/SMITHTUNE_NOTES.md): the Student is trained locally on smithtune's splits.
+Each trajectory becomes one example per assistant turn (history + tools), to be trained
+with --mask-prompt so only that turn is learned, as smithtune does.
 """
 
 from __future__ import annotations

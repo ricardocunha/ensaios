@@ -1,13 +1,7 @@
 """Is this Transcription a CNH? A text-side gate (ADR-0003).
 
-Round 1 and 2 put this decision in the vision model, which learned "CNH = my
-renderer's look" and rejected real CNHs. Here the Reader always transcribes,
-and the decision is made from the text. In the full pipeline the Extractor
-decides (`reject_document`); this deterministic rule is the Stage 1 stand-in
-and a cheap pre-filter.
-
-A CNH prints labels no RG, CPF card or invoice has. Generic labels (NOME,
-FILIAÇÃO, DATA NASCIMENTO) are shared with other IDs and don't count.
+A deterministic Stage 1 stand-in for the Extractor's `reject_document`: a CNH prints
+labels no RG, CPF card or invoice has. Labels shared with other IDs don't count.
 """
 
 from __future__ import annotations

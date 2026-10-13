@@ -4,16 +4,9 @@
     uv run python -m cnh_ocr.evaluation.bid --bid "data/bid-raw/BID Sample Dataset" --out data/bid
 
 BID has no license and is not redistributed here (ADR-0002); `data/` is gitignored.
-BID images are synthetic, generated from anonymized real documents, so they are not
-Private Real Samples. Each image has a `*_gt_ocr.txt` CSV of text regions with boxes. File order is not
-reliable (a value sometimes precedes its label), so each value is paired with its
-label by format and by distance. Only the 8 fields that can be paired unambiguously are
-scored: NOME, CPF, DATA NASCIMENTO, CAT. HAB., Nº REGISTRO, VALIDADE,
-1ª HABILITAÇÃO, plus LOCAL and DATA EMISSÃO on the open (Aberta) card.
-CNH_Frente / CNH_Aberta become CNH tests; RG_Frente / CPF_Frente become Non-CNH tests.
-
-Caveat: BID dates are random (e.g. born 2019, valid until 2007). That's fine for the
-Reader, but useless for the Extractor's date checks.
+Values are paired with their labels by format and distance (file order is unreliable),
+and only the fields in `MATCHERS` are scored. BID dates are random: fine for the Reader,
+useless for the Extractor's date checks.
 """
 
 from __future__ import annotations
@@ -50,9 +43,8 @@ BOILERPLATE = {_key(t) for t in (
     "CARTEIRA NACIONAL DE HABILITAÇÃO", "REPÚBLICA FEDERATIVA DO BRASIL", "REPÚBLICA FEDERATIVA DO BRA",
 )}
 
-# Only fields whose values can be matched unambiguously (by format, or by being the nearest
-# free-text region). FILIAÇÃO / DOC. IDENTIDADE / OBSERVAÇÕES are split across lines
-# inconsistently in BID and are not scored.
+# Only fields that can be matched unambiguously. FILIAÇÃO / DOC. IDENTIDADE / OBSERVAÇÕES
+# are split across lines inconsistently in BID and are not scored.
 _DATE = re.compile(r"^\d{2}/\d{2}/\d{4}$")
 MATCHERS = {
     "CPF": re.compile(r"^\d{3}\.\d{3}\.\d{3}-\d{2}$").match,
@@ -70,11 +62,7 @@ _BOX = re.compile(r"^(-?\d+),\s*(-?\d+),\s*(-?\d+),\s*(-?\d+),\s*(.*)$")
 
 
 def read_regions(path: Path) -> list[tuple[str, float, float]]:
-    """(text, center_x, center_y) per region.
-
-    BID uses two formats: `x, y, width, height, text` boxes, and rotated quads written
-    as `[x1..x4], [y1..y4], -1, -1, text`. For quads we use the polygon center.
-    """
+    """(text, center_x, center_y) per region, for both BID formats (boxes and rotated quads)."""
     out = []
     for line in path.read_bytes().decode("latin-1").splitlines()[1:]:
         if m := _POLY.match(line.strip()):

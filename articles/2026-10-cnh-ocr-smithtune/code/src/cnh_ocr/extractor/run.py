@@ -6,9 +6,8 @@
     uv run python -m cnh_ocr.extractor.run --role student --student-url $STUDENT_URL \
         --student-model $STUDENT_MODEL --data data/synth/test --project cnh-extractor-student
 
-Inputs are ground-truth Transcriptions with injected OCR noise, or real Reader
-output via `--transcriptions runs/reader/<model>.jsonl`. Each run gets LangSmith
-feedback (`field_accuracy`, `exact`), which is the signal smithtune triage uses.
+Inputs are noised ground-truth Transcriptions, or real Reader output via `--transcriptions`.
+Each run gets LangSmith feedback (`field_accuracy`, `exact`), the signal smithtune triage uses.
 """
 
 from __future__ import annotations
@@ -49,9 +48,8 @@ def usage(messages) -> dict:
     return totals
 
 
-# List prices, US$ per million tokens. Claude: Anthropic pricing (cache reads 0.1x, 5-minute writes
-# 1.25x). Baseten models: from GET https://inference.baseten.co/v1/models (2026-09-28). The real
-# bill is in each provider's console.
+# List prices, US$ per million tokens (Anthropic pricing; Baseten's /v1/models, 2026-09-28).
+# The real bill is in each provider's console.
 PRICES = {
     "claude-sonnet-5": {"input": 2.00, "output": 10.00, "cache_read": 0.20, "cache_write": 2.50},
     "deepseek-ai/DeepSeek-V4-Pro-0813": {"input": 1.32, "output": 3.96, "cache_read": 0.132, "cache_write": 1.32},

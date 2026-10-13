@@ -1,9 +1,7 @@
 """Draw Synthetic CNHs and Non-CNH decoys.
 
-The layout is deliberately *inspired by* the CNH, not a replica. It has the same
-labels and a similar field arrangement, but no national emblems, no security
-features and a visible AMOSTRA / SYNTHETIC watermark. It is good enough to
-teach a reader model where fields live, and useless as a forgery template.
+The layout is *inspired by* the CNH, not a replica: same labels, but no emblems, no
+security features and a visible AMOSTRA / SYNTHETIC watermark (ADR-0002).
 """
 
 from __future__ import annotations
@@ -51,9 +49,8 @@ _LAYOUT: dict[str, tuple[int, int, int]] = {
 
 
 # ---- v2: domain randomization -----------------------------------------------
-# Generic variation so a Reader can't equate "CNH" with one exact look. These are
-# broad properties (palette, spacing, label spelling, orientation), not a copy of
-# any real card; no emblems or security features are ever drawn (ADR-0002).
+# Generic variation (palette, spacing, label spelling) so a Reader can't equate "CNH"
+# with one exact look. Not a copy of any real card (ADR-0002).
 
 PALETTES = [  # (card base, header band, label ink)
     ((212, 234, 208), (35, 95, 60), (40, 110, 70)),     # pale green
@@ -135,11 +132,8 @@ def _watermark(img: Image.Image, text: str = "AMOSTRA • SYNTHETIC", alpha: int
 
 
 def _stamp(img: Image.Image, rng: random.Random) -> Image.Image:
-    """A smaller but still clearly visible 'synthetic' mark (ADR-0002).
-
-    Placed only where no field is printed (header band, or across the photo) so the
-    training target never contains text the stamp hides.
-    """
+    """A smaller but still clearly visible 'synthetic' mark (ADR-0002), placed only where
+    no field is printed so the training target never contains text the stamp hides."""
     draw = ImageDraw.Draw(img)
     scale = img.width / CARD_W
     text = "AMOSTRA • SYNTHETIC"
@@ -264,10 +258,8 @@ def render_non_cnh(rng: random.Random, fake, style: Style | None = None,
                    printed: list[str] | None = None) -> Image.Image:
     """Decoys the Extractor must reject: RG-like cards, CPF cards, invoices, random paperwork.
 
-    In v2 the ID-card decoys share the CNH palettes and boxed style, so "looks like
-    a green ID card" stops being enough to mean "CNH". If `printed` is given, the
-    decoy's text is appended to it as a Transcription (round 3: the Reader always
-    transcribes). Collecting it draws no extra random numbers, so images are unchanged.
+    With a `style` (v2), ID-card decoys share the CNH look. `printed`, if given, receives
+    the decoy's text (round 3); collecting it draws no random numbers, so images are unchanged.
     """
     printed = [] if printed is None else printed
     kinds = ("rg", "invoice", "letter") if style is None else ("rg", "rg", "cpf", "cpf", "invoice", "letter")

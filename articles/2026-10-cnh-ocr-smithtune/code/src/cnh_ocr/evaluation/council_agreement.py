@@ -3,9 +3,8 @@
     uv run python -m cnh_ocr.evaluation.council_agreement runs/smithtune/triage-sample \
         --runs runs/extractor/cnh-extractor-teacher.jsonl
 
-Joins the council's `labels.jsonl` (keyed by example id) to our Teacher runs
-(keyed by LangSmith root run id == trace id) through the triage snapshot units,
-which record each example's `trace_ids`.
+Joins the council's `labels.jsonl` to our Teacher runs through the `trace_ids`
+recorded in the triage snapshot.
 """
 
 from __future__ import annotations

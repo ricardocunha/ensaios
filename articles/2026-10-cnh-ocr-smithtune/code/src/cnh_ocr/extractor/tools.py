@@ -117,9 +117,8 @@ def normalize_categoria(text: str) -> dict:
             "allowed": list(CATEGORIAS)}
 
 
-# The tool takes filiação as ONE string ("PAI / MÃE"): through Baseten's OpenAI-compatible
-# endpoint, DeepSeek's list of names arrived concatenated without a separator. CnhRecord's
-# validator splits the string, so every Teacher gets the same interface.
+# filiação is ONE string ("PAI / MÃE"): via Baseten, DeepSeek's list arrived concatenated
+# (ADR-0004). CnhRecord's validator splits it back.
 SubmitArgs = create_model(
     "SubmitArgs",
     **{name: (f.annotation, f) for name, f in CnhRecord.model_fields.items() if name not in ("filiacao", "formato")},

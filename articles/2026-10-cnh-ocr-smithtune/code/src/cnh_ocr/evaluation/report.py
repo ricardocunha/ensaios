@@ -17,11 +17,8 @@ from .metrics import score_transcription
 
 
 def reader_rows(data: Path, files: list[Path]) -> list[str]:
-    """CNH-only metrics, with both rejection directions reported separately.
-
-    Folding correct Non-CNH rejections into one accuracy number hides failures
-    (a model that rejects everything looks decent), so they are split out.
-    """
+    """CNH-only metrics, with both rejection directions reported separately
+    (one combined accuracy would make a model that rejects everything look decent)."""
     truth = {r["file_name"]: r for r in map(json.loads, (data / "metadata.jsonl").open(encoding="utf-8"))}
     rows = ["| Reader run | CNHs | label acc | value recall | CER | Reader refused CNHs | Reader refused Non-CNH "
             "| Gate: CNHs rejected | Gate: Non-CNH rejected | p50 s/img |",
