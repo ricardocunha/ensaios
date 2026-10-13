@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# written by `python -m disaster_risk.viewer` from the run files
+public/data.json

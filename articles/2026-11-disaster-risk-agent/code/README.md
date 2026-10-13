@@ -15,6 +15,7 @@ make alerts-queued  # scripts/run_after_queue.sh: English alert texts (--lang en
 make alerts-pt   # pt-BR alert texts (the default language): 9 key hours x 3 modes -> runs/m3/alerts_pt.jsonl
 make llm-fusion  # LLM-only fusion on the pre-registered hours (3 samples each, local LLM server) -> runs/m4/
 make llm-fusion-score  # LLM-only vs Bayesian fusion: leads, quiet-hour alerts, Brier, run-to-run spread
+make viewer      # React page over the run files (needs Node) -> http://localhost:5177
 ```
 
 `make evaluate` also downloads the INMET yearly files 2019-2023 (about 100 MB each) for the historical replay.
@@ -35,6 +36,10 @@ the queued alert-agent run (9 key hours x 3 modes) is in RESULTS.md.
 
 Milestone 4 (LLM-only fusion vs Bayesian fusion) is done: results in [docs/RESULTS.md](docs/RESULTS.md).
 
+## Viewer
+
+`make viewer` builds `viewer/public/data.json` from the run files and starts a small React page (`viewer/`). Pick a place and an hour of the replay and follow it from start to end: the readings known at that hour, the signals with their likelihood ratio, reliability and weight, the fused probability and risk level (with the LLM-only answers where they exist), the alert text with its audit, and what the gauge did in the next 24 h (hindsight). It needs `make evaluate` to have run; alert texts, LLM-only fusion and the hourly dataset are shown when their files exist. No model runs and nothing is downloaded. `data.json` is git-ignored.
+
 Layout:
 
 - `src/disaster_risk/basin.py`: event window, station lists, time conventions, official flood levels.
@@ -50,6 +55,7 @@ Layout:
 - `src/disaster_risk/evaluate.py`: lead times vs references and SACE bulletins, false alarms, Brier, ablations.
 - `src/disaster_risk/alerts.py`: the alert agent (Pydantic AI, typed output) and the deterministic citation audit.
 - `src/disaster_risk/llm_fusion.py`: LLM-only fusion baseline (same per-hour signals, fixed prompt, pre-registered hours) and its scoring.
+- `src/disaster_risk/viewer.py`: collects the run files into `viewer/public/data.json` for the React page in `viewer/`.
 - `scripts/run_after_queue.sh`: waits for the shared LLM server's queue, then writes alert texts for the key hours.
 - `src/disaster_risk/reference.py`: "in time" references (SACE bulletins, flood-level crossings).
 - `src/disaster_risk/sources/`: one downloader + parser per source (`ana`, `inmet`, `copernicus_ems`, `ufrgs_impact`, `cemaden`, `s2id`, `sgb_sace`).

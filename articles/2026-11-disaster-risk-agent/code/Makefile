@@ -1,4 +1,4 @@
-.PHONY: test fetch dataset thresholds reference backtest evaluate alerts alerts-queued alerts-pt llm-fusion llm-fusion-score
+.PHONY: test fetch dataset thresholds reference backtest evaluate alerts alerts-queued alerts-pt llm-fusion llm-fusion-score viewer
 
 test:
 	uv run pytest -q
@@ -39,3 +39,9 @@ llm-fusion: dataset thresholds
 
 llm-fusion-score:
 	uv run python -m disaster_risk.llm_fusion score
+
+# React page that walks one place and hour through the pipeline, from the run files (needs Node) -> http://localhost:5177
+viewer:
+	uv run python -m disaster_risk.viewer
+	npm --prefix viewer install --no-audit --no-fund
+	npm --prefix viewer run dev
