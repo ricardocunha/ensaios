@@ -1,4 +1,4 @@
-.PHONY: sync data audit baseline detect detect-operating replay-dry replay replay-v2 replay-queued test
+.PHONY: sync data audit baseline detect detect-operating replay-dry replay replay-v2 replay-queued test viewer
 
 sync:
 	uv sync
@@ -40,3 +40,9 @@ replay-queued:
 
 test:
 	PYDANTIC_AI_NO_BANNER=1 uv run pytest -q
+
+# React page that walks one alarm episode through the replay, from the run files (needs Node) -> http://localhost:5179
+viewer:
+	uv run python -m maintenance_agents.viewer
+	npm --prefix viewer install --no-audit --no-fund
+	npm --prefix viewer run dev

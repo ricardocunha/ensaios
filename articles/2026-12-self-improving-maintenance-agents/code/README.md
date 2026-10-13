@@ -20,6 +20,14 @@ The agent talks to any OpenAI-compatible server: `AGENT_BASE_URL` (default `http
 
 `data/`, `runs/` and `.venv/` are git-ignored. Keep data, weights, run outputs and `.env` out of git.
 
+## Viewer
+
+```bash
+make viewer     # needs Node; opens http://localhost:5179
+```
+
+A small React page (`viewer/`) that reads the run files and walks one alarm episode from start to end: the alarm as known at decision time, the tools the agent called, what memory put in the prompt in each arm, the three diagnoses side by side (prompt v1 or v2), and what the logbook says happened afterwards (hindsight, kept to the last step). It only reads what is already in `runs/`; no model runs and no detector is re-run. `viewer/public/data.json` is git-ignored.
+
 ## Layout
 
 | Module | What it does |
@@ -36,6 +44,7 @@ The agent talks to any OpenAI-compatible server: `AGENT_BASE_URL` (default `http
 | `maintenance_agents.agent` | The Pydantic AI diagnosis agent (typed `Diagnosis`, three tools), the prompt, and an offline rule stand-in for dry runs. |
 | `maintenance_agents.replay` | Chronological replay, three arms (no memory, ungated, gated), metrics and cost. |
 | `maintenance_agents.evaluate` | Event-level scoring (7/14/30-day lead windows, false alarms per turbine-month, per component) and the anomaly episode table for the diagnosis agent. |
+| `maintenance_agents.viewer` | Collects the replay run files into `viewer/public/data.json` for the React page. |
 
 Docs: [docs/DATA.md](docs/DATA.md) (dataset choice, licenses, label audit) and [docs/RESULTS.md](docs/RESULTS.md) (measured numbers).
 

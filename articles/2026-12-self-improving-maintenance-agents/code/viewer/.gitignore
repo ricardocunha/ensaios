@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# written by `python -m maintenance_agents.viewer`: run outputs derived from the dataset
+public/data.json
