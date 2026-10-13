@@ -1,6 +1,6 @@
 # ensaios
 
-*Essays you can run.* In Portuguese, **ensaio** means both an *essay* and a *trial*: each article here is both, a technical field report plus the working code behind it. Every article is written in English and Portuguese (PT-BR) and published on Medium, LinkedIn, dev.to / Hashnode and other platforms. Each one lives in its own folder, with its drafts and a runnable project side by side.
+*Essays you can run.* In Portuguese, **ensaio** means both an *essay* and a *trial*: each article here is both, a technical field report plus the working code behind it. Every article is written in English and published on Medium, LinkedIn, dev.to / Hashnode and other platforms. Each one lives in its own folder, with its drafts and a runnable project side by side.
 
 ## Articles
 
@@ -17,10 +17,8 @@
 ```
 articles/<yyyy-mm>-<slug>/
 ├── README.md          # what the article is about, status, links
-├── article-en.md      # long-form draft (EN)
-├── article-pt-br.md   # long-form draft (PT-BR)
-├── linkedin-en.md     # LinkedIn post (EN)
-├── linkedin-pt-br.md  # LinkedIn post (PT-BR)
+├── article-en.md      # long-form draft
+├── linkedin-en.md     # LinkedIn post
 └── code/              # the article's own project (own dependencies, tests, Makefile)
 _template/             # copy this to start a new article
 scripts/               # repo-wide helpers (e.g. check-article.sh)
