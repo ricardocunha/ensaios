@@ -1,6 +1,6 @@
 # My eye-scan RAG cited its sources. It was reading the labels.
 
-**Status:** drafts complete (EN, EN Medium, PT-BR, LinkedIn EN/PT-BR); numbers final; proofread; links pending · **Branch:** `article/2027-01-multimodal-medical-rag-eye` · **Target date:** 2027-01-08
+**Status:** drafts complete (EN, EN Medium, LinkedIn); numbers final; proofread; links pending · **Branch:** `article/2027-01-multimodal-medical-rag-eye` · **Target date:** 2027-01-08
 
 > **Research demo, not a medical device.** Nothing here diagnoses anyone or supports a clinical decision. The numbers measure agreement with the labels of one public dataset, not diagnostic accuracy.
 
@@ -9,8 +9,7 @@ A field report on multimodal medical RAG, run entirely locally: BiomedCLIP embed
 | | |
 |---|---|
 | Article (EN) | [article-en.md](article-en.md) · Medium version: [article-en-medium.md](article-en-medium.md) |
-| Article (PT-BR) | [article-pt-br.md](article-pt-br.md) |
-| LinkedIn | [EN](linkedin-en.md) · [PT-BR](linkedin-pt-br.md) |
+| LinkedIn | [linkedin-en.md](linkedin-en.md) |
 | Code | [code/](code/) |
 | Plan | [PLAN.md](PLAN.md) |
 

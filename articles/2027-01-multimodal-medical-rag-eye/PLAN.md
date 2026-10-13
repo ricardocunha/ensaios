@@ -41,7 +41,7 @@ Brazil has a well-documented ophthalmology dataset, **BRSET** (Brazilian Multila
 1. **Done (2026-10-01):** dataset choice (RFMiD) + BiomedCLIP embedding index (Qdrant, local) + kNN and zero-shot baselines.
 2. **Done (2026-10-05):** VLM + retrieval (top-k cases in the prompt), explanation agent with citation check, faithfulness test (shuffled labels).
 3. Optional: rerun on BRSET if credentialed access is ever granted; RFMiD 2.0 as an out-of-distribution check.
-4. **Done (2026-10-05):** evaluation (paired bootstrap, RESULTS §3) + drafts (EN, EN Medium, PT-BR, LinkedIn EN/PT-BR), glossary (`code/CONTEXT.md`), ADRs 0001–0002. Left: proofread, launch-day links.
+4. **Done (2026-10-05):** evaluation (paired bootstrap, RESULTS §3) + drafts (EN, EN Medium, LinkedIn), glossary (`code/CONTEXT.md`), ADRs 0001–0002. Left: proofread, launch-day links.
 
 ## Milestone 1 result (2026-10-01)
 
@@ -68,4 +68,4 @@ Brazil has a well-documented ophthalmology dataset, **BRSET** (Brazilian Multila
 - **Budget:** local first (M4 Pro 48 GB, mlx / Ollama). The cap for paid APIs is **US$10 per article**, set with `--max-cost` in the code; ask before any paid run.
 - **Data:** public or synthetic only. No personal data. Record every dataset's license in `code/docs/DATA.md` before using it.
 - **Numbers:** every number in the drafts comes from `code/docs/RESULTS.md`. Mark gaps with the RESULT / VERIFY placeholders described in CONTRIBUTING.md.
-- **Deliverables:** EN long version + Medium short version, PT-BR, LinkedIn EN / PT-BR, code with tests + Makefile, `CONTEXT.md` glossary, ADRs for the hard decisions.
+- **Deliverables:** EN long version + Medium short version, LinkedIn post, code with tests + Makefile, `CONTEXT.md` glossary, ADRs for the hard decisions.
