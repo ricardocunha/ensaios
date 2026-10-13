@@ -1,22 +1,9 @@
 """Load CARE to Compare Wind Farm A as per-turbine series plus a fault table.
 
-CARE ships one CSV per *event*, each holding about a year of 10-minute SCADA for
-one turbine. Several files cover the same turbine and overlap in time, so the
-per-turbine series is the de-duplicated union of those files.
-
-Wind Farm A is the EDP open-data wind farm with CARE's timestamps shifted
-forward. Two facts, both checked in ``audit.py`` and in docs/DATA.md:
-
-* Most Farm A files are shifted by exactly 2191 days (2017-08-11 -> 2023-08-11).
-  Files 40 and 71, the two that start on 2022-01-01, are shifted by 2192 days:
-  their rows equal the other files' rows one day earlier.
-* After undoing the shift, 11 of CARE's 12 anomaly-event ends sit 0-13 minutes
-  after an EDP failure-logbook timestamp (the next 10-minute stamp), which also
-  gives the CARE asset id -> EDP turbine id mapping. The 12th (event 51) ends
-  7.5 h after the same T06 gearbox entry that event 72 already matches.
-
-So Farm A can be put back on the EDP calendar and joined with the full EDP
-failure logbooks (2016 + 2017), not only the 12 events CARE kept.
+Files of one turbine overlap in time; the series is their de-duplicated union.
+Farm A is the EDP wind farm with timestamps shifted forward (2191 days; 2192 for
+files 40 and 71), so it is put back on the EDP calendar and joined with the EDP
+failure logbooks (2016 + 2017). Checked in ``audit.py``; see docs/DATA.md.
 """
 
 from __future__ import annotations
@@ -102,11 +89,9 @@ def read_dataset(
 
 
 def merge_datasets(frames: list[pd.DataFrame]) -> pd.DataFrame:
-    """Union of overlapping files for one turbine, one row per timestamp.
+    """Union of overlapping files for one turbine, one row per timestamp (copies agree; the first is kept).
 
-    Overlapping files agree row-for-row once aligned, so which copy wins does not
-    matter for sensor values; we keep the first. ``train_test`` is dropped
-    because it is relative to each file's own event, not to the turbine.
+    ``train_test`` is dropped: it is relative to each file's own event, not to the turbine.
     """
     df = pd.concat(frames, ignore_index=True)
     df = df.sort_values(["time_stamp", "source_event_id"]).drop_duplicates("time_stamp", keep="first")
@@ -155,11 +140,7 @@ def read_edp_logbook(edp_dir: Path = EDP_DIR) -> pd.DataFrame:
 def fault_events(
     data_dir: Path = DEFAULT_DATA_DIR, edp_dir: Path = EDP_DIR, match_tolerance: pd.Timedelta = pd.Timedelta(hours=12)
 ) -> pd.DataFrame:
-    """Fault table for Farm A on the EDP calendar.
-
-    Columns: fault_id, asset_id, turbine_id, fault_time, component, component_edp,
-    remarks, care_event_id (the CARE anomaly event that ends at this fault, if any).
-    """
+    """Fault table for Farm A on the EDP calendar; ``care_event_id`` is the CARE anomaly event that ends at the fault, if any."""
     log = read_edp_logbook(edp_dir)
     asset_of = {t: a for a, t in FARM_A_TURBINES.items()}
     log["asset_id"] = log["turbine_id"].map(asset_of)

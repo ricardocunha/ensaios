@@ -1,19 +1,11 @@
 """Isolation Forest sanity check on Farm A: do alarm days precede logbook faults?
 
-Per turbine:
-1. Train an Isolation Forest on the first ``train_days`` of the turbine's
-   series, using only rows with status 0. (Farm A status 3/4 is derived from
-   the fault logbook, so it is fine for cleaning training data and must never
-   be used after that: no status feature, no status filter at test time.)
-2. Score every 10-minute row after the training period; average per day.
-3. A day is an *alarm day* when its mean score exceeds the 99th percentile of
-   the turbine's own daily scores in the training period.
-
-Event check: a logbook fault is *hit* at horizon H if at least one alarm day
-falls in the H calendar days before the fault's date. The null is the share of
-*quiet* H-day windows (all days >= 30 days from any fault on that turbine) that
-contain at least one alarm day. Hit rate well above that base rate means the
-alarms carry signal; near it means they don't.
+Per turbine: train on the status-0 rows of the first ``train_days``, then a day
+is an *alarm day* when its mean score exceeds the 99th percentile of the
+training-period daily scores. Status is derived from the fault logbook, so it
+only cleans training data: no status feature, no status filter at test time.
+A fault is *hit* at horizon H if an alarm day falls in the H days before it; the
+null is the share of *quiet* H-day windows with an alarm day (docs/RESULTS.md).
 
     uv run python -m maintenance_agents.baseline
 """

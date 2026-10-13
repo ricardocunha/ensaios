@@ -95,9 +95,7 @@ def test_regressors_look_backwards_only():
 def test_scores_before_a_date_do_not_depend_on_anything_after_it():
     """The core no-look-ahead proof: change the future, the past must not move.
 
-    The future gets a huge sensor fault, a different noise draw, a new logbook
-    fault, and is then cut off entirely. Every daily score before the split
-    date must be identical in all three runs.
+    Scores before the split date must be identical with the future changed and with it cut off.
     """
     split = pd.Timestamp("2016-04-15")  # not on a cutoff boundary
     base = synthetic_scada(days=160, seed=1)

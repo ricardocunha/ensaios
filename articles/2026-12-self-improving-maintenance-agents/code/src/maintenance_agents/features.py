@@ -1,28 +1,9 @@
 """Weather- and load-normalised features for Farm A: normal-behaviour residuals.
 
-Milestone 1 showed that an Isolation Forest on raw 10-minute averages learns the
-season: component temperatures follow ambient temperature and load. This module
-removes both effects before any detector sees the data.
-
-1. **Hourly aggregation.** 10-minute averages are averaged per clock hour
-   (an hour needs at least ``MIN_ROWS_PER_HOUR`` rows). This cuts noise and
-   compute six-fold; the detectors work on days anyway.
-2. **Operating state (regressors).** Ambient temperature, wind speed, grid
-   power, rotor speed, plus the mean power over the past 6 h and 24 h. The
-   rolling means give the model the thermal inertia of oil and windings. They
-   look backwards only (the current hour and earlier), so no future data enters.
-3. **Targets.** Each monitored temperature *minus ambient temperature*. Taking
-   the difference makes most of the seasonal shift cancel before the model is
-   fitted; a tree model cannot extrapolate to a hotter summer than it has seen,
-   but the temperature rise over ambient at a given load moves much less.
-4. **Normal-behaviour model (NBM).** One gradient-boosted regressor per target,
-   fitted on healthy history only (see ``detect.py`` for which rows count as
-   healthy at each point in time). The residual ``observed - expected`` is the
-   feature the detectors use.
-
-Signals are grouped by component so an alarm can be attributed to one. The
-logbook components map onto the groups in ``LOGBOOK_GROUP``. There are no
-pressure signals in Farm A; the hydraulic group has a single oil temperature.
+Hourly means, each monitored temperature *minus ambient*, and one
+gradient-boosted regressor per target on the operating state; the residual
+``observed - expected`` is what the detectors use. Regressors look backwards
+only, so no future data enters. Details: docs/RESULTS.md, "Features".
 """
 
 from __future__ import annotations
@@ -51,9 +32,8 @@ SIGNAL_GROUPS: dict[str, list[str]] = {
     "converter": ["sensor_8_avg", "sensor_9_avg", "sensor_10_avg", "sensor_21_avg", "sensor_35_avg", "sensor_36_avg", "sensor_37_avg"],
     "nacelle": ["sensor_7_avg", "sensor_20_avg", "sensor_43_avg"],
 }
-# Groups the detectors score. converter and nacelle residuals are computed and
-# shown as context in the episode table, but no logbook component maps to them,
-# so they do not raise alarms.
+# Groups the detectors score. converter and nacelle have no logbook component:
+# their residuals are context only and do not raise alarms.
 DETECTOR_GROUPS = ("generator", "generator_bearing", "gearbox", "hydraulic", "hub", "transformer")
 DETECTOR_SIGNALS = [s for g in DETECTOR_GROUPS for s in SIGNAL_GROUPS[g]]
 SIGNAL_GROUP = {s: g for g, sigs in SIGNAL_GROUPS.items() for s in sigs}
@@ -100,8 +80,7 @@ SIGNAL_LABEL = {
 def hourly(series: pd.DataFrame, columns: list[str] | None = None) -> pd.DataFrame:
     """Mean per clock hour of numeric 10-minute columns; hours with too few rows are NaN.
 
-    ``status_type_id`` is dropped here on purpose: it is derived from the fault
-    logbook and must never reach a feature.
+    ``status_type_id`` is dropped on purpose: it is derived from the fault logbook and must never reach a feature.
     """
     num = series.drop(columns=["status_type_id", "asset_id", "source_event_id", "turbine_id"], errors="ignore")
     num = num.select_dtypes("number")

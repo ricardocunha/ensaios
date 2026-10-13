@@ -1,32 +1,11 @@
 """Episodic memory with outcomes that arrive only when they would in reality, plus context gating.
 
-**What is stored.** One ``MemoryRecord`` per diagnosed episode: the situation
-(summary line + similarity vector), the agent's diagnosis, and the outcome.
-
 **When the outcome becomes known** (``resolve_outcome``), from the logbook only:
-
-* a logbook row on the same turbine whose date falls in ``[start, start + H]``
-  (H = ``horizon_days``, 30 by default, the window the labels use; the labels
-  exclude the first alarm day itself, the memory does not, because a failure
-  logged that day is known before the decision): known at that row's
-  ``fault_time``. Outcome = that row's component and remark.
-* no such row: "no logbook failure within H days", known at the end of the
-  window, ``start + (H + 1) days``.
-
-The record is written at decision time with its outcome attached, but
-``MemoryStore.visible(now)`` shows the outcome only when ``known_at <= now``;
-before that the memory is "outcome pending". Scoring labels (incidents,
-healthy periods) are never used here; the memory learns from logbook rows, as
-an operator would.
-
-**Retrieval.** Cosine similarity of the first-alarm-day residual vectors
-(``episodes.signal_vector``: sign * log1p|z| over 24 signals). No embedding
-model: the situation *is* a vector of residuals, and cosine on it is
-deterministic and explainable.
-
-**Gating** (``gate``): a pure function over the retrieved candidates with a
-``GatePolicy``. Every rejected candidate carries the rule that rejected it, so
-tests and the article can show exactly what the gate removed.
+a row on the same turbine dated in ``[start, start + H]`` is known at its
+``fault_time``; with no such row, "no failure" is known at ``start + (H + 1) days``.
+The window includes the first alarm day, which the scoring labels exclude.
+``MemoryStore.visible(now)`` hides an outcome until ``known_at <= now``. Scoring
+labels are never used here. Retrieval and gating: docs/RESULTS.md, milestone 3 "Setup".
 """
 
 from __future__ import annotations
@@ -156,16 +135,7 @@ class MemoryStore:
 
 @dataclass(frozen=True)
 class GatePolicy:
-    """Which memories may enter the prompt. Values were fixed before any model run.
-
-    * ``require_outcome``: only memories whose outcome is known at decision time.
-    * ``min_similarity``: cosine >= this. 0.5 is about the 90th percentile of
-      pairwise similarities among the 77 episodes (computed without labels).
-    * ``max_age_days``: drop memories older than this.
-    * ``scope``: ``any``; ``same_turbine``; ``same_turbine_or_group`` (same
-      turbine, or same top residual group on the first alarm day).
-    * ``max_k``: at most this many, most similar first.
-    """
+    """Which memories may enter the prompt. Values were fixed before any model run."""
 
     name: str = "gated"
     require_outcome: bool = True
@@ -179,9 +149,8 @@ class GatePolicy:
 
 
 GATED = GatePolicy()
-# "memory without gating": the k most similar past episodes, whatever their age,
-# turbine or similarity, with or without a known outcome. Same k, so the arms
-# differ only by the filters.
+# "memory without gating": the k most similar past episodes, with no filter at all.
+# Same k, so the arms differ only by the filters.
 UNGATED = GatePolicy(name="ungated", require_outcome=False, min_similarity=-1.0, max_age_days=None, scope="any", max_k=3)
 
 
@@ -233,9 +202,7 @@ def gate(candidates: Iterable[Candidate], query: Situation, policy: GatePolicy) 
 class TrackRecord:
     """What happened after similar past alarms, counted at decision time.
 
-    ``pool`` = every visible memory that passes the arm's gate rules except the
-    k cap and the outcome requirement. Only outcomes known at ``now`` count;
-    the others are ``pending``.
+    The pool is the arm's gate without the k cap and the outcome requirement; outcomes not known yet are ``pending``.
     """
 
     scope: str

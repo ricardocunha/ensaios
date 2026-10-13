@@ -1,21 +1,9 @@
 """The diagnosis agent: Pydantic AI, typed output, tools cut at decision time.
 
-It reads one anomaly episode (``episodes.Situation``), optionally a block of
-past episodes from memory, and answers with a ``Diagnosis``. Tools fetch the
-residual time series of any component group, the context signals and the
-turbine's maintenance log, all limited to what was known at decision time.
-
-Two prompt versions (``PROMPTS``). ``v1`` (milestone 3's first full run):
-plain instructions, memories as a list. ``v2`` (the one round of fixes, see
-PLAN.md): the cost of each action in the instructions, memory shown first as a
-track record (``memory.TrackRecord``), and an extra output field,
-``differs_from_record``, that an "inspect" answer must fill when most similar
-past alarms led to nothing (checked by an output validator).
-
+Two prompt versions (``PROMPTS``): ``v1`` is the first full run, ``v2`` the one
+round of fixes (action costs, track record, ``differs_from_record``; see PLAN.md).
 Model: ``$AGENT_BASE_URL`` / ``$AGENT_MODEL`` (any OpenAI-compatible server),
-by default the local mlx-lm server at http://localhost:8088/v1 serving
-Qwen3-8B (4-bit) as ``default_model``. Qwen3 thinking is switched off with
-``chat_template_kwargs.enable_thinking = false``.
+by default the local mlx-lm server at http://localhost:8088/v1.
 """
 
 from __future__ import annotations
@@ -258,12 +246,7 @@ _TOP = re.compile(r"-> logbook component (\w+)\.")
 
 
 def rule_function(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-    """Deterministic, offline stand-in for the LLM (harness dry runs, never reported as the agent).
-
-    Reads only the prompt text: if a shown past episode ended in a logbook
-    failure, copy the most similar one's component and inspect; otherwise use
-    the detector's top component and monitor.
-    """
+    """Deterministic, offline stand-in for the LLM (harness dry runs, never reported as the agent)."""
     prompt = "\n".join(
         p.content for m in messages for p in getattr(m, "parts", []) if getattr(p, "part_kind", "") == "user-prompt" and isinstance(p.content, str)
     )

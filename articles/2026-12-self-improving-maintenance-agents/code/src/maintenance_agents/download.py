@@ -1,15 +1,11 @@
 """Download a subset of the CARE to Compare dataset (Zenodo 15846963).
 
-The full archive is one 5.5 GB zip. Zenodo serves it with HTTP range support,
-so we read the zip's central directory remotely and pull only the members we
-need (by default Wind Farm A, ~158 MB compressed / ~803 MB extracted).
+Reads the 5.5 GB zip's central directory over HTTP range requests and pulls
+only the members needed. Wind Farm A also pulls the two EDP failure logbooks.
 
     uv run python -m maintenance_agents.download            # Wind Farm A
     uv run python -m maintenance_agents.download --farms A B
     uv run python -m maintenance_agents.download --metadata-only
-
-Wind Farm A also pulls the two EDP failure logbooks (2016, 2017), which carry
-the component-level fault records that CARE's event_info only partly covers.
 """
 
 from __future__ import annotations

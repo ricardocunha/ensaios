@@ -2,27 +2,9 @@
 
     uv run python -m maintenance_agents.evaluate            # ~5 min on 5 turbines
 
-Writes (all under the git-ignored ``runs/``):
-
-* ``m2_daily_scores.parquet``: one row per turbine-day, every detector's score.
-* ``m2_eval.json``: event-level results, false-alarm rates, per-component hits.
-* ``m2_episodes.csv``: anomaly episodes for the diagnosis agent (no labels).
-* ``m2_episodes_eval.csv``: the same episodes joined to incidents (for scoring only).
-
-Scoring rules (see docs/RESULTS.md):
-
-* **Alarm day**: a day whose score is above ``k``.
-* **Hit at horizon H**: an incident (or logbook row) whose date is D has at
-  least one alarm day in ``[D - H, D)``. The fault day itself does not count.
-  An event is *evaluable at H* when ``D - H`` is on or after the turbine's first
-  scored day.
-* **Healthy day**: no incident within 30 days before or after (from 30 days
-  before an incident's first row to 30 days after its last row).
-* **Episode**: consecutive alarm days, bridging gaps of one day.
-* **False alarm**: an episode that starts on a healthy day. Rate = false alarms
-  per healthy turbine-month (30.44 healthy scored days).
-* **Quiet-window base rate** (the null, as in milestone 1): the share of H-day
-  windows made only of healthy days that contain an alarm day.
+Writes ``m2_daily_scores.parquet``, ``m2_eval.json``, ``m2_episodes.csv`` (no
+labels) and ``m2_episodes_eval.csv`` (joined to incidents, for scoring only)
+under the git-ignored ``runs/``. Scoring rules: docs/RESULTS.md, "Scoring".
 """
 
 from __future__ import annotations

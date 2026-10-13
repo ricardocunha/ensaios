@@ -1,37 +1,9 @@
 """Walk-forward (expanding-window) anomaly detectors for one turbine.
 
-Protocol, per turbine, with no future data anywhere:
-
-* **Cutoffs.** ``T_0 = first day + first_train_days``, then every
-  ``retrain_every_days``. The model built at ``T_k`` scores the days in
-  ``[T_k, T_{k+1})``. Cutoffs depend only on the series start, never on its end.
-* **Training window** ``W = [series start, T_k)``, split in time into a *fit*
-  part ``F`` and a *calibration* part ``C`` (the last ``max(calib_min_days,
-  calib_share * |W|)`` days). Models are fitted on ``F``; score scales and
-  thresholds come from ``C``, which the models have not seen.
-* **Healthy rows.** Training and calibration drop the hours from 14 days before
-  to 3 days after every logbook fault *already recorded before* ``T_k``. Faults
-  after ``T_k`` are unknown at ``T_k`` and are not used. (Farm A's
-  ``status_type_id`` encodes the same windows for *all* faults, including future
-  ones, so it is not used at all here.)
-* **Daily score.** Each detector turns a day into a robust z-score against the
-  calibration days: ``(x - median_C) / (1.4826 * MAD_C)``. A day is an alarm
-  when that score exceeds ``k`` (applied in ``evaluate.py``, so ``k`` can be
-  swept without refitting).
-
-Detectors:
-
-* ``iforest_raw``: milestone-1 Isolation Forest on hourly raw averages (42
-  signals, angles excluded), fitted on ``F``; day score = mean anomaly score.
-* ``iforest_resid``: Isolation Forest on hourly normal-behaviour residuals,
-  each scaled by its hourly median/MAD on ``C``.
-* ``threshold_resid``: no learning beyond the NBM. For every signal, the daily
-  mean residual is z-scored against ``C``; the day score is the largest
-  ``|z|`` over signals. The per-signal z-scores are kept for attribution.
-
-Both residual detectors score only the signals of the component groups the
-logbook covers (``features.DETECTOR_GROUPS``); converter and nacelle residuals
-are kept as ``z_`` context columns.
+No future data anywhere: the model built at cutoff ``T_k`` is fitted and
+calibrated on ``[series start, T_k)``, minus the hours around logbook faults
+*already recorded before* ``T_k``. ``status_type_id`` encodes future faults
+too, so it is not used. Details: docs/RESULTS.md, "Walk-forward protocol".
 """
 
 from __future__ import annotations
@@ -166,12 +138,7 @@ def _iforest_daily(model: IsolationForest, frame: pd.DataFrame, min_hours: int) 
 def walk_forward(
     data: TurbineData, fault_times: pd.Series, cfg: WalkForwardConfig, turbine_id: str = ""
 ) -> pd.DataFrame:
-    """Daily scores for every day after the first cutoff.
-
-    Columns: turbine_id, cutoff, n_hours, one ``score_<detector>[_s<seed>]`` per
-    detector (and seed), and ``z_<signal>`` (per-signal daily residual z, the
-    threshold detector's attribution).
-    """
+    """Daily scores for every day after the first cutoff: ``score_<detector>[_s<seed>]`` and per-signal ``z_<signal>`` columns."""
     idx = data.h.index
     first, last = idx.min(), idx.max()
     cuts = cutoffs(first, last, cfg)

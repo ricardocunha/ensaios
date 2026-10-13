@@ -5,21 +5,10 @@
     uv run python -m maintenance_agents.replay --model local           # the full run (77 episodes x 3 arms)
     uv run python -m maintenance_agents.replay --model local --prompt v2 --tag m3v2   # the v2 prompt (PLAN.md)
 
-Arms:
-
-* ``none``: no memory block at all.
-* ``ungated``: the 3 most similar past episodes, whatever their outcome, age or turbine.
-* ``gated``: ``memory.GATED`` (outcome known, similarity >= 0.5, <= 365 days old,
-  same turbine or same top group, at most 3).
-
-Each arm has its own memory and replays the episodes in decision-time order
-(first alarm day + 1 day; ties by episode id). After each diagnosis the
-episode, the diagnosis and its logbook outcome are written to memory; the
-outcome is visible to later episodes only from its ``known_at`` time.
-
-Output (git-ignored ``runs/``): ``<tag>_<arm>.jsonl`` (one row per episode, with
-the prompt), ``<tag>_summary.json`` (metrics per arm). Labels are read only in
-``score``.
+Three arms (``none``, ``ungated``, ``gated`` = ``memory.GATED``), each with its
+own memory, replayed in decision-time order; an outcome is visible to later
+episodes only from its ``known_at`` time. Output: ``<tag>_<arm>.jsonl`` and
+``<tag>_summary.json`` in the git-ignored ``runs/``. Labels are read only in ``score``.
 """
 
 from __future__ import annotations

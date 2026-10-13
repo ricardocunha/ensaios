@@ -1,23 +1,8 @@
 """What the diagnosis agent may know about one anomaly episode, at the moment it decides.
 
-**Decision time.** The agent diagnoses an episode at the end of its *first alarm
-day*: ``decision_time = start + 1 day`` (00:00 of the next day, when that day's
-hourly means are complete). Milestone 2's episode table summarises the whole
-episode (up to 18 days), which is later information, so this module rebuilds the
-summary from the first day alone. Everything the agent sees is cut at
-``decision_time``:
-
-* ``Situation``: the first day's detector score and per-signal residual z,
-  the top signals and the top component group (same attribution rule as
-  ``evaluate.episode_attribution``), and a vector for memory similarity.
-* ``ReplayData.residual_series``: daily residual z up to and including the
-  first alarm day.
-* ``ReplayData.context``: converter/nacelle residuals, hours of data and the
-  other turbines' scores on the same day.
-* ``ReplayData.maintenance_log``: logbook rows on this turbine with
-  ``fault_time < decision_time``. An operator knows the past maintenance
-  history, so the agent does too (milestone 2 open question, answered "yes").
-
+Everything is cut at ``decision_time = start + 1 day`` (the end of the first
+alarm day): the ``Situation`` summary is rebuilt from that day alone, and the
+maintenance log holds only rows with ``fault_time < decision_time``.
 Labels (``runs/m2_episodes_eval.csv``) are never read here.
 """
 
@@ -53,9 +38,7 @@ VECTOR_SIGNALS = DETECTOR_SIGNALS + CONTEXT_SIGNALS  # 14 + 10 = 24 dimensions
 def signal_vector(z: pd.Series) -> np.ndarray:
     """Similarity features: sign(z) * log1p(|z|) per signal, missing = 0 (as expected).
 
-    The log compresses the heavy tail (z of +80 after a generator swap should not
-    swamp every other signal) but keeps direction, which matters: a hot and a
-    cold hydraulic oil are different situations.
+    The log compresses the heavy tail but keeps direction (hot and cold are different situations).
     """
     v = np.array([z.get(f"z_{s}", np.nan) for s in VECTOR_SIGNALS], dtype=float)
     v = np.nan_to_num(v, nan=0.0)

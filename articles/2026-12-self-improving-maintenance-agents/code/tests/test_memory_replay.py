@@ -1,9 +1,7 @@
 """Milestone 3: agent, memory, gating and replay. Offline: TestModel / FunctionModel only.
 
-The core proof is ``test_replay_before_a_date_does_not_depend_on_anything_after_it``,
-in the style of milestone 2's detector test: change the future (logbook rows,
-residuals, episodes), and every prompt, every tool result and every diagnosis
-before the split date must stay identical, in all three arms.
+The core proof is ``test_replay_before_a_date_does_not_depend_on_anything_after_it``:
+change the future, and every prompt, tool result and diagnosis before the split must stay identical.
 """
 
 from __future__ import annotations
@@ -299,8 +297,7 @@ def test_agent_runs_every_tool_with_test_model():
 def recording_model(transcripts: dict[int, str]) -> FunctionModel:
     """Calls every tool once, then answers with a diagnosis derived from everything it saw.
 
-    ``transcripts[episode_id]`` gets the prompt plus every tool result, so the
-    test compares exactly what the model could read.
+    ``transcripts[episode_id]`` gets the prompt plus every tool result.
     """
 
     def fn(messages, info: AgentInfo) -> ModelResponse:
@@ -345,11 +342,8 @@ def run_arm(data: ReplayData, arm: str, prompt: str = "v1") -> tuple[list[dict],
 def test_replay_before_a_date_does_not_depend_on_anything_after_it(arm, prompt):
     """Change the future, the past must not move.
 
-    Three worlds: (a) the base data; (b) after SPLIT, a logbook row changes
-    component, a new logbook row appears, residuals are scrambled, and an
-    extra episode is added; (c) everything after SPLIT is cut. For every
-    episode decided before SPLIT, the prompt, every tool result and the
-    diagnosis must be identical in all three.
+    Three worlds: the base data, the future changed after SPLIT, and everything after SPLIT cut.
+    Prompts, tool results and diagnoses decided before SPLIT must be identical in all three.
     """
     base = make_data()
 
