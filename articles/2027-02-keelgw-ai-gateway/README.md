@@ -1,6 +1,6 @@
 # A prompt router for $1.88: what synthetic labels buy, and what they don't
 
-**Status:** drafts complete (EN, EN Medium, PT-BR, LinkedIn EN/PT-BR); numbers final and mapped in SOURCES.md; proofread; before publishing: check provider terms for training on Claude's labels, read the Arch-Router licence, re-verify third-party claims; links pending publication · **Branch:** `article/2027-02-keelgw-ai-gateway` · **Target date:** 2027-02-05
+**Status:** drafts complete (EN, EN Medium, LinkedIn); numbers final and mapped in SOURCES.md; proofread; before publishing: check provider terms for training on Claude's labels, read the Arch-Router licence, re-verify third-party claims; links pending publication · **Branch:** `article/2027-02-keelgw-ai-gateway` · **Target date:** 2027-02-05
 
 > **Built and verified locally only.** The keelgw gateway has never run in a real AWS account, sent a request to a real model provider or served a customer. Every measurement was taken on a laptop; the only calls to a real API were the labelling batches for the training data.
 
@@ -9,8 +9,7 @@ A field report on [keelgw](https://github.com/ricardocunha/keelgw) (Keel Gateway
 | | |
 |---|---|
 | Article (EN) | [article-en.md](article-en.md) · Medium version: [article-en-medium.md](article-en-medium.md) |
-| Article (PT-BR) | [article-pt-br.md](article-pt-br.md) |
-| LinkedIn | [EN](linkedin-en.md) · [PT-BR](linkedin-pt-br.md) |
+| LinkedIn | [linkedin-en.md](linkedin-en.md) |
 | Project repo | [github.com/ricardocunha/keelgw](https://github.com/ricardocunha/keelgw) |
 | Sources | [SOURCES.md](SOURCES.md) |
 

@@ -10,7 +10,7 @@ echo "== placeholders"
 if grep -n -E '\[\[(RESULT|VERIFY|LINK)' "$dir"/*.md; then fail=1; else echo "none"; fi
 
 echo "== required files"
-for f in README.md article-en.md article-pt-br.md linkedin-en.md linkedin-pt-br.md; do
+for f in README.md article-en.md linkedin-en.md; do
   [ -f "$dir/$f" ] || { echo "missing $f"; fail=1; }
 done
 
