@@ -15,4 +15,18 @@ Made with [archify](https://github.com/tt-a1i/archify) v2.16.0 (MIT) from the ar
 |---|---|
 | `test-205-query-and-retrieved-cases.jpg` | Left: RFMiD test image 205 (the query in the article's worked example). Right: its three retrieved training cases, in retrieval order (training images 1693, 1561, 976). Used in the EN and Medium articles. |
 
-Source: RFMiD 1.0, S. Pachade et al., *Retinal Fundus Multi-Disease Image Dataset (RFMiD)*, Data 2021, 6(2), 14, doi:10.3390/data6020014, CC BY 4.0 (see `code/docs/DATA.md` for the licence note that is still to confirm on the official page). Changes: square-cropped, resized and placed side by side; no text added. These four thumbnails are the only retinal images in git, as the plan allows ("at most a few attributed thumbnails in the article"); the dataset itself stays out of the repo.
+Source: RFMiD 1.0, S. Pachade et al., *Retinal Fundus Multi-Disease Image Dataset (RFMiD)*, Data 2021, 6(2), 14, doi:10.3390/data6020014, CC BY 4.0 (see `code/docs/DATA.md` for the licence note that is still to confirm on the official page). Changes: square-cropped, resized and placed side by side; no text added. These four photos (test 205 and training 1693, 1561, 976) are the only retinal images in git, here and in the LinkedIn screenshots below, as the plan allows ("at most a few attributed thumbnails in the article"); the dataset itself stays out of the repo.
+
+## LinkedIn images
+
+Screenshots of the viewer (`code/viewer`, `make viewer`) on test image 205, and the diagram at 3×, light theme. For the LinkedIn post; credit RFMiD (CC BY 4.0) in the post when 03–05 are used.
+
+| File | What |
+|---|---|
+| `linkedin/01-pipeline-diagram.png` | The pipeline diagram. |
+| `linkedin/02-results-summary.png` | The six scores over the 609 test images. |
+| `linkedin/03-query-photo.png` | Start: the query photo and its dataset label. |
+| `linkedin/04-retrieved-true-labels.png` | The 3 retrieved cases with their true labels. |
+| `linkedin/05-retrieved-wrong-labels.png` | The same photos with shuffled labels. |
+| `linkedin/06-three-answers.png` | The three answers: photo only, with cases, with wrong labels. |
+| `linkedin/07-result.png` | End: each answer against the dataset labels, and the citation check. |
