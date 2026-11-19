@@ -142,6 +142,75 @@ From `model/metrics.json` (trained 2026-11-19), on the 452 eval prompts:
 
 `make test-all` runs everything but the live test.
 
+### Running the tests
+
+**What you need:**
+- [uv](https://docs.astral.sh/uv/), which installs Python 3.12 and the locked dependencies.
+- Docker with Compose v2, for `make e2e` and `make test-live` only.
+- About 1 GB of disk for the model and the images.
+
+Run every command from `code/`.
+
+**1. Install the dependencies (once):**
+
+```bash
+cd code
+make setup        # uv sync --frozen
+```
+
+**2. Unit tests.** No model, no network, no Docker:
+
+```bash
+make test
+```
+
+**3. Model tests.** The first run downloads the pinned model (~470 MB,
+sha256-checked) into `.cache/model` and embeds the eval set into
+`.cache/embeddings`. Later runs reuse both:
+
+```bash
+make test-model
+```
+
+**4. End-to-end tests.** Builds the image, starts `router` and `router-tight`,
+runs `tests/e2e` from the `e2e` container, and tears everything down even if a
+test fails:
+
+```bash
+make e2e
+```
+
+The first build downloads the model into the image, so it takes a few minutes.
+Ports 18080 and 18081 must be free. If they aren't, set `ROUTER_HOST_PORT` and
+`ROUTER_TIGHT_HOST_PORT` in `.env`.
+
+**5. Everything except the live test,** lint included:
+
+```bash
+make test-all
+```
+
+**6. The live test (optional, costs a fraction of a cent).** Put a key in
+`.env`, then run the one target that enables it:
+
+```bash
+cp .env.example .env    # then set ANTHROPIC_API_KEY or ANTHROPIC_API_KEY_FILE
+make test-live
+```
+
+**Running part of a suite.** Pass pytest's usual options through `uv run`.
+Because `pyproject.toml` deselects `model`, `e2e` and `live` by default, name
+the marker for those suites:
+
+```bash
+uv run pytest tests/unit/test_router.py -k busy     # one unit file, matching tests
+uv run pytest -m model tests/model -k portuguese    # one model test
+make up && uv run pytest -m e2e; make down          # e2e from the host, against your own services
+```
+
+From the host, the e2e tests use `ROUTER_URL` and `ROUTER_TIGHT_URL`
+(defaults `http://localhost:18080` and `http://localhost:18081`).
+
 **Model tests.** They check the eval accuracy against `metrics.json` and
 retrain the head from the dataset with the same seed. Both must land within
 one point, since ONNX results differ slightly between CPUs.
