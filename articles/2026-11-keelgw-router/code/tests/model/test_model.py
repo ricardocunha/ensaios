@@ -80,3 +80,21 @@ def test_retraining_from_the_dataset_reproduces_the_head(embedder):
         m["eval"]["accuracy"],
         METRICS["eval"]["accuracy"],
     )
+
+
+def test_the_trace_classifies_exactly_like_the_service(embedder, head, prompts):
+    text = prompts["live"][0]["text"]
+    probs, steps = embedder.explain(text, head)
+    assert probs == pytest.approx(head.probs(embedder.embed([text]))[0].tolist(), abs=1e-6)
+    prep = steps["prepare"]
+    assert prep["model_tokens"] == len(embedder.ids(text)) == prep["turn_tokens"] + prep["prefix_tokens"] + 2
+    assert not prep["truncated"] and prep["dropped_tokens"] == 0
+    assert steps["embed"]["dim"] == c.DIM and steps["embed"]["norm"] == pytest.approx(1.0, abs=1e-3)
+    assert steps["decide"]["parameters"] == 1540
+
+
+def test_the_trace_reports_a_truncated_prompt(embedder, head):
+    _, steps = embedder.explain("why does this fail?\n" + "Traceback (most recent call last):\n" * 3000, head)
+    prep = steps["prepare"]
+    assert prep["chars_capped"] and prep["truncated"] and prep["model_tokens"] == c.MAX_TOKENS
+    assert prep["turn_tokens"] - prep["dropped_tokens"] == prep["room"]

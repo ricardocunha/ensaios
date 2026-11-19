@@ -44,7 +44,7 @@ ENV PATH=/opt/venv/bin:$PATH PYTHONPATH=/app/src \
     ROUTER_MODEL_DIR=/opt/router/model ROUTER_HEAD=/app/model/head.json PORT=8080
 # Start the service's own way once (model, head and a warm-up classification):
 # an image that can't start fails here, not at runtime.
-RUN python -c "from keelgw_router import server; classify, info = server.load(); print('router: starts;', info, classify('rename x'))"
+RUN python -c "from keelgw_router import server; classify, info, _ = server.load(); print('router: starts;', info, classify('rename x'))"
 EXPOSE 8080
 USER 65532:65532
 HEALTHCHECK --interval=5s --timeout=3s --start-period=30s --retries=12 \

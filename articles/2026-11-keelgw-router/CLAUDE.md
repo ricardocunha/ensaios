@@ -23,7 +23,7 @@ code/
 │   ├── unit/            no model, no network
 │   ├── model/           real model in process (marker: model)
 │   ├── e2e/             HTTP against the compose services (marker: e2e)
-│   └── live/            ONE real Anthropic API call (marker: live)
+│   └── live/            TWO real Anthropic API calls (marker: live)
 ├── Dockerfile           targets: runtime (default) and e2e
 └── docker-compose.yml   router :18080, router-tight :18081, e2e (profile)
 ```
@@ -37,7 +37,7 @@ code/
 | `make e2e` | Builds the image, starts both routers, runs tests/e2e in a container, tears down. |
 | `make up` / `make down` | Start or stop the routers for manual calls. |
 | `make train` | Retrains the head from the dataset (no API calls); overwrites model/. |
-| `make test-live` | The one real API call. Only when asked. |
+| `make test-live` | The two real API calls. Only when asked. |
 | `make lint` / `make fmt` | ruff. |
 
 ## Rules

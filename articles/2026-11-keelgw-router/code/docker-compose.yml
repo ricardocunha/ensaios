@@ -25,6 +25,8 @@ services:
       ROUTER_THREADS: ${ROUTER_THREADS:-2}
       ROUTER_CONCURRENCY: ${ROUTER_CONCURRENCY:-1}
       ROUTER_QUEUE_MS: ${ROUTER_QUEUE_MS:-1000}
+      # The step-by-step trace, on only while `make test-live` runs.
+      ROUTER_TRACE: ${KEELGW_ROUTER_LIVE:-0}
     ports:
       - "${ROUTER_HOST_PORT:-18080}:8080"
 

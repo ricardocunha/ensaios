@@ -24,7 +24,7 @@ make setup        # dependencies, once
 make test         # unit: no model, no network, seconds
 make test-model   # the real model in process (downloads ~470 MB the first time)
 make e2e          # the Docker image over HTTP, from a container
-make test-live    # optional: ONE real Anthropic API call, needs a key in .env
+make test-live    # optional: TWO real Anthropic API calls, needs a key in .env
 ```
 
 Step-by-step details are in [code/README.md](code/README.md#running-the-tests).

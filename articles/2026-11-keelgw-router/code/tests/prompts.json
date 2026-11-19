@@ -7,5 +7,8 @@
   "reasoning": {"id": "c0d82c209550f497", "text": "Our application needs to support real-time data processing. What architectural decisions should we make to ensure low latency and high throughput?"}
  },
  "portuguese_simple": "Renomeie a variável usr para user no arquivo utils.py.",
- "live": {"id": "0a5c5d26a68d78d7", "tier": "simple", "text": "Can you change the background color of my view to blue?"}
+ "live": [
+  {"id": "0a5c5d26a68d78d7", "tier": "simple", "text": "Can you change the background color of my view to blue?"},
+  {"id": "e89691eaa119c159", "tier": "complex", "text": "We're planning to migrate our legacy ASP.NET application to ASP.NET Core. Can you provide a comprehensive plan that includes the steps needed, timelines, and potential challenges we might face during this migration?"}
+ ]
 }

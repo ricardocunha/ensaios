@@ -15,6 +15,7 @@ library only, so the image fetches the model in its own cached layer).
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -74,11 +75,12 @@ class Embedder:
 
     def ids(self, text: str) -> list[int]:
         """The model's input for a prompt; see prepare()."""
-        turn = text if len(text) <= MAX_CHARS else text[: MAX_CHARS // 4] + "\n" + text[-(MAX_CHARS * 3 // 4) :]
-        return prepare(self.prefix, self.tok.encode(turn, add_special_tokens=False).ids, self.bos, self.eos)
+        return prepare(self.prefix, self.tok.encode(cap(text), add_special_tokens=False).ids, self.bos, self.eos)
 
     def embed(self, texts: list[str]) -> np.ndarray:
-        rows = [self.ids(t) for t in texts]
+        return self.embed_ids([self.ids(t) for t in texts])
+
+    def embed_ids(self, rows: list[list[int]]) -> np.ndarray:
         n = max(len(r) for r in rows)
         ids = np.zeros((len(rows), n), dtype=np.int64)  # <pad> is 1 for XLM-R, but masked out anyway
         mask = np.zeros((len(rows), n), dtype=np.int64)
@@ -92,6 +94,64 @@ class Embedder:
         m = mask[..., None].astype(np.float32)
         pooled = (hidden * m).sum(axis=1) / np.maximum(m.sum(axis=1), 1.0)
         return pooled / np.maximum(np.linalg.norm(pooled, axis=1, keepdims=True), 1e-12)
+
+    def explain(self, text: str, head: Head) -> tuple[list[float], dict]:
+        """Classifies one prompt as ids(), embed() and Head.probs() do, and
+        reports each step's counts and timings: the live test's verbose output.
+        The token pieces are the caller's own prompt, so they go back only to
+        that caller and are never logged."""
+        t0 = time.perf_counter()
+        turn = cap(text)
+        enc = self.tok.encode(turn, add_special_tokens=False)
+        t1 = time.perf_counter()
+        ids = prepare(self.prefix, enc.ids, self.bos, self.eos)
+        room = MAX_TOKENS - 2 - len(self.prefix)
+        kept = len(ids) - 2 - len(self.prefix)
+        t2 = time.perf_counter()
+        x = self.embed_ids([ids])
+        t3 = time.perf_counter()
+        logits = x @ head.weights.T + head.bias
+        probs = softmax(logits)[0]
+        t4 = time.perf_counter()
+        pieces = enc.tokens
+        return probs.tolist(), {
+            "prepare": {
+                "chars": len(text),
+                "chars_capped": len(text) > MAX_CHARS,
+                "chars_read": len(turn),
+                "prefix": PREFIX,
+                "prefix_tokens": len(self.prefix),
+                "turn_tokens": len(enc.ids),
+                "room": room,
+                "truncated": len(enc.ids) > room,
+                "dropped_tokens": len(enc.ids) - kept,
+                "model_tokens": len(ids),
+                "max_tokens": MAX_TOKENS,
+                "pieces": pieces if len(pieces) <= 40 else [*pieces[:20], "…", *pieces[-20:]],
+                "ms": round((t2 - t0) * 1000, 2),
+                "tokenise_ms": round((t1 - t0) * 1000, 2),
+            },
+            "embed": {
+                "model": MODEL_REPO,
+                "layers": 12,
+                "hidden": [len(ids), DIM],
+                "dim": int(x.shape[1]),
+                "norm": round(float(np.linalg.norm(x[0])), 4),
+                "first": [round(float(v), 4) for v in x[0, :4]],
+                "ms": round((t3 - t2) * 1000, 2),
+            },
+            "decide": {
+                "weights": list(head.weights.shape),
+                "parameters": int(head.weights.size + head.bias.size),
+                "logits": {t: round(float(z), 3) for t, z in zip(TIERS, logits[0], strict=True)},
+                "ms": round((t4 - t3) * 1000, 3),
+            },
+        }
+
+
+def cap(text: str) -> str:
+    """At most MAX_CHARS characters: the first quarter and the last three quarters."""
+    return text if len(text) <= MAX_CHARS else text[: MAX_CHARS // 4] + "\n" + text[-(MAX_CHARS * 3 // 4) :]
 
 
 def prepare(prefix: list[int], turn: list[int], bos: int, eos: int) -> list[int]:

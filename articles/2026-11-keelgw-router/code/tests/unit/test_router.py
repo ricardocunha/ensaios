@@ -194,6 +194,28 @@ class Server(unittest.TestCase):
         code, _ = self.call("/v1/classify", {"text": "rename x", "context": "user: prove this lock-free queue is linearizable"})
         self.assertEqual((code, seen), (200, ["rename x"]))
 
+    def test_trace_only_when_the_router_allows_it(self):
+        # Without an explain function (ROUTER_TRACE unset) "trace" is ignored.
+        self.start(lambda t: [0.7, 0.1, 0.1, 0.1])
+        code, body = self.call("/v1/classify", {"text": "rename x", "trace": True})
+        self.assertEqual(code, 200)
+        self.assertNotIn("trace", json.loads(body))
+
+    def test_trace_reports_each_step(self):
+        steps = {"prepare": {"model_tokens": 9}, "embed": {"dim": 384}, "decide": {"parameters": 1540}}
+        seen = []
+        self.start(lambda t: seen.append("classify") or [1, 0, 0, 0],
+                   explain=lambda t: seen.append("explain") or ([0.7, 0.1, 0.1, 0.1], steps))  # fmt: skip
+        _, body = self.call("/v1/classify", {"text": "rename x"})
+        self.assertNotIn("trace", json.loads(body))  # not asked for
+        _, body = self.call("/v1/classify", {"text": "rename x", "trace": True})
+        got = json.loads(body)
+        self.assertEqual(got["tier"], "simple")
+        self.assertEqual({k: got["trace"][k] for k in steps}, steps)
+        self.assertEqual(got["trace"]["admit"]["body_bytes"], len(json.dumps({"text": "rename x", "trace": True})))
+        self.assertEqual((got["trace"]["admit"]["concurrency"], got["trace"]["admit"]["queue_ms"]), (1, 1000))
+        self.assertEqual(seen, ["classify", "explain"])
+
     def test_responses_are_not_held_back_by_nagle(self):
         # Without TCP_NODELAY every response on a kept-alive connection waited
         # about 40 ms for the client's delayed ACK (measured in the cluster; it

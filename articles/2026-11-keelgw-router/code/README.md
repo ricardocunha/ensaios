@@ -138,7 +138,7 @@ From `model/metrics.json` (trained 2026-11-19), on the 452 eval prompts:
 | `make test` | `tests/unit`: truncation, the head file, training on a fake embedder, the HTTP rules | nothing | ~7 s |
 | `make test-model` | `tests/model`: model pins, a prompt per Tier, Portuguese, eval accuracy and retraining | the model (downloaded) | ~40 s first run, seconds once embeddings are cached |
 | `make e2e` | `tests/e2e`: the image over HTTP, run from a container | Docker | ~2 s plus the build |
-| `make test-live` | `tests/live`: **one real Anthropic API call** | a key | seconds |
+| `make test-live` | `tests/live`: **two real Anthropic API calls**, a simple and a complex prompt | a key | seconds |
 
 `make test-all` runs everything but the live test.
 
@@ -190,7 +190,7 @@ Ports 18080 and 18081 must be free. If they aren't, set `ROUTER_HOST_PORT` and
 make test-all
 ```
 
-**6. The live test (optional, costs a fraction of a cent).** Put a key in
+**6. The live tests (optional, a fraction of a cent).** Put a key in
 `.env`, then run the one target that enables it:
 
 ```bash
@@ -238,10 +238,14 @@ The scenarios cover:
 
 Against services you started yourself: `make up`, then `uv run pytest -m e2e`.
 
-**The live test.** It makes exactly one Messages API call. It sends one
-clear-cut prompt to the router and to Claude, using `dataset.py`'s own
-labelling request (the same system prompt, Tier policies and JSON schema), and
-checks both say `simple`.
+**The live tests.** Two of them, one Messages API call each: a clear-cut
+`simple` prompt and a clear-cut `complex` one (`tests/prompts.json`, `live`).
+Each sends the prompt to the router and to Claude, and checks both give the
+expected Tier.
+
+Claude is there because the head learned its Tiers from Claude's labels, so it's
+the reference the router imitates. The call uses `dataset.py`'s own labelling
+request: the same system prompt, Tier policies and JSON schema.
 
 - **It runs only through `make test-live`**, which sets `KEELGW_ROUTER_LIVE=1`.
   Nothing else sets it.
@@ -251,15 +255,21 @@ checks both say `simple`.
   either in the environment or in `.env` (git-ignored). It's never printed.
 - **The model** is `claude-haiku-4-5`, the one that labelled the data.
   Override it with `LIVE_LABEL_MODEL`.
+- **It prints a walkthrough** of the diagram's steps. The same flag starts the
+  router with `ROUTER_TRACE=1`, so the test can show the slot wait, the
+  characters and token pieces, any truncation, the embedding, the head's logits
+  and scores, then the cross-check: Claude's label, tokens and cost. Other runs never turn the
+  trace on, and an e2e test checks that a router without it ignores
+  `"trace": true`.
 
 ### Measured in this repo (2026-11-19, Apple M4 Pro, Docker Desktop)
 
 | Command | Result |
 |---|---|
-| `make test` | 52 passed |
-| `make test-model` | 7 passed; eval accuracy 0.754 reproduced, and retraining from the dataset gave the same L2 and accuracy |
-| `make e2e` | 21 passed; latency and load figures are under [Performance](#performance) |
-| `make test-live` | Not run here; it spends money on your key |
+| `make test` | 54 passed |
+| `make test-model` | 9 passed; eval accuracy 0.754 reproduced, and retraining from the dataset gave the same L2 and accuracy |
+| `make e2e` | 22 passed; latency and load figures are under [Performance](#performance) |
+| `make test-live` | 2 passed: Claude Haiku 4.5, the router and the expected Tier agreed on `simple` and on `complex`; about $0.0015 for both calls |
 
 ## Configuration
 
@@ -274,6 +284,7 @@ Environment variables (see `.env.example`):
 | `ROUTER_METRICS_PORT` | 0 | Also serve `/metrics` on this port |
 | `ROUTER_MODEL_DIR` | `.cache/model` | The pinned model files |
 | `ROUTER_HEAD` | `model/head.json` | The head |
+| `ROUTER_TRACE` | 0 | 1 lets a request ask for `"trace": true` and get each step's counts and timings back. Compose sets it only during `make test-live` |
 | `ROUTER_HOST_PORT`, `ROUTER_TIGHT_HOST_PORT` | 18080, 18081 | Compose host ports |
 
 ## Retraining

@@ -49,11 +49,12 @@ e2e: ## build, start, run tests/e2e from a container, tear down
 	$(COMPOSE) up -d --wait router router-tight
 	$(COMPOSE) --profile e2e run --rm e2e; status=$$?; $(COMPOSE) --profile e2e down --remove-orphans; exit $$status
 
-# The only target that sets KEELGW_ROUTER_LIVE=1. It makes ONE real Anthropic
-# API call (a fraction of a cent) and needs ANTHROPIC_API_KEY or
-# ANTHROPIC_API_KEY_FILE, from the environment or .env.
-test-live: ## ONE real Anthropic API call: Claude labels a prompt, the router must agree
-	$(COMPOSE) up -d --build --wait router
+# The only target that sets KEELGW_ROUTER_LIVE=1. It makes TWO real Anthropic
+# API calls, one per prompt (a fraction of a cent), and needs ANTHROPIC_API_KEY or
+# ANTHROPIC_API_KEY_FILE, from the environment or .env. The flag also starts
+# the router with ROUTER_TRACE=1, so the test can print each step.
+test-live: ## TWO real Anthropic API calls: Claude labels a simple and a complex prompt, the router must agree
+	KEELGW_ROUTER_LIVE=1 $(COMPOSE) up -d --build --wait router
 	set -a; [ -f .env ] && . ./.env; set +a; \
 	KEELGW_ROUTER_LIVE=1 uv run --frozen pytest -m live -s; status=$$?; \
 	$(COMPOSE) down --remove-orphans; exit $$status

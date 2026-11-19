@@ -12,7 +12,9 @@ Environment: PORT (8080), ROUTER_METRICS_PORT (also serve /metrics there),
 ROUTER_MODEL_DIR (the pinned model files), ROUTER_HEAD (head.json),
 ROUTER_THREADS (ONNX Runtime threads per inference, 2), ROUTER_CONCURRENCY
 (inferences at once, 1), ROUTER_QUEUE_MS (how long a request may wait for its
-turn before a 503, 1000: keelgw's gateway gives up at 1500 ms anyway).
+turn before a 503, 1000: keelgw's gateway gives up at 1500 ms anyway),
+ROUTER_TRACE (1: honour {"trace": true} and return each step's counts and
+timings; docker compose sets it only for `make test-live`).
 """
 
 from __future__ import annotations
@@ -34,6 +36,8 @@ BUCKETS = (0.01, 0.025, 0.05, 0.1, 0.2, 0.4, 0.8, 1.5, 3.0)
 
 # classify(text) -> one probability per Tier, in c.TIERS order.
 Classify = Callable[[str], "list[float]"]
+# explain(text) -> the same probabilities, plus each step's counts and timings.
+Explain = Callable[[str], "tuple[list[float], dict]"]
 
 
 class Metrics:
@@ -81,8 +85,17 @@ class Metrics:
 
 
 class Router:
-    def __init__(self, classify: Classify, info: dict[str, str], concurrency: int = 1, queue_ms: int = 1000):
+    def __init__(
+        self,
+        classify: Classify,
+        info: dict[str, str],
+        concurrency: int = 1,
+        queue_ms: int = 1000,
+        explain: Explain | None = None,
+    ):
         self.classify = classify
+        self.explain = explain  # None unless ROUTER_TRACE=1
+        self.concurrency = concurrency
         self.info = info
         self.metrics = Metrics(info)
         self.slots = threading.BoundedSemaphore(concurrency)
@@ -171,11 +184,17 @@ def handler(router: Router, metrics_only: bool = False) -> type[BaseHTTPRequestH
                     raise ValueError
             except (ValueError, KeyError, TypeError):
                 return 400, {"error": 'want {"text": "<non-empty string>"}'}
+            trace = router.explain is not None and req.get("trace") is True
+            waited = time.perf_counter()
             if not router.slots.acquire(timeout=router.queue_s):
                 return 503, {"error": "busy"}
+            steps: dict = {}
             try:
                 t0 = time.perf_counter()
-                probs = router.classify(text)
+                if trace:
+                    probs, steps = router.explain(text)
+                else:
+                    probs = router.classify(text)
                 took = time.perf_counter() - t0
                 if len(probs) != len(c.TIERS):
                     raise ValueError(f"{len(probs)} scores for {len(c.TIERS)} Tiers")
@@ -186,22 +205,34 @@ def handler(router: Router, metrics_only: bool = False) -> type[BaseHTTPRequestH
                 router.slots.release()
             best = max(range(len(c.TIERS)), key=lambda i: probs[i])
             router.metrics.classified(c.TIERS[best], took)
-            return 200, {
+            out = {
                 "tier": c.TIERS[best],
                 "scores": {t: round(float(p), 4) for t, p in zip(c.TIERS, probs, strict=True)},
                 "latency_ms": round(took * 1000, 1),
             }
+            if trace:
+                admit = {
+                    "body_bytes": len(raw),
+                    "wait_ms": round((t0 - waited) * 1000, 2),
+                    "concurrency": router.concurrency,
+                    "queue_ms": round(router.queue_s * 1000),
+                }
+                out["trace"] = {"admit": admit, **steps}
+            return 200, out
 
     return Handler
 
 
-def load() -> tuple[Classify, dict[str, str]]:
+def load() -> tuple[Classify, dict[str, str], Explain]:
     model_dir = Path(os.environ.get("ROUTER_MODEL_DIR", str(c.CACHE / "model")))
     head = c.Head.load(Path(os.environ.get("ROUTER_HEAD", str(c.HEAD))))
     emb = c.Embedder(model_dir, threads=int(os.environ.get("ROUTER_THREADS", "2")))
 
     def classify(text: str) -> list[float]:
         return head.probs(emb.embed([text]))[0].tolist()
+
+    def explain(text: str) -> tuple[list[float], dict]:
+        return emb.explain(text, head)
 
     classify("warm up the session")
     info = {
@@ -210,7 +241,7 @@ def load() -> tuple[Classify, dict[str, str]]:
         "provisional": str(bool(head.meta.get("provisional"))).lower(),
         "trained_at": str(head.meta.get("trained_at", "")),
     }
-    return classify, info
+    return classify, info, explain
 
 
 def serve(router: Router, port: int, metrics_port: int = 0) -> list[ThreadingHTTPServer]:
@@ -224,15 +255,22 @@ def serve(router: Router, port: int, metrics_port: int = 0) -> list[ThreadingHTT
 
 
 def main() -> None:
-    classify, info = load()
+    classify, info, explain = load()
     if info["provisional"] == "true":
         print("router: WARNING: provisional head (train.py --from-generated); not for real traffic", file=sys.stderr)
+    tracing = os.environ.get("ROUTER_TRACE") == "1"
     router = Router(
-        classify, info, int(os.environ.get("ROUTER_CONCURRENCY", "1")), int(os.environ.get("ROUTER_QUEUE_MS", "1000"))
+        classify,
+        info,
+        int(os.environ.get("ROUTER_CONCURRENCY", "1")),
+        int(os.environ.get("ROUTER_QUEUE_MS", "1000")),
+        explain if tracing else None,
     )
     port = int(os.environ.get("PORT", "8080"))
     servers = serve(router, port, int(os.environ.get("ROUTER_METRICS_PORT", "0")))
     print(f"router: listening on :{port}, model {c.MODEL_REPO}@{c.MODEL_REVISION[:7]}", file=sys.stderr, flush=True)
+    if tracing:
+        print("router: ROUTER_TRACE=1: requests may ask for a step-by-step trace", file=sys.stderr, flush=True)
     stop = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())

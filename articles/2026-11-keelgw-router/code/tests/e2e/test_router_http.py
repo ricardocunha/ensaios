@@ -101,6 +101,13 @@ def test_earlier_conversation_is_ignored(router_url, prompts):
     assert alone["scores"] == with_context["scores"]
 
 
+def test_a_trace_is_refused_unless_the_router_allows_it(tight_url, prompts):
+    # router-tight never has ROUTER_TRACE; only `make test-live` turns it on, for router.
+    code, got = classify(tight_url, prompts["tiers"]["simple"]["text"], trace=True)
+    assert (code, got["tier"]) == (200, "simple"), got
+    assert "trace" not in got
+
+
 def test_a_long_prompt_under_the_body_limit_is_classified(router_url):
     # The limit is on the JSON body, so trim until the encoded body fits.
     text = (FULL_LENGTH * 4)[:MAX_BODY]
