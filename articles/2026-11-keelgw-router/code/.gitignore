@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+# The pinned embedding model (~470 MB) and cached embeddings: downloaded, never committed.
+.cache/
+# Heads and metrics from a provisional run.
+model/*.provisional.json
+# dataset.py's working files; only dataset/prompts.jsonl is committed.
+dataset/*
+!dataset/prompts.jsonl
+runs/
+logs/

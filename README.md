@@ -7,6 +7,7 @@
 | Article | Status | Folder |
 |---|---|---|
 | [My eye-scan RAG cited its sources. It was reading the labels.](articles/2027-01-multimodal-medical-rag-eye/) | published 2026-10-13 | `articles/2027-01-multimodal-medical-rag-eye/` |
+| [keelgw-router: a four-Tier prompt router you can run](articles/2026-11-keelgw-router/) | published 2026-11-19 · code only | `articles/2026-11-keelgw-router/` |
 
 <!-- Add one row per article when it's merged into main:
 | [Title](articles/yyyy-mm-slug/) | published YYYY-MM-DD · [Medium](…) · [LinkedIn](…) | `articles/yyyy-mm-slug/` |

@@ -1,0 +1,57 @@
+# The router as a service, plus what the e2e tests need.
+#
+#   make up     router and router-tight, on localhost:18080 and :18081
+#   make e2e    build, start, run tests/e2e from the e2e container, tear down
+name: keelgw-router
+
+x-router: &router
+  build:
+    context: .
+    target: runtime
+  image: keelgw-router:local
+  restart: "no"
+  # Also in the image, but `compose run` only honours one declared here.
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2)"]
+    interval: 5s
+    timeout: 3s
+    start_period: 30s
+    retries: 12
+
+services:
+  router:
+    <<: *router
+    environment:
+      ROUTER_THREADS: ${ROUTER_THREADS:-2}
+      ROUTER_CONCURRENCY: ${ROUTER_CONCURRENCY:-1}
+      ROUTER_QUEUE_MS: ${ROUTER_QUEUE_MS:-1000}
+      # The step-by-step trace, on only while `make test-live` runs.
+      ROUTER_TRACE: ${KEELGW_ROUTER_LIVE:-0}
+    ports:
+      - "${ROUTER_HOST_PORT:-18080}:8080"
+
+  # The same image made to be busy: one slot, one thread and a 50 ms queue, so
+  # a burst of full-length prompts reliably gets 503s.
+  router-tight:
+    <<: *router
+    environment:
+      ROUTER_THREADS: 1
+      ROUTER_CONCURRENCY: 1
+      ROUTER_QUEUE_MS: 50
+    ports:
+      - "${ROUTER_TIGHT_HOST_PORT:-18081}:8080"
+
+  e2e:
+    build:
+      context: .
+      target: e2e
+    image: keelgw-router-e2e:local
+    profiles: ["e2e"]
+    environment:
+      ROUTER_URL: http://router:8080
+      ROUTER_TIGHT_URL: http://router-tight:8080
+    depends_on:
+      router:
+        condition: service_healthy
+      router-tight:
+        condition: service_healthy

@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "keelgw-router: from prompt to Tier",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1080,
+      520
+    ],
+    "legend": {
+      "entries": {
+        "emphasis": {
+          "label": "request path"
+        },
+        "security": {
+          "label": "busy refusal"
+        },
+        "dashed": {
+          "label": "offline training"
+        },
+        "database": {
+          "label": "dataset"
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "label": "Caller"
+    },
+    {
+      "label": "Admit"
+    },
+    {
+      "label": "Prepare"
+    },
+    {
+      "label": "Embed"
+    },
+    {
+      "label": "Decide"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "caller",
+      "type": "frontend",
+      "label": "Gateway or client",
+      "sublabel": "POST /v1/classify",
+      "tag": "latest turn",
+      "stage": 0,
+      "row": 1
+    },
+    {
+      "id": "server",
+      "type": "backend",
+      "label": "HTTP server",
+      "sublabel": "1 slot per process",
+      "tag": "1,000 ms queue",
+      "stage": 1,
+      "row": 1
+    },
+    {
+      "id": "busy",
+      "type": "security",
+      "label": "503 busy",
+      "sublabel": "caller falls back",
+      "stage": 1,
+      "row": 0
+    },
+    {
+      "id": "prep",
+      "type": "backend",
+      "label": "Tokenise + truncate",
+      "sublabel": "first 96 + the end",
+      "tag": "max 256 tokens",
+      "stage": 2,
+      "row": 1
+    },
+    {
+      "id": "e5",
+      "type": "backend",
+      "label": "multilingual-e5-small",
+      "sublabel": "ONNX Runtime, CPU",
+      "tag": "frozen, pinned",
+      "stage": 3,
+      "row": 1,
+      "width": 176
+    },
+    {
+      "id": "head",
+      "type": "backend",
+      "label": "Logistic head",
+      "sublabel": "softmax(Wx + b)",
+      "tag": "1,540 numbers",
+      "stage": 4,
+      "row": 1
+    },
+    {
+      "id": "tier",
+      "type": "frontend",
+      "label": "Tier + scores",
+      "sublabel": "JSON response",
+      "stage": 4,
+      "row": 0
+    },
+    {
+      "id": "data",
+      "type": "database",
+      "label": "prompts.jsonl",
+      "sublabel": "4,830 labelled",
+      "tag": "synthetic",
+      "stage": 2,
+      "row": 2
+    },
+    {
+      "id": "train",
+      "type": "backend",
+      "label": "train.py",
+      "sublabel": "Adam, L2 on val",
+      "tag": "offline",
+      "stage": 3,
+      "row": 2
+    }
+  ],
+  "flows": [
+    {
+      "id": "caller-server",
+      "from": "caller",
+      "to": "server",
+      "label": "prompt text",
+      "variant": "emphasis"
+    },
+    {
+      "id": "server-busy",
+      "from": "server",
+      "to": "busy",
+      "label": "no slot in time",
+      "variant": "security"
+    },
+    {
+      "id": "server-prep",
+      "from": "server",
+      "to": "prep",
+      "label": "admitted",
+      "variant": "emphasis"
+    },
+    {
+      "id": "prep-e5",
+      "from": "prep",
+      "to": "e5",
+      "label": "token IDs",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e5-head",
+      "from": "e5",
+      "to": "head",
+      "label": "384 numbers",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "id": "head-tier",
+      "from": "head",
+      "to": "tier",
+      "label": "argmax",
+      "variant": "emphasis"
+    },
+    {
+      "id": "data-train",
+      "from": "data",
+      "to": "train",
+      "label": "train + val",
+      "variant": "dashed"
+    },
+    {
+      "id": "train-head",
+      "from": "train",
+      "to": "head",
+      "label": "head.json",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "bottom",
+      "via": [
+        [
+          960,
+          385
+        ]
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Request path",
+      "items": [
+        "Only the latest user turn is classified",
+        "e5 is about 99% of the time; the head is microseconds",
+        "p50 7.3 ms, p95 19.4 ms on an M4 Pro"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Back-pressure",
+      "items": [
+        "One inference at a time per process",
+        "A request that can't get the slot in time gets 503",
+        "The caller uses a fallback Tier instead of waiting"
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "Offline training",
+      "items": [
+        "The head is the only trained part",
+        "Retrains from the dataset in seconds, no API calls",
+        "75.4% on 452 held-out synthetic prompts"
+      ]
+    }
+  ]
+}
