@@ -1,0 +1,203 @@
+{
+ "trained_at": "2026-11-19T14:21:14+00:00",
+ "rows": {
+  "train": {
+   "simple": 646,
+   "medium": 1191,
+   "complex": 724,
+   "reasoning": 365
+  },
+  "val": {
+   "simple": 82,
+   "medium": 129,
+   "complex": 74,
+   "reasoning": 46
+  },
+  "eval": {
+   "simple": 117,
+   "medium": 126,
+   "complex": 105,
+   "reasoning": 104
+  }
+ },
+ "l2": 0.01,
+ "val": {
+  "n": 331,
+  "accuracy": 0.8066,
+  "macro_f1": 0.8075,
+  "per_tier": {
+   "simple": {
+    "support": 82,
+    "accuracy": 0.878,
+    "precision": 0.809,
+    "f1": 0.8421
+   },
+   "medium": {
+    "support": 129,
+    "accuracy": 0.7597,
+    "precision": 0.7967,
+    "f1": 0.7778
+   },
+   "complex": {
+    "support": 74,
+    "accuracy": 0.8378,
+    "precision": 0.8267,
+    "f1": 0.8322
+   },
+   "reasoning": {
+    "support": 46,
+    "accuracy": 0.7609,
+    "precision": 0.7955,
+    "f1": 0.7778
+   }
+  },
+  "confusion": {
+   "rows_true_cols_predicted": [
+    "simple",
+    "medium",
+    "complex",
+    "reasoning"
+   ],
+   "matrix": [
+    [
+     72,
+     9,
+     1,
+     0
+    ],
+    [
+     16,
+     98,
+     9,
+     6
+    ],
+    [
+     1,
+     8,
+     62,
+     3
+    ],
+    [
+     0,
+     8,
+     3,
+     35
+    ]
+   ]
+  }
+ },
+ "val_macro_f1_by_l2": {
+  "0.0001": 0.7154,
+  "0.001": 0.7706,
+  "0.01": 0.8075,
+  "0.03": 0.8004,
+  "0.1": 0.8072
+ },
+ "eval": {
+  "n": 452,
+  "accuracy": 0.7544,
+  "macro_f1": 0.7602,
+  "per_tier": {
+   "simple": {
+    "support": 117,
+    "accuracy": 0.7863,
+    "precision": 0.807,
+    "f1": 0.7965
+   },
+   "medium": {
+    "support": 126,
+    "accuracy": 0.6984,
+    "precision": 0.6286,
+    "f1": 0.6617
+   },
+   "complex": {
+    "support": 105,
+    "accuracy": 0.781,
+    "precision": 0.7961,
+    "f1": 0.7885
+   },
+   "reasoning": {
+    "support": 104,
+    "accuracy": 0.7596,
+    "precision": 0.8316,
+    "f1": 0.794
+   }
+  },
+  "confusion": {
+   "rows_true_cols_predicted": [
+    "simple",
+    "medium",
+    "complex",
+    "reasoning"
+   ],
+   "matrix": [
+    [
+     92,
+     24,
+     1,
+     0
+    ],
+    [
+     17,
+     88,
+     9,
+     12
+    ],
+    [
+     3,
+     16,
+     82,
+     4
+    ],
+    [
+     2,
+     12,
+     11,
+     79
+    ]
+   ]
+  }
+ },
+ "eval_by_form": {
+  "bare": {
+   "n": 106,
+   "accuracy": 0.8113
+  },
+  "conversation": {
+   "n": 52,
+   "accuracy": 0.5385
+  },
+  "error": {
+   "n": 73,
+   "accuracy": 0.6849
+  },
+  "followup": {
+   "n": 104,
+   "accuracy": 0.8173
+  },
+  "snippet": {
+   "n": 117,
+   "accuracy": 0.7863
+  }
+ },
+ "latency": {
+  "n": 210,
+  "p50_ms": 7.3,
+  "p95_ms": 19.4,
+  "max_ms": 21.7,
+  "machine": {
+   "platform": "macOS-26.4.1-arm64-arm-64bit",
+   "machine": "arm64",
+   "cpus": 14,
+   "cpu": "Apple M4 Pro"
+  },
+  "threads": 2
+ },
+ "provisional": false,
+ "source": "dataset/prompts.jsonl",
+ "targets": {
+  "accuracy": 0.8,
+  "p95_ms": 800,
+  "on": "c7i.xlarge (task 2.2)"
+ }
+}

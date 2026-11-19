@@ -1,0 +1,47 @@
+[project]
+name = "keelgw-router"
+version = "0.1.0"
+description = "keelgw's four-Tier prompt router (multilingual-e5-small on ONNX plus a logistic-regression head), on its own"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12,<3.13"
+# What the image runs: ONNX Runtime on CPU, the Hugging Face tokenizer and numpy. No torch.
+dependencies = [
+  "numpy>=2.1,<3",
+  "onnxruntime>=1.20,<2",
+  "tokenizers>=0.20,<1",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3,<9", "ruff>=0.14,<0.15"]
+# dataset.py's labelling and the single live test; never installed in the router image.
+data = ["anthropic>=1.11,<2", "pydantic>=2.13,<3"]
+
+[tool.uv]
+default-groups = ["dev", "data"]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/keelgw_router"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+# Only the unit tests run by default. The other layers are chosen with -m by
+# the Makefile; `live` stays excluded unless asked for (and its test also
+# needs KEELGW_ROUTER_LIVE=1).
+addopts = "-ra -m 'not model and not e2e and not live'"
+markers = [
+  "model: needs the real embedding model in .cache/model (make model)",
+  "e2e: talks to the router over HTTP (make e2e starts it)",
+  "live: makes one real Anthropic API call; needs KEELGW_ROUTER_LIVE=1 and a key",
+]
+
+[tool.ruff]
+line-length = 130
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]

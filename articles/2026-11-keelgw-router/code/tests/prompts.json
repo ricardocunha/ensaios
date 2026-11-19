@@ -1,0 +1,11 @@
+{
+ "_about": "Eval-split prompts from dataset/prompts.jsonl that the shipped head classifies correctly with a wide margin (top score 0.96 or more), so they are safe to assert on with any CPU. The Portuguese one is written for these tests.",
+ "tiers": {
+  "simple": {"id": "74c79c3dfdcfbbb2", "text": "How do I change this string slice to an owned string?\n```rust\nlet s = \"hello\";\n```"},
+  "medium": {"id": "1be198121632624a", "text": "Hey, I'm trying to figure out why my unit tests for the ValidateUserInput method are failing. It seems to be failing when special characters are included in the input. Any ideas?"},
+  "complex": {"id": "e89691eaa119c159", "text": "We're planning to migrate our legacy ASP.NET application to ASP.NET Core. Can you provide a comprehensive plan that includes the steps needed, timelines, and potential challenges we might face during this migration?"},
+  "reasoning": {"id": "c0d82c209550f497", "text": "Our application needs to support real-time data processing. What architectural decisions should we make to ensure low latency and high throughput?"}
+ },
+ "portuguese_simple": "Renomeie a variável usr para user no arquivo utils.py.",
+ "live": {"id": "0a5c5d26a68d78d7", "tier": "simple", "text": "Can you change the background color of my view to blue?"}
+}
