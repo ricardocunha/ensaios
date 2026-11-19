@@ -1,8 +1,8 @@
 # keelgw-router: a four-Tier prompt router you can run
 
-**Status:** code only, no article yet · **Branch:** `article/2026-11-keelgw-router`
+**Status:** published 2026-11-19, code only (no article yet)
 
-The prompt router from [keelgw](not public yet), an AI
+The prompt router from keelgw (not public yet), an AI
 gateway, taken out on its own so it can be run and tested end to end. For
 `model: auto`, the gateway asks it which of four Tiers a prompt needs (simple,
 medium, complex, reasoning) and maps the Tier to a Model.
@@ -38,4 +38,4 @@ Step-by-step details are in [code/README.md](code/README.md#running-the-tests).
 
 ## Published
 
-- LinkedIn: [[LINK]]
+- Code: this folder, on `main`. No article or LinkedIn post yet.
