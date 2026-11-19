@@ -8,6 +8,7 @@ lists them.
 ## Layout
 
 ```
+images/                  the architecture diagram: archify source, HTML, SVG and PNG exports
 code/
 ├── src/keelgw_router/
 │   ├── classifier.py    Embedder (e5 on ONNX), prepare() truncation, Head

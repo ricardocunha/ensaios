@@ -27,25 +27,38 @@ make setup model              # dependencies, then the pinned model into .cache/
 uv run python -m keelgw_router.server     # listens on :8080
 ```
 
-## How it works
+## Architecture
 
-```
-text → cap at 16,000 chars → tokenise ("query: " + text) → keep 256 tokens (first 96 + the end)
-     → multilingual-e5-small, 12 layers, ONNX Runtime on CPU → mean-pool → L2-normalise → 384 numbers
-     → head: softmax(W·x + b), W is 4 × 384 → the highest score is the Tier
-```
+![keelgw-router: from prompt to Tier](../images/router.en.svg)
 
-- **The embedding model is frozen**: intfloat/multilingual-e5-small, pinned to
-  a Hugging Face revision and checked by sha256 (`fetch_model.py`). It's
-  downloaded, never committed.
-- **The head is the only trained part**: 1,540 numbers in `model/head.json`.
-  It refuses to load against a different model revision.
-- **Only the latest user turn is classified.** Any other field in the request
-  is ignored. In keelgw, adding three earlier turns cut accuracy from 80% to 43%.
-- **One inference at a time per process.** A request waits up to
-  `ROUTER_QUEUE_MS` for its turn, then gets `503 {"error": "busy"}`, so a
-  caller can fall back instead of waiting.
-- **Prompt text is never logged.** `/metrics` counts requests, Tiers and latency.
+*The source and an interactive version are in [`../images`](../images/).*
+
+A request goes through five steps, all in one Python process:
+
+1. **Admit.** One inference runs at a time. A request that can't get the slot
+   within `ROUTER_QUEUE_MS` (1,000 ms) gets `503 {"error": "busy"}`, and the
+   caller uses a fallback Tier instead of waiting.
+2. **Prepare.** The text is capped at 16,000 characters, prefixed with
+   `query: ` and tokenised. Then it's cut to 256 tokens: the first 96 plus as
+   much of the end as fits.
+3. **Embed.** multilingual-e5-small runs on ONNX Runtime on CPU. It's
+   **frozen**: pinned to a Hugging Face revision, checked by sha256
+   (`fetch_model.py`), and downloaded rather than committed. Its 12 layers
+   give one vector per token, which are mean-pooled and L2-normalised into 384
+   numbers.
+4. **Decide.** The head is a logistic regression, `softmax(W·x + b)` with `W`
+   4 × 384. It's 1,540 numbers in `model/head.json`, **the only trained part**,
+   and it refuses to load against a different model revision. The highest
+   score is the Tier.
+5. **Answer.** The response carries `{tier, scores, latency_ms}`. Prompt text
+   is never logged; `/metrics` counts requests, Tiers and latency.
+
+**Offline,** `train.py` fits the head from `dataset/prompts.jsonl` in seconds,
+with no API calls (see [Retraining](#retraining)).
+
+**Docker Compose** runs the same image twice, a normal `router` and a
+`router-tight` built to be busy, plus an `e2e` container that tests both over
+HTTP (see [Tests](#tests)).
 
 ### The data
 
@@ -65,7 +78,22 @@ private, so those rows were dropped here and the head was retrained without
 them. The router has therefore never trained or been measured on pasted-file
 prompts in this copy.
 
-### How good it is
+## Trade-offs
+
+| Choice | What it gains | What it gives up |
+|---|---|---|
+| A frozen e5 on CPU | No GPU, no torch, milliseconds, prompts stay local, MIT licence | e5 learned meaning, not difficulty: a rename and a redesign on the same topic look alike, which is where `medium` gets confused |
+| A multilingual model | About 100 languages, Portuguese included | Size: the 250k-piece vocabulary is most of the ~470 MB model |
+| 256 tokens, first 96 + the end | Bounded latency, so a 60 KB paste costs the same as a short prompt; the ask is caught above or below a paste. In keelgw, 512 tokens doubled the time for no accuracy | The middle of a long prompt is never read |
+| Only the latest user turn | A short new ask isn't drowned by earlier turns (in keelgw, three earlier turns cut accuracy from 80% to 43%) | No conversation context: "now do the same for the other twelve services" looks simple |
+| A linear head, argmax, no threshold | Retrains in seconds on a few thousand labels; can be inspected; always answers | Straight boundaries cap accuracy; a 0.30 / 0.29 near-tie is decided as firmly as 0.95 |
+| One inference at a time, short queue, 503 | Predictable latency; a busy router says so at once, so the caller falls back | Throughput comes only from more processes |
+| Synthetic labels from two model families | Thousands of labels for a few dollars, with no real user data | It measures agreement with the labelling models, not answer quality |
+| The Python standard library HTTP server | No web framework to depend on | A listen backlog of 5: bursts can make some connections retry after about a second (see [Performance](#performance)) |
+
+## Performance
+
+### Accuracy
 
 From `model/metrics.json` (trained 2026-11-19), on the 452 eval prompts:
 
@@ -73,18 +101,35 @@ From `model/metrics.json` (trained 2026-11-19), on the 452 eval prompts:
 |---|---|---|---|---|---|
 | accuracy | 78.6% | 69.8% | 78.1% | 76.0% | **75.4%** (macro-F1 0.760) |
 
-By prompt form: follow-ups 81.7%, bare questions 81.1%, snippets 78.6%, error
-reports 68.5%, **conversation-style 53.8%**. keelgw's target was 80%; this head
-is below it. The labels are synthetic, so this measures agreement with the
-labelling models, not answer quality.
+- **By prompt form:** follow-ups 81.7%, bare questions 81.1%, snippets 78.6%,
+  error reports 68.5%, **conversation-style 53.8%**.
+- **Against the target:** keelgw's target was 80%, and this head is below it.
+- **What it measures:** the labels are synthetic, so this is agreement with the
+  labelling models, not answer quality.
+- **What dropping the pasted rows cost:** on the same 452 eval prompts, keelgw's
+  head (trained with them) scores 77.0% and this one 75.4%. That's about 7
+  prompts, nearly all bare questions (86.8% against 81.1%). The L2 strength
+  chosen on val also moved, from 0.03 to 0.01.
 
-**What dropping the pasted rows cost.** On the same 452 eval prompts, keelgw's
-head (trained with them) scores 77.0% and this one 75.4%. That's about 7
-prompts, nearly all bare questions (86.8% against 81.1%). The L2 strength
-chosen on val also moved, from 0.03 to 0.01.
+### Latency and load
 
-Latency, from `metrics.json`: p50 7.3 ms and p95 19.4 ms per classification,
-2 threads on an Apple M4 Pro.
+| Where | What | Result |
+|---|---|---|
+| In process, `metrics.json` | One classification at a time, 2 threads, Apple M4 Pro, 210 prompts | p50 **7.3 ms**, p95 **19.4 ms**, max 21.7 ms |
+| In Docker, `make e2e` | Inference time reported by the router | p50 16.5 ms |
+| In Docker, `make e2e` | Wall-clock over HTTP, 25 requests (5 fill all 256 tokens) | p50 17.3 ms, p95 72.7 ms |
+| In Docker, `make e2e` | 8 parallel requests on `router` | All 8 served |
+| In Docker, `make e2e` | 16 at once on `router-tight` (1 slot, 50 ms queue, 1 thread) | 2 served, 14 got 503 in 0.06–1.08 s |
+
+- **Most of the time is the transformer.** The head takes microseconds, and a
+  prompt that fills all 256 tokens is the slowest case.
+- **Throughput.** Each process does roughly 1 ÷ latency classifications a
+  second; to serve more, run more processes.
+- **The slow 503s.** Some took about a second instead of about 50 ms. The likely
+  cause is the HTTP server's listen backlog of 5: extra simultaneous
+  connections are dropped and the client's TCP retries after about a second.
+  That isn't verified. Every 503 still came back under the 1.5 s at which
+  keelgw's gateway gives up.
 
 ## Tests
 
@@ -140,19 +185,12 @@ checks both say `simple`.
 
 ### Measured in this repo (2026-11-19, Apple M4 Pro, Docker Desktop)
 
-- **`make test`:** 52 passed.
-- **`make test-model`:** 7 passed.
-  - Eval accuracy reproduced: 0.754.
-  - Retraining from the dataset gave the same L2 and accuracy.
-- **`make e2e`:** 21 passed.
-  - Inference p50 16.5 ms inside the container; wall-clock p95 73 ms over 25 requests.
-  - The burst of 16 against `router-tight`: 2 served, 14 got a 503.
-  - The 503s took 0.06–1.08 s, not ~50 ms. A likely cause is the HTTP server's
-    listen backlog (`ThreadingHTTPServer` defaults to 5): extra simultaneous
-    connections are dropped and the client's TCP retries after about a second.
-    That's not verified. All of them still came back under the 1.5 s at which
-    keelgw's gateway gives up.
-- **`make test-live`:** not run here; it spends money on your key.
+| Command | Result |
+|---|---|
+| `make test` | 52 passed |
+| `make test-model` | 7 passed; eval accuracy 0.754 reproduced, and retraining from the dataset gave the same L2 and accuracy |
+| `make e2e` | 21 passed; latency and load figures are under [Performance](#performance) |
+| `make test-live` | Not run here; it spends money on your key |
 
 ## Configuration
 

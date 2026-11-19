@@ -13,10 +13,13 @@ LLM-labelled prompts: 1,540 trained numbers. The shipped head scores **75.4%**
 on 452 held-out synthetic prompts (`code/model/metrics.json`, trained
 2026-11-19), below keelgw's 80% target.
 
+![keelgw-router: from prompt to Tier](images/router.en.svg)
+
 | | |
 |---|---|
 | Code, how to run and test it | [code/README.md](code/README.md) |
 | Working on it with Claude Code | [CLAUDE.md](CLAUDE.md) |
+| Diagram source | [images/](images/) |
 | Licence | [MIT](LICENSE) |
 
 ## Published
